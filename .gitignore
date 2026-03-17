@@ -1,0 +1,9 @@
+﻿.env
+*.env.local
+vendor/
+storage/uploads/*
+!storage/uploads/.gitignore
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

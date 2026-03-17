@@ -1,0 +1,25 @@
+﻿* {
+    font-family: 'Roboto', sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar        { width: 8px; height: 8px; }
+::-webkit-scrollbar-track  { background: #f1f5f9; }
+::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+#sidebar .sidebar-text {
+    transition: opacity 200ms ease, visibility 200ms ease;
+}
+#sidebar[style*="width: 64px"] .sidebar-text {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0);   }
+}
+.animate-fadeIn { animation: fadeIn 0.3s ease-in-out; }

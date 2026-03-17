@@ -1,0 +1,9 @@
+{
+    "name": "project/ml-branch-asset-depreciation",
+    "autoload": {
+    "psr-4": {
+        "App\\": "src/classes/"
+    }
+    },
+    "require": {}
+}
