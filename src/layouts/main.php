@@ -9,21 +9,21 @@
     <link rel="stylesheet" href="<?= ASSET_URL ?>css/style.css">
     <script>const BASE_URL = '<?= BASE_URL ?>';</script>
 </head>
-<body class="h-full bg-slate-100 overflow-hidden flex flex-col">
+<body class="min-h-screen bg-slate-100 flex flex-col m-0">
 
-    <?php include dirname(__DIR__) . '/includes/header.php'; ?>
+        <?php include dirname(__DIR__) . '/includes/header.php'; ?>
 
-    <div class="flex flex-1 h-0 overflow-hidden">
-        <?php include dirname(__DIR__) . '/includes/sidebar.php'; ?>
-        <main class="flex-1 overflow-y-auto p-8 bg-[#fdfdfd]">
-            <div class="animate-fadeIn max-w-7xl mx-auto">
-                <?php echo $content; ?>
-            </div>
-        </main>
-    </div>
+        <div class="flex flex-1 min-h-0 w-full overflow-hidden">
+            <?php include dirname(__DIR__) . '/includes/sidebar.php'; ?>
+            <main class="flex-1 overflow-y-auto p-8 bg-[#fdfdfd] min-h-0">
+                <div class="animate-fadeIn max-w-7xl mx-auto">
+                    <?php echo $content; ?>
+                </div>
+            </main>
+        </div>
 
 </body>
-</html>
+
 <script>
 window.formatFullDate = function (input) {
     if (!input && input !== 0) return '';
@@ -39,3 +39,4 @@ window.setFullDate = function (id, val) {
     if (el) el.textContent = window.formatFullDate(val);
 };
 </script>
+</html>

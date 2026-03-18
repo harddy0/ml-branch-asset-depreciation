@@ -8,12 +8,12 @@ if (!isset($currentPage)) {
 }
 ?>
 <aside id="sidebar"
-    class="w-64 bg-[#ce1126] text-white flex flex-col z-10 h-full sticky top-0 overflow-x-hidden shadow-xl shadow-red-900/20"
+    class="w-64 bg-[#ce1126] text-white flex flex-col z-10 h-full sticky top-0 overflow-x-hidden shadow-xl shadow-red-900/20 -pb-50"
     style="transition: width 300ms cubic-bezier(0.4,0,0.2,1);"
     onmouseenter="if(!sidebarPinned) this.style.width='256px'"
     onmouseleave="if(!sidebarPinned) this.style.width='64px'">
 
-    <div class="px-5 py-4 flex justify-between items-center border-b border-white/10 shrink-0">
+    <div class="px-5 py-2 flex justify-between items-center border-b border-white/10 shrink-0">
         <span class="sidebar-text text-xs font-bold tracking-widest text-white/80 uppercase">Menu</span>
         <button onclick="toggleSidebarPin()"
             class="p-1.5 hover:bg-white/20 rounded-lg transition-colors focus:outline-none">
@@ -30,7 +30,7 @@ if (!isset($currentPage)) {
                 ? 'bg-black/25 border-l-4 border-white'
                 : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
                 <a href="<?= $baseUrl ?>/dashboard/"
-                   class="flex items-center gap-4 px-5 py-2.5 hover:bg-black/10 transition-all">
+                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
@@ -46,7 +46,7 @@ if (!isset($currentPage)) {
                 ? 'bg-black/25 border-l-4 border-white'
                 : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
                 <a href="<?= $baseUrl ?>/user-mgt/"
-                   class="flex items-center gap-4 px-5 py-2.5 hover:bg-black/10 transition-all">
+                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -57,6 +57,22 @@ if (!isset($currentPage)) {
                 </a>
             </li>
             <?php endif; ?>
+
+          
+        </ul>
+        <ul class="py-1">
+            <div class="border-t border-white/10">
+                <li class="border-l-4 border-transparent hover:border-white/30 transition-colors">
+                    <a href="<?= BASE_URL ?>/public/actions/logout.php"
+                    class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1"/>
+                        </svg>
+                        <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">Logout</span>
+                    </a>
+                </li>
+            </div>
         </ul>
     </nav>
 
