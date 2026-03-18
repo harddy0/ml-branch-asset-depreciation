@@ -30,12 +30,19 @@ $auth = new \App\AuthService($pdo);
 
 // Auth middleware
 $path = strtolower(rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/')) ?: '/';
+$basePath = strtolower(rtrim(parse_url(BASE_URL, PHP_URL_PATH), '/')) ?: '/';
+
 $isPublic =
-    in_array($path, ['/', '/public', '/public/index.php'], true)
+    in_array($path, [$basePath, $basePath . '/public', $basePath . '/public/index.php', '/'], true)
     || str_contains($path, '/login')
     || str_contains($path, '/forgot_password')
     || str_contains($path, '/actions/login.php')
     || str_contains($path, '/actions/reset_password.php');
+
+if (!$auth->isLoggedIn() && !$isPublic) {
+    header('Location: ' . BASE_URL . '/public/login/');
+    exit;
+}
 
 if (!$auth->isLoggedIn() && !$isPublic) {
     header('Location: ' . BASE_URL . '/public/login/');
