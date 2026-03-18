@@ -80,10 +80,10 @@ function confirmToggleStatus(id, name, currentStatus) {
     var btn = document.getElementById('status-confirm-btn');
     if (toRestrict) {
         btn.className = btn.className.replace(/bg-\w+-\d+/g, '').replace(/shadow-\w+-\d+/g, '').trim();
-        btn.classList.add('bg-orange-500', 'hover:bg-orange-600', 'shadow-orange-100');
+        btn.classList.add('bg-[#ce2216]', 'hover:bg-red-600', 'shadow-slate-100');
     } else {
         btn.className = btn.className.replace(/bg-\w+-\d+/g, '').replace(/shadow-\w+-\d+/g, '').trim();
-        btn.classList.add('bg-green-600', 'hover:bg-green-700', 'shadow-green-100');
+        btn.classList.add('bg-[#ce2216]', 'hover:bg-red-600', 'shadow-slate-100');
     }
     openModal('modal-status');
 }

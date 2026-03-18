@@ -19,13 +19,13 @@
             <input type="hidden" name="id"     id="status-user-id">
             <input type="hidden" name="status" id="status-target">
             <button type="button" onclick="closeModal('modal-status')"
-                class="flex-1 border-2 border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest
-                       py-3 rounded-xl transition-all hover:bg-slate-50">
+                    class="flex-1 border-2 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-300
+                           font-black text-xs uppercase tracking-widest py-3 rounded-xl transition-all">
                 Cancel
             </button>
             <button type="submit" id="status-confirm-btn"
-                class="flex-1 text-white font-black text-xs uppercase tracking-widest
-                       py-3 rounded-xl shadow-lg hover:-translate-y-0.5 transition-all bg-orange-500 hover:bg-orange-600 shadow-orange-100">
+                class="flex-1 bg-[#ce2216] hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest
+                           py-3 rounded-xl shadow-lg shadow-slate-100 transition-all">
                 <span id="status-action-label">Confirm</span>
             </button>
         </form>

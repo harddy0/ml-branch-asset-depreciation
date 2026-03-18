@@ -9,13 +9,12 @@
                         d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
                 </svg>
             </div>
-            <h3 class="text-base font-black text-slate-800 uppercase tracking-tight mb-2">Reset Password?</h3>
-            <p class="text-sm text-slate-500 mb-1">This will reset the password for</p>
+            <h3 class="text-base font-black text-slate-800 uppercase tracking-tight mb-2">Reset Password For</h3>
             <p class="text-sm font-black text-slate-800 mb-3" id="reset-username-display"></p>
             <p class="text-xs text-slate-400 leading-relaxed">
-                Password will be reset to
+               Default passoword is
                 <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-600">Mlinc1234@</code>.
-                The user will be required to change it on next login.
+                The user will be required to update.
             </p>
         </div>
 
@@ -23,14 +22,14 @@
               class="px-7 pb-7 flex gap-3">
             <input type="hidden" name="id" id="reset-user-id">
             <button type="button" onclick="closeModal('modal-reset-pw')"
-                class="flex-1 border-2 border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest
-                       py-3 rounded-xl transition-all hover:bg-slate-50">
+                class="flex-1 border-2 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-300
+                           font-black text-xs uppercase tracking-widest py-3 rounded-xl transition-all">
                 Cancel
             </button>
             <button type="submit"
-                class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-widest
-                       py-3 rounded-xl shadow-lg shadow-amber-100 hover:-translate-y-0.5 transition-all">
-                Yes, Reset
+                class="flex-1 bg-[#ce2216] hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest
+                           py-3 rounded-xl shadow-lg shadow-slate-100 transition-all">
+                Reset
             </button>
         </form>
     </div>

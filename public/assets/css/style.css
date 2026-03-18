@@ -39,3 +39,14 @@
     to   { opacity: 1; transform: translateY(0);   }
 }
 .animate-fadeIn { animation: fadeIn 0.3s ease-in-out; }
+
+/* Users table: alternate row backgrounds (odd = white, even = slate-300) */
+#users-tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+#users-tbody tr:nth-child(even) {
+    background-color: #a7a8aa0f; /* slate-300 */
+}
+
+/* Keep hover highlight visible (slightly lighten on hover) */
+#users-tbody tr:hover { background-color: rgba(255,255,255,0.9); }
