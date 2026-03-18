@@ -3,6 +3,7 @@ $baseUrl = BASE_URL . '/public';
 if (!isset($currentPage)) {
     $uri = $_SERVER['REQUEST_URI'];
     if     (str_contains($uri, '/dashboard'))    $currentPage = 'dashboard';
+    elseif (str_contains($uri, '/asset-import')) $currentPage = 'asset-import';
     elseif (str_contains($uri, '/category-mgt')) $currentPage = 'category-mgt';
     elseif (str_contains($uri, '/user-mgt'))     $currentPage = 'user-mgt';
     else                                          $currentPage = '';
@@ -28,7 +29,6 @@ if (!isset($currentPage)) {
     <nav class="flex-1 overflow-y-auto overflow-x-hidden">
         <ul class="py-1 space-y-0.5">
 
-            <!-- Dashboard (all users) -->
             <li class="<?= $currentPage === 'dashboard'
                 ? 'bg-black/25 border-l-4 border-white'
                 : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
@@ -44,9 +44,23 @@ if (!isset($currentPage)) {
                 </a>
             </li>
 
+            <li class="<?= $currentPage === 'asset-import'
+                ? 'bg-black/25 border-l-4 border-white'
+                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
+                <a href="<?= $baseUrl ?>/asset-import/"
+                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                        Import Assets
+                    </span>
+                </a>
+            </li>
+
             <?php if (($_SESSION['user_type'] ?? '') === 'ADMIN'): ?>
 
-            <!-- Category Management (admin only) -->
             <li class="<?= $currentPage === 'category-mgt'
                 ? 'bg-black/25 border-l-4 border-white'
                 : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
@@ -62,7 +76,6 @@ if (!isset($currentPage)) {
                 </a>
             </li>
 
-            <!-- User Management (admin only) -->
             <li class="<?= $currentPage === 'user-mgt'
                 ? 'bg-black/25 border-l-4 border-white'
                 : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
