@@ -2,9 +2,10 @@
 $baseUrl = BASE_URL . '/public';
 if (!isset($currentPage)) {
     $uri = $_SERVER['REQUEST_URI'];
-    if     (str_contains($uri, '/dashboard')) $currentPage = 'dashboard';
-    elseif (str_contains($uri, '/user-mgt'))  $currentPage = 'user-mgt';
-    else                                       $currentPage = '';
+    if     (str_contains($uri, '/dashboard'))    $currentPage = 'dashboard';
+    elseif (str_contains($uri, '/category-mgt')) $currentPage = 'category-mgt';
+    elseif (str_contains($uri, '/user-mgt'))     $currentPage = 'user-mgt';
+    else                                          $currentPage = '';
 }
 ?>
 <aside id="sidebar"
@@ -26,6 +27,8 @@ if (!isset($currentPage)) {
 
     <nav class="flex-1 overflow-y-auto overflow-x-hidden">
         <ul class="py-1 space-y-0.5">
+
+            <!-- Dashboard (all users) -->
             <li class="<?= $currentPage === 'dashboard'
                 ? 'bg-black/25 border-l-4 border-white'
                 : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
@@ -42,6 +45,24 @@ if (!isset($currentPage)) {
             </li>
 
             <?php if (($_SESSION['user_type'] ?? '') === 'ADMIN'): ?>
+
+            <!-- Category Management (admin only) -->
+            <li class="<?= $currentPage === 'category-mgt'
+                ? 'bg-black/25 border-l-4 border-white'
+                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
+                <a href="<?= $baseUrl ?>/category-mgt/"
+                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                    </svg>
+                    <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                        Categories
+                    </span>
+                </a>
+            </li>
+
+            <!-- User Management (admin only) -->
             <li class="<?= $currentPage === 'user-mgt'
                 ? 'bg-black/25 border-l-4 border-white'
                 : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
@@ -56,10 +77,11 @@ if (!isset($currentPage)) {
                     </span>
                 </a>
             </li>
+
             <?php endif; ?>
 
-          
         </ul>
+
         <ul class="py-1">
             <div class="border-t border-white/10">
                 <li class="border-l-4 border-transparent hover:border-white/30 transition-colors">

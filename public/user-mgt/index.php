@@ -3,7 +3,6 @@ $pageTitle   = 'User Management';
 $currentPage = 'user-mgt';
 require_once __DIR__ . '/../../src/includes/init.php';
 
-// ADMIN ONLY
 if (!$auth->isAdmin()) {
     header('Location: ' . BASE_URL . '/public/dashboard/');
     exit;
@@ -20,8 +19,7 @@ $users = $auth->getAllUsers();
 <?php if ($success): ?>
 <div data-flash class="mb-5 flex items-center gap-3 bg-green-50 border border-green-200 text-green-800 text-sm font-bold rounded-xl px-5 py-3.5 shadow-sm">
     <svg class="w-5 h-5 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
     </svg>
     <?= htmlspecialchars($success) ?>
 </div>
@@ -29,8 +27,7 @@ $users = $auth->getAllUsers();
 <?php if ($error): ?>
 <div data-flash class="mb-5 flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 text-sm font-bold rounded-xl px-5 py-3.5 shadow-sm">
     <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
     </svg>
     <?= htmlspecialchars($error) ?>
 </div>
@@ -95,8 +92,7 @@ $users = $auth->getAllUsers();
                     </td>
                 </tr>
                 <?php else: ?>
-                <?php foreach ($users as $u): ?>
-                <?php
+                <?php foreach ($users as $u):
                     $isMe     = (int)$u['id'] === (int)$_SESSION['user_id'];
                     $mid      = !empty($u['middle_name']) ? ' ' . $u['middle_name'] . ' ' : ' ';
                     $fullName = htmlspecialchars($u['first_name'] . $mid . $u['last_name']);
@@ -105,12 +101,10 @@ $users = $auth->getAllUsers();
                 ?>
                 <tr class="hover:bg-slate-50/70 transition-colors user-row <?= !$isActive ? 'opacity-60' : '' ?>">
 
-                    <!-- ID -->
                     <td class="px-6 py-4 font-mono text-xs font-bold text-slate-500 user-empid">
                         <?= htmlspecialchars((string)$u['id']) ?>
                     </td>
 
-                    <!-- Name -->
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
                             <div class="w-9 h-9 rounded-full <?= $isActive ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400' ?> flex items-center justify-center font-black text-xs shrink-0">
@@ -125,12 +119,10 @@ $users = $auth->getAllUsers();
                         </div>
                     </td>
 
-                    <!-- Username -->
                     <td class="px-6 py-4 font-mono text-xs font-bold text-slate-600 user-username">
                         <?= htmlspecialchars($u['username']) ?>
                     </td>
 
-                    <!-- Role -->
                     <td class="px-6 py-4">
                         <?php if ($u['user_type'] === 'ADMIN'): ?>
                         <span class="inline-flex items-center gap-1.5 bg-red-100 text-red-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
@@ -149,7 +141,6 @@ $users = $auth->getAllUsers();
                         <?php endif; ?>
                     </td>
 
-                    <!-- Status -->
                     <td class="px-6 py-4">
                         <?php if ($isActive): ?>
                         <span class="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
@@ -164,18 +155,14 @@ $users = $auth->getAllUsers();
                         <?php endif; ?>
                     </td>
 
-                    <!-- Last Login -->
                     <td class="px-6 py-4 text-slate-500 text-xs font-medium">
                         <?= $u['last_login']
                             ? date('M j, Y g:i A', strtotime($u['last_login']))
                             : '<span class="text-slate-300 font-bold">Never</span>' ?>
                     </td>
 
-                    <!-- Actions -->
                     <td class="px-6 py-4">
                         <div class="flex items-center justify-end gap-1">
-
-                            <!-- Edit -->
                             <button
                                 onclick="openEditModal(<?= htmlspecialchars(json_encode([
                                     'id'          => $u['id'],
@@ -191,8 +178,6 @@ $users = $auth->getAllUsers();
                                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                 </svg>
                             </button>
-
-                            <!-- Reset Password -->
                             <button
                                 onclick="confirmReset(<?= (int)$u['id'] ?>, '<?= htmlspecialchars($u['username'], ENT_QUOTES) ?>')"
                                 class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
@@ -202,8 +187,6 @@ $users = $auth->getAllUsers();
                                         d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
                                 </svg>
                             </button>
-
-                            <!-- Restrict / Activate (not for self) -->
                             <?php if (!$isMe): ?>
                             <button
                                 onclick="confirmToggleStatus(<?= (int)$u['id'] ?>, '<?= htmlspecialchars($fullName, ENT_QUOTES) ?>', '<?= $u['status'] ?>')"
@@ -224,7 +207,6 @@ $users = $auth->getAllUsers();
                                 <?php endif; ?>
                             </button>
                             <?php endif; ?>
-
                         </div>
                     </td>
                 </tr>
@@ -235,287 +217,12 @@ $users = $auth->getAllUsers();
     </div>
 </div>
 
+<?php
+require_once __DIR__ . '/../../src/includes/modals/user-add.php';
+require_once __DIR__ . '/../../src/includes/modals/user-edit.php';
+require_once __DIR__ . '/../../src/includes/modals/user-reset-pw.php';
+require_once __DIR__ . '/../../src/includes/modals/user-status.php';
+?>
 
-<!-- ============================================================
-     MODAL: Add User
-============================================================ -->
-<div id="modal-add-user"
-     class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fadeIn">
-
-        <div class="flex items-center justify-between px-7 py-5 border-b border-slate-100">
-            <div>
-                <h2 class="text-base font-black text-slate-800 uppercase tracking-tight">Add New User</h2>
-                <p class="text-xs text-slate-400 mt-0.5">
-                    Default password: <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-600 text-[11px]">Mlinc1234@</code>
-                </p>
-            </div>
-            <button onclick="closeModal('modal-add-user')"
-                class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-
-        <form method="POST" action="<?= BASE_URL ?>/public/actions/user_store.php"
-              class="px-7 py-6 space-y-4">
-
-            <!-- Employee ID -->
-            <div>
-                <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                    Employee ID <span class="text-red-500">*</span>
-                </label>
-                <input type="number" name="id" id="add-emp-id" required min="1"
-                    class="w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
-                           text-sm font-bold font-mono text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
-            </div>
-
-            <!-- Name row -->
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                        First Name <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" name="first_name" id="add-first-name" required
-                        class="input-uppercase w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
-                               text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
-                </div>
-                <div>
-                    <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                        Last Name <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" name="last_name" id="add-last-name" required
-                        class="input-uppercase w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
-                               text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
-                </div>
-            </div>
-
-            <!-- Middle Name -->
-            <div>
-                <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                    Middle Name
-                    <span class="normal-case tracking-normal font-medium text-slate-300">(optional)</span>
-                </label>
-                <input type="text" name="middle_name" id="add-middle-name"
-                    class="input-uppercase w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
-                           text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
-            </div>
-
-            <!-- Auto-generated Username preview -->
-            <div>
-                <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                    Username <span class="text-[10px] normal-case font-medium text-slate-400">(auto-generated)</span>
-                </label>
-                <input type="text" id="add-username-preview" readonly tabindex="-1"
-                    placeholder="Fill in Last Name and ID above..."
-                    class="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 bg-slate-50
-                           text-sm font-bold font-mono text-slate-500 outline-none cursor-not-allowed">
-                <p class="text-[10px] text-slate-400 mt-1">First 4 characters of last name + Employee ID.</p>
-            </div>
-
-            <!-- Role -->
-            <div>
-                <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                    Role <span class="text-red-500">*</span>
-                </label>
-                <select name="user_type" required
-                    class="w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
-                           text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                </select>
-            </div>
-
-            <div class="flex gap-3 pt-2">
-                <button type="button" onclick="closeModal('modal-add-user')"
-                    class="flex-1 border-2 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50
-                           font-black text-xs uppercase tracking-widest py-3 rounded-xl transition-all">
-                    Cancel
-                </button>
-                <button type="submit"
-                    class="flex-1 bg-[#ce1126] hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest
-                           py-3 rounded-xl shadow-lg shadow-red-100 hover:-translate-y-0.5 transition-all">
-                    Create User
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-
-<!-- ============================================================
-     MODAL: Edit User
-============================================================ -->
-<div id="modal-edit-user"
-     class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fadeIn">
-
-        <div class="flex items-center justify-between px-7 py-5 border-b border-slate-100">
-            <h2 class="text-base font-black text-slate-800 uppercase tracking-tight">Edit User</h2>
-            <button onclick="closeModal('modal-edit-user')"
-                class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-
-        <form method="POST" action="<?= BASE_URL ?>/public/actions/user_update.php"
-              class="px-7 py-6 space-y-4">
-            <input type="hidden" name="id" id="edit-id">
-
-            <!-- Name row -->
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                        First Name <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" name="first_name" id="edit-first-name" required
-                        class="input-uppercase w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
-                               text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
-                </div>
-                <div>
-                    <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                        Last Name <span class="text-red-500">*</span>
-                    </label>
-                    <input type="text" name="last_name" id="edit-last-name" required
-                        class="input-uppercase w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
-                               text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
-                </div>
-            </div>
-
-            <!-- Middle Name -->
-            <div>
-                <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                    Middle Name
-                    <span class="normal-case tracking-normal font-medium text-slate-300">(optional)</span>
-                </label>
-                <input type="text" name="middle_name" id="edit-middle-name"
-                    class="input-uppercase w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
-                           text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
-            </div>
-
-            <!-- Username Preview (read-only) -->
-            <div>
-                <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                    Username <span class="text-[10px] normal-case font-medium text-slate-400">(auto-generated)</span>
-                </label>
-                <input type="text" id="edit-username-preview" readonly tabindex="-1"
-                    class="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 bg-slate-50
-                           text-sm font-bold font-mono text-slate-500 outline-none cursor-not-allowed">
-            </div>
-
-            <!-- Role -->
-            <div>
-                <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1.5">
-                    Role <span class="text-red-500">*</span>
-                </label>
-                <select name="user_type" id="edit-user-type" required
-                    class="w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
-                           text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                </select>
-            </div>
-
-            <div class="flex gap-3 pt-2">
-                <button type="button" onclick="closeModal('modal-edit-user')"
-                    class="flex-1 border-2 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50
-                           font-black text-xs uppercase tracking-widest py-3 rounded-xl transition-all">
-                    Cancel
-                </button>
-                <button type="submit"
-                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest
-                           py-3 rounded-xl shadow-lg shadow-blue-100 hover:-translate-y-0.5 transition-all">
-                    Save Changes
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-
-<!-- ============================================================
-     MODAL: Confirm Reset Password
-============================================================ -->
-<div id="modal-reset-pw"
-     class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fadeIn">
-
-        <div class="px-7 py-6 text-center">
-            <div class="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                </svg>
-            </div>
-            <h3 class="text-base font-black text-slate-800 uppercase tracking-tight mb-2">Reset Password?</h3>
-            <p class="text-sm text-slate-500 mb-1">This will reset the password for</p>
-            <p class="text-sm font-black text-slate-800 mb-3" id="reset-username-display"></p>
-            <p class="text-xs text-slate-400 leading-relaxed">
-                Password will be reset to
-                <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-600">Mlinc1234@</code>.
-                The user will be required to change it on next login.
-            </p>
-        </div>
-
-        <form method="POST" action="<?= BASE_URL ?>/public/actions/user_reset_password.php"
-              class="px-7 pb-7 flex gap-3">
-            <input type="hidden" name="id" id="reset-user-id">
-            <button type="button" onclick="closeModal('modal-reset-pw')"
-                class="flex-1 border-2 border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest
-                       py-3 rounded-xl transition-all hover:bg-slate-50">
-                Cancel
-            </button>
-            <button type="submit"
-                class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-widest
-                       py-3 rounded-xl shadow-lg shadow-amber-100 hover:-translate-y-0.5 transition-all">
-                Yes, Reset
-            </button>
-        </form>
-    </div>
-</div>
-
-
-<!-- ============================================================
-     MODAL: Confirm Restrict / Activate
-============================================================ -->
-<div id="modal-status"
-     class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fadeIn">
-
-        <div class="px-7 py-6 text-center">
-            <div class="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-7 h-7 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-                </svg>
-            </div>
-            <h3 class="text-base font-black text-slate-800 uppercase tracking-tight mb-2" id="status-modal-title">Change Status?</h3>
-            <p class="text-sm text-slate-500 mb-1" id="status-modal-desc"></p>
-            <p class="text-sm font-black text-slate-800 mt-1" id="status-name-display"></p>
-        </div>
-
-        <form method="POST" action="<?= BASE_URL ?>/public/actions/user_set_status.php"
-              class="px-7 pb-7 flex gap-3">
-            <input type="hidden" name="id"     id="status-user-id">
-            <input type="hidden" name="status" id="status-target">
-            <button type="button" onclick="closeModal('modal-status')"
-                class="flex-1 border-2 border-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest
-                       py-3 rounded-xl transition-all hover:bg-slate-50">
-                Cancel
-            </button>
-            <button type="submit" id="status-confirm-btn"
-                class="flex-1 text-white font-black text-xs uppercase tracking-widest
-                       py-3 rounded-xl shadow-lg hover:-translate-y-0.5 transition-all bg-orange-500 hover:bg-orange-600 shadow-orange-100">
-                <span id="status-action-label">Confirm</span>
-            </button>
-        </form>
-    </div>
-</div>
-
-
-<!-- main.js first, then page-specific JS -->
 <script src="<?= ASSET_URL ?>js/main.js"></script>
 <script src="<?= ASSET_URL ?>js/user-mgt.js"></script>
