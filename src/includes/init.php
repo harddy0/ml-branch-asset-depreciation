@@ -29,7 +29,7 @@ try {
 $auth = new \App\AuthService($pdo);
 
 // Auth middleware
-$path = strtolower(rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/')) ?: '/';
+$path     = strtolower(rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/')) ?: '/';
 $basePath = strtolower(rtrim(parse_url(BASE_URL, PHP_URL_PATH), '/')) ?: '/';
 
 $isPublic =
@@ -38,11 +38,6 @@ $isPublic =
     || str_contains($path, '/forgot_password')
     || str_contains($path, '/actions/login.php')
     || str_contains($path, '/actions/reset_password.php');
-
-if (!$auth->isLoggedIn() && !$isPublic) {
-    header('Location: ' . BASE_URL . '/public/login/');
-    exit;
-}
 
 if (!$auth->isLoggedIn() && !$isPublic) {
     header('Location: ' . BASE_URL . '/public/login/');
@@ -61,12 +56,23 @@ if ($auth->isLoggedIn() && !empty($_SESSION['must_change_password'])) {
     }
 }
 
-// Layout injection via output buffer
+// ── Output buffer + layout/Tailwind injection ─────────────────
 ob_start();
 register_shutdown_function(function () {
     $content = ob_get_clean();
     global $noLayout;
-    if (isset($noLayout) && $noLayout === true) { echo $content; return; }
+
+    if (isset($noLayout) && $noLayout === true) {
+        // No layout — but still inject Tailwind into <head> if not already present
+        $tailwindTag = '<script src="https://cdn.tailwindcss.com"></script>';
+        if (stripos($content, 'cdn.tailwindcss.com') === false) {
+            $content = str_ireplace('</head>', $tailwindTag . "\n</head>", $content);
+        }
+        echo $content;
+        return;
+    }
+
+    // Normal layout wrap
     $lp = dirname(__DIR__) . '/layouts/main.php';
     file_exists($lp) ? require $lp : print $content;
 });
