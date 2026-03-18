@@ -26,7 +26,7 @@ class AuthService {
             $_SESSION['full_name'] = $user['first_name'] . $mid . $user['last_name'];
             $_SESSION['must_change_password'] = !empty($user['password_changed_at']);
             $this->db->prepare("UPDATE users SET last_login = NOW() WHERE id = :id")
-                     ->execute([':id' => $user['id']]);
+                ->execute([':id' => $user['id']]);
             return ['success' => true];
         }
         return ['success' => false, 'error' => 'Invalid username or password.'];
