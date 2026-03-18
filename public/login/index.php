@@ -13,9 +13,22 @@ unset($_SESSION['error']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $pageTitle ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Background video (match landing page) */
+        .bg-video{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:#ce2216}
+        .bg-video video{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:cover;transform:translate(-50%,-50%);filter:blur(10px) brightness(1.0);opacity:0.3}
+        .bg-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));pointer-events:none}
+    </style>
 </head>
-<body class="h-full bg-slate-100 flex items-center justify-center">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-10">
+<body class="h-full bg-slate-100 flex items-center justify-center m-0">
+    <div class="bg-video" aria-hidden="true">
+        <video autoplay muted loop playsinline preload="auto">
+            <source src="<?= BASE_URL ?>/public/assets/vid/moving2.mp4?v=2" type="video/mp4">
+        </video>
+        <div class="bg-overlay"></div>
+    </div>
+
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-10 relative z-10">
         <div class="text-center mb-8">
             <div class="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
