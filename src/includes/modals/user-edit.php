@@ -3,7 +3,7 @@
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fadeIn">
 
         <div class="flex items-center justify-between px-7 py-5 border-b border-slate-100">
-            <h2 class="text-base font-black text-slate-800 uppercase tracking-tight">Edit User</h2>
+            <h2 class="text-base font-black text-slate-800 uppercase tracking-wide">Edit User</h2>
             <button onclick="closeModal('modal-edit-user')"
                 class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -22,7 +22,7 @@
                         First Name <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="first_name" id="edit-first-name" required
-                        class="input-uppercase w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
+                        class="input-uppercase w-full border-2 border-slate-200 focus:border-slate-300 rounded-md px-4 py-2.5
                                text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
                 </div>
                 <div>
@@ -30,7 +30,7 @@
                         Last Name <span class="text-red-500">*</span>
                     </label>
                     <input type="text" name="last_name" id="edit-last-name" required
-                        class="input-uppercase w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
+                        class="input-uppercase w-full border-2 border-slate-200 focus:border-slate-300 rounded-md px-4 py-2.5
                                text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
                 </div>
             </div>
@@ -40,7 +40,7 @@
                     Middle Name <span class="normal-case tracking-normal font-medium text-slate-300">(optional)</span>
                 </label>
                 <input type="text" name="middle_name" id="edit-middle-name"
-                    class="input-uppercase w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
+                    class="input-uppercase w-full border-2 border-slate-200 focus:border-slate-300 rounded-md px-4 py-2.5
                            text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
             </div>
 
@@ -49,7 +49,7 @@
                     Username <span class="text-[10px] normal-case font-medium text-slate-400">(auto-generated)</span>
                 </label>
                 <input type="text" id="edit-username-preview" readonly tabindex="-1"
-                    class="w-full border-2 border-slate-100 rounded-xl px-4 py-2.5 bg-slate-50
+                    class="w-full border-2 border-slate-100 rounded-md px-4 py-2.5 bg-slate-50
                            text-sm font-bold font-mono text-slate-500 outline-none cursor-not-allowed">
             </div>
 
@@ -58,7 +58,7 @@
                     Role <span class="text-red-500">*</span>
                 </label>
                 <select name="user_type" id="edit-user-type" required
-                    class="w-full border-2 border-slate-200 focus:border-red-500 rounded-xl px-4 py-2.5
+                    class="w-full border-2 border-slate-200 focus:border-slate-300 rounded-md px-4 py-2.5
                            text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
                     <option value="USER">User</option>
                     <option value="ADMIN">Admin</option>
@@ -67,13 +67,13 @@
 
             <div class="flex gap-3 pt-2">
                 <button type="button" onclick="closeModal('modal-edit-user')"
-                    class="flex-1 border-2 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50
+                    class="flex-1 border-2 border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-300
                            font-black text-xs uppercase tracking-widest py-3 rounded-xl transition-all">
                     Cancel
                 </button>
                 <button type="submit"
-                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest
-                           py-3 rounded-xl shadow-lg shadow-blue-100 hover:-translate-y-0.5 transition-all">
+                    class="flex-1 bg-[#ce2216] hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest
+                           py-3 rounded-xl shadow-lg shadow-slate-100 transition-all">
                     Save Changes
                 </button>
             </div>

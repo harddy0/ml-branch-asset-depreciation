@@ -34,38 +34,41 @@ $users = $auth->getAllUsers();
 <?php endif; ?>
 
 <!-- Page Header -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
     <div>
-        <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tight">User Management</h1>
-        <p class="text-sm text-slate-500 mt-1">
-            Manage system users —
-            <span class="font-bold text-slate-700"><?= count($users) ?></span>
-            user<?= count($users) !== 1 ? 's' : '' ?> registered
-        </p>
+        <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">User Management</h1>
     </div>
-    <button onclick="openModal('modal-add-user')"
-        class="inline-flex items-center gap-2 bg-[#ce1126] hover:bg-red-700 active:bg-red-800
-               text-white text-xs font-black uppercase tracking-widest
-               px-5 py-3 rounded-xl shadow-lg shadow-red-200 hover:shadow-xl hover:-translate-y-0.5 transition-all">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-        </svg>
-        Add User
-    </button>
+
+    <div class="flex items-center gap-4">
+        <p class="text-sm text-slate-500 m-0">
+            <span class="font-bold text-slate-700"><?= count($users) ?></span>
+            <?= count($users) !== 1 ? '' : '' ?> Users
+        </p>
+
+        <button onclick="openModal('modal-add-user')"
+            class="inline-flex items-center gap-2 bg-[#ce1126] hover:bg-red-700 active:bg-red-800
+                   text-white text-xs font-black uppercase tracking-widest
+                   px-4 py-2 rounded-xl shadow-md shadow-slate-200 hover:shadow-md transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add
+        </button>
+    </div>
 </div>
 
 <!-- Search Bar -->
 <div class="mb-4">
-    <div class="relative max-w-sm">
+    <div class="relative max-w-full">
         <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
              fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
         </svg>
         <input type="text" id="search-input"
-               placeholder="Search by name, username, or ID..."
-               class="w-full pl-10 pr-4 py-2.5 border-2 border-slate-200 focus:border-red-500 rounded-xl
-                      text-sm font-medium text-slate-700 outline-none bg-white transition-all">
+               placeholder="Search by name, username, or ID"
+               class="w-full pl-10 pr-4 py-1.5 border-2 border-slate-100 focus:border-slate-300 rounded-xl
+                      placeholder:text-slate-300 text-sm font-medium text-slate-700 outline-none bg-white transition-all">
     </div>
 </div>
 
@@ -74,14 +77,14 @@ $users = $auth->getAllUsers();
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
-                <tr class="bg-slate-50 border-b border-slate-200">
-                    <th class="text-left text-xs font-black text-slate-500 uppercase tracking-widest px-6 py-4">ID</th>
-                    <th class="text-left text-xs font-black text-slate-500 uppercase tracking-widest px-6 py-4">Name</th>
-                    <th class="text-left text-xs font-black text-slate-500 uppercase tracking-widest px-6 py-4">Username</th>
-                    <th class="text-left text-xs font-black text-slate-500 uppercase tracking-widest px-6 py-4">Role</th>
-                    <th class="text-left text-xs font-black text-slate-500 uppercase tracking-widest px-6 py-4">Status</th>
-                    <th class="text-left text-xs font-black text-slate-500 uppercase tracking-widest px-6 py-4">Last Login</th>
-                    <th class="text-right text-xs font-black text-slate-500 uppercase tracking-widest px-6 py-4">Actions</th>
+                <tr class="bg-[#ce2216] border-b border-slate-200">
+                    <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-2">ID</th>
+                    <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-2">Name</th>
+                    <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-2">Username</th>
+                    <th class="text-left text-xs font-black text-white uppercase tracking-widest px-9 py-2">Role</th>
+                    <th class="text-left text-xs font-black text-white uppercase tracking-widest px-8 py-2">Status</th>
+                    <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-2">Last Login</th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100" id="users-tbody">
@@ -101,17 +104,14 @@ $users = $auth->getAllUsers();
                 ?>
                 <tr class="hover:bg-slate-50/70 transition-colors user-row <?= !$isActive ? 'opacity-60' : '' ?>">
 
-                    <td class="px-6 py-4 font-mono text-xs font-bold text-slate-500 user-empid">
+                    <td class="px-6 py-0 font-mono text-xs font-bold text-slate-500 user-empid">
                         <?= htmlspecialchars((string)$u['id']) ?>
                     </td>
 
-                    <td class="px-6 py-4">
+                    <td class="px-6 py-0">
                         <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full <?= $isActive ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400' ?> flex items-center justify-center font-black text-xs shrink-0">
-                                <?= $initials ?>
-                            </div>
                             <div>
-                                <p class="font-bold text-slate-800 user-name"><?= $fullName ?></p>
+                                <p class="font-bold uppercase text-slate-800 user-name"><?= $fullName ?></p>
                                 <?php if ($isMe): ?>
                                 <span class="text-[10px] font-bold text-red-500 uppercase tracking-wide">You</span>
                                 <?php endif; ?>
@@ -119,11 +119,11 @@ $users = $auth->getAllUsers();
                         </div>
                     </td>
 
-                    <td class="px-6 py-4 font-mono text-xs font-bold text-slate-600 user-username">
+                    <td class="px-6 py-0 font-mono text-xs font-bold text-slate-600 user-username">
                         <?= htmlspecialchars($u['username']) ?>
                     </td>
 
-                    <td class="px-6 py-4">
+                    <td class="px-6 py-0">
                         <?php if ($u['user_type'] === 'ADMIN'): ?>
                         <span class="inline-flex items-center gap-1.5 bg-red-100 text-red-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
                             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -141,7 +141,7 @@ $users = $auth->getAllUsers();
                         <?php endif; ?>
                     </td>
 
-                    <td class="px-6 py-4">
+                    <td class="px-6 py-0">
                         <?php if ($isActive): ?>
                         <span class="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
                             <span class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span>
@@ -155,13 +155,13 @@ $users = $auth->getAllUsers();
                         <?php endif; ?>
                     </td>
 
-                    <td class="px-6 py-4 text-slate-500 text-xs font-medium">
+                    <td class="px-6 py-0 text-slate-500 text-xs font-medium">
                         <?= $u['last_login']
                             ? date('M j, Y g:i A', strtotime($u['last_login']))
                             : '<span class="text-slate-300 font-bold">Never</span>' ?>
                     </td>
 
-                    <td class="px-6 py-4">
+                    <td class="px-6 py-0">
                         <div class="flex items-center justify-end gap-1">
                             <button
                                 onclick="openEditModal(<?= htmlspecialchars(json_encode([
@@ -171,7 +171,7 @@ $users = $auth->getAllUsers();
                                     'last_name'   => $u['last_name'],
                                     'user_type'   => $u['user_type'],
                                 ]), ENT_QUOTES) ?>)"
-                                class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                                 title="Edit User">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -180,7 +180,7 @@ $users = $auth->getAllUsers();
                             </button>
                             <button
                                 onclick="confirmReset(<?= (int)$u['id'] ?>, '<?= htmlspecialchars($u['username'], ENT_QUOTES) ?>')"
-                                class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                class="p-2 text-slate-400 hover:text-red-600 hover:bg-amber-50 rounded-lg transition-all"
                                 title="Reset Password">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -191,8 +191,8 @@ $users = $auth->getAllUsers();
                             <button
                                 onclick="confirmToggleStatus(<?= (int)$u['id'] ?>, '<?= htmlspecialchars($fullName, ENT_QUOTES) ?>', '<?= $u['status'] ?>')"
                                 class="p-2 rounded-lg transition-all <?= $isActive
-                                    ? 'text-slate-400 hover:text-orange-600 hover:bg-orange-50'
-                                    : 'text-slate-400 hover:text-green-600 hover:bg-green-50' ?>"
+                                    ? 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                                    : 'text-slate-400 hover:text-red-600 hover:bg-red-50' ?>"
                                 title="<?= $isActive ? 'Restrict User' : 'Activate User' ?>">
                                 <?php if ($isActive): ?>
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
