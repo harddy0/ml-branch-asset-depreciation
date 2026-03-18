@@ -12,9 +12,8 @@ unset($_SESSION['error']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $pageTitle ?></title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Background video (match landing page) */
+        /* Background video */
         .bg-video{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:#ce2216}
         .bg-video video{position:absolute;left:50%;top:50%;width:100%;height:100%;object-fit:cover;transform:translate(-50%,-50%);filter:blur(10px) brightness(1.0);opacity:0.3}
         .bg-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));pointer-events:none}
@@ -28,7 +27,7 @@ unset($_SESSION['error']);
         <div class="bg-overlay"></div>
     </div>
 
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-10 relative z-10">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 p-10" style="position:relative;z-index:2">
         <div class="text-center mb-8">
             <div class="w-12 h-12 bg-red-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,9 +47,10 @@ unset($_SESSION['error']);
         <form method="POST" action="<?= BASE_URL ?>/public/actions/login.php" class="space-y-5">
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Username</label>
-                <input type="text" name="username" required autofocus
-                    class="w-full border-2 border-slate-200 focus:border-red-600 rounded-lg px-4 py-3
-                           text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
+                <input type="text" name="username" id="login-username" required autofocus
+                       style="text-transform:uppercase"
+                       class="w-full border-2 border-slate-200 focus:border-red-600 rounded-lg px-4 py-3
+                              text-sm font-bold text-slate-800 outline-none bg-slate-50 focus:bg-white transition-all">
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Password</label>
@@ -67,9 +67,20 @@ unset($_SESSION['error']);
         </form>
 
         <p class="mt-6 text-center text-xs text-slate-400">
-            <a href="<?= BASE_URL ?>/public/forgot_password/"
-               class="hover:text-red-600 font-bold transition-colors">Forgot password?</a>
+            Forgot your password? Contact your administrator.
         </p>
     </div>
+
+    <script>
+    (function () {
+        var inp = document.getElementById('login-username');
+        if (!inp) return;
+        inp.addEventListener('input', function () {
+            var pos = this.selectionStart;
+            this.value = this.value.toUpperCase();
+            this.setSelectionRange(pos, pos);
+        });
+    })();
+    </script>
 </body>
 </html>
