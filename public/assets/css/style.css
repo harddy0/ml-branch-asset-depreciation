@@ -10,13 +10,29 @@
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
 #sidebar .sidebar-text {
-    transition: opacity 200ms ease, visibility 200ms ease;
+    display: inline-block;
+    transition: opacity 200ms ease, visibility 200ms ease, transform 200ms ease, width 200ms ease, margin 200ms ease, padding 200ms ease;
 }
 #sidebar[style*="width: 64px"] .sidebar-text {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
+    transform: translateX(-6px);
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
+
+/* When collapsed, align the header control icons with nav icons */
+#sidebar[style*="width: 64px"] .controls {
+    margin-left: 0 !important;
+}
+
+/* ensure footer account icon aligns with controls when sidebar is collapsed */
+#sidebar[style*="width: 64px"] .footer-account { margin-left: 0 !important; }
+
+.footer-account { display: flex; align-items: center; }
+
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }

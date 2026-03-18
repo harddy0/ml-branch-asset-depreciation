@@ -14,15 +14,15 @@ if (!isset($currentPage)) {
     onmouseenter="if(!sidebarPinned) this.style.width='256px'"
     onmouseleave="if(!sidebarPinned) this.style.width='64px'">
 
-    <div class="px-5 py-2 flex justify-between items-center border-b border-white/10 shrink-0">
+    <div class="px-5 py-2 flex items-center border-b border-white/10 shrink-0">
         <span class="sidebar-text text-xs font-bold tracking-widest text-white/80 uppercase">Menu</span>
-        <button onclick="toggleSidebarPin()"
-            class="p-1.5 hover:bg-white/20 rounded-lg transition-colors focus:outline-none">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 6h16M4 12h16M4 18h16"/>
-            </svg>
-        </button>
+        <div class="controls ml-auto flex items-center gap-2">
+            <button onclick="toggleSidebarPin()" class="p-1.5 hover:bg-white/20 rounded-lg transition-colors focus:outline-none" aria-label="Toggle sidebar">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+        </div>
     </div>
 
     <nav class="flex-1 overflow-y-auto overflow-x-hidden">
@@ -99,12 +99,21 @@ if (!isset($currentPage)) {
     </nav>
 
     <div class="px-4 py-3 border-t border-white/10 shrink-0">
-        <p class="sidebar-text text-xs font-bold text-white truncate">
-            <?= htmlspecialchars($_SESSION['full_name'] ?? 'User') ?>
-        </p>
-        <p class="sidebar-text text-[10px] text-white/50 uppercase tracking-wide">
-            <?= htmlspecialchars($_SESSION['user_type'] ?? '') ?>
-        </p>
+        <div class="flex items-center justify-between w-full">
+            <div class="flex flex-col">
+                <p class="sidebar-text text-xs font-bold uppercase text-white truncate block">
+                    <?= htmlspecialchars($_SESSION['full_name'] ?? 'User') ?>
+                </p>
+                <p class="sidebar-text text-[10px] text-white/50 uppercase tracking-wide block mt-1">
+                    <?= htmlspecialchars($_SESSION['user_type'] ?? '') ?>
+                </p>
+            </div>
+            <div class="footer-account">
+                <a href="<?= BASE_URL ?>/public/profile/" title="Account" class="p-1.5 hover:bg-white/20 rounded-lg transition-colors focus:outline-none">
+                    <img src="<?= BASE_URL ?>/public/assets/img/account.png" alt="Account" class="w-6 h-6 object-contain">
+                </a>
+            </div>
+        </div>
     </div>
 </aside>
 
