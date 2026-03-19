@@ -36,38 +36,42 @@ $total = count($categories);
 <?php endif; ?>
 
 <!-- Page Header -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
     <div>
-        <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Category Management</h1>
-        <p class="text-sm text-slate-500 mt-1">
-            Manage asset depreciation categories —
-            <span class="font-bold text-slate-700"><?= $total ?></span>
-            categor<?= $total !== 1 ? 'ies' : 'y' ?> defined
-        </p>
+        <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Category Management</h1>
     </div>
-    <button onclick="openModal('modal-add-category')"
-        class="inline-flex items-center gap-2 bg-[#ce1126] hover:bg-red-700 active:bg-red-800
-               text-white text-xs font-black uppercase tracking-widest
-               px-5 py-3 rounded-xl shadow-lg shadow-red-200 hover:shadow-xl hover:-translate-y-0.5 transition-all">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-        </svg>
-        Add Category
-    </button>
+
+    <div class="flex items-center gap-4">
+        <p class="text-sm text-slate-500 mt-1">
+            <span class="font-bold text-slate-700"><?= $total ?></span>
+            Categor<?= $total !== 1 ? 'ies' : 'y' ?>
+        </p>
+
+        <button onclick="openModal('modal-add-category')"
+            class="inline-flex items-center gap-2 bg-[#ce1126] hover:bg-red-700 active:bg-red-800
+                    text-white text-xs font-black uppercase tracking-widest
+                    px-4 py-2 rounded-xl shadow-md shadow-slate-200 hover:shadow-md transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                </svg>
+            Add
+        </button>
+    </div>
+
 </div>
 
 <!-- Search Bar -->
 <div class="mb-4">
-    <div class="relative max-w-sm">
+    <div class="relative max-w-full">
         <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
         </svg>
         <input type="text" id="search-input"
-               placeholder="Search by code or category name..."
-               class="w-full pl-10 pr-4 py-2.5 border-2 border-slate-200 focus:border-red-500 rounded-xl
-                      text-sm font-medium text-slate-700 outline-none bg-white transition-all">
+            placeholder="Search by code or category name..."
+                class="w-full pl-10 pr-4 py-1.5 border-2 border-slate-100 focus:border-slate-300 rounded-xl
+                    placeholder:text-slate-300 text-sm font-medium text-slate-700 outline-none bg-white transition-all">
     </div>
 </div>
 
@@ -75,11 +79,18 @@ $total = count($categories);
 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
+            <colgroup>
+                <col style="width:20%" />
+                <col style="width:30%" />
+                <col style="width:25%" />
+                <col style="width:25%" />
+            </colgroup>
             <thead>
-                <tr class="bg-slate-50 border-b border-slate-200">
-                    <th class="text-left text-xs font-black text-slate-500 uppercase tracking-widest px-6 py-4">Code</th>
-                    <th class="text-left text-xs font-black text-slate-500 uppercase tracking-widest px-6 py-4">Category Name</th>
-                    <th class="text-left text-xs font-black text-slate-500 uppercase tracking-widest px-6 py-4">Asset Life</th>
+                <tr class="bg-[#ce2216] border-b border-slate-200">
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2">Code</th>
+                    <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-2">Category Name</th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2">Asset Life</th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2">Action</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100" id="categories-tbody">
@@ -105,24 +116,27 @@ $total = count($categories);
                 <tr class="hover:bg-slate-50/70 transition-colors category-row group">
 
                     <!-- Code -->
-                    <td class="px-6 py-4">
-                        <span class="inline-block font-mono text-xs font-black text-[#ce1126] bg-red-50 border border-red-100 px-2.5 py-1 rounded-lg tracking-wider cat-code">
+                    <td class="px-6 py-0 text-center">
+                        <span class="inline-block font-mono text-xs font-black text-slate-900 tracking-wider cat-code">
                             <?= htmlspecialchars($cat['category_code']) ?>
                         </span>
                     </td>
 
                     <!-- Category Name -->
-                    <td class="px-6 py-4 font-semibold text-slate-800 cat-name">
+                    <td class="px-6 py-0 font-semibold text-slate-800 cat-name">
                         <?= htmlspecialchars($cat['category_name']) ?>
                     </td>
 
                     <!-- Asset Life -->
-                    <td class="px-6 py-4">
-                        <span class="font-bold text-slate-800"><?= $lifeMonths ?></span>
-                        <span class="text-xs text-slate-400 font-medium ml-1">month<?= $lifeMonths !== 1 ? 's' : '' ?></span>
+                    <td class="px-6 py-0 text-center">
+                        <div class="inline-flex items-baseline gap-2 justify-center">
+                            <span class="life-number font-bold text-slate-800"><?= $lifeMonths ?></span>
+                            <span class="text-xs text-slate-400 font-medium">Month<?= $lifeMonths !== 1 ? 's' : '' ?></span>
+                        </div>
                     </td>
 
-                    <td class="px-6 py-4 text-right">
+                    <!-- Hidden edit button -->
+                    <td class="px-6 py-0 text-center">
                         <button
                             onclick="openEditModal(<?= htmlspecialchars(json_encode([
                                 'id'                => $cat['id'],
@@ -130,8 +144,7 @@ $total = count($categories);
                                 'category_name'     => $cat['category_name'],
                                 'asset_life_months' => $cat['asset_life_months'],
                             ]), ENT_QUOTES) ?>)"
-                            class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all
-                                   opacity-0 group-hover:opacity-100"
+                            class="p-2 text-slate-400 hover:text-slate-900 hover:bg-red-50 rounded-lg transition-all opacity-100"
                             title="Edit Category">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

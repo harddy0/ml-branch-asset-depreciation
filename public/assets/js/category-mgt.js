@@ -51,13 +51,13 @@ function attachYearsHint(inputId, hintId) {
             if (!months || months < 1) { hint.classList.add('hidden'); return; }
             hint.classList.remove('hidden');
             if (months % 12 === 0) {
-                hint.textContent = '= ' + (months / 12) + ' year' + (months / 12 !== 1 ? 's' : '');
+                hint.textContent = '= ' + (months / 12) + ' Year' + (months / 12 !== 1 ? 's' : ' ');
             } else {
                 var yrs = Math.floor(months / 12);
                 var mo  = months % 12;
                 hint.textContent = yrs > 0
-                    ? '= ' + yrs + ' yr ' + mo + ' mo'
-                    : '= ' + mo + ' month' + (mo !== 1 ? 's' : '');
+                    ? '= ' + yrs + ' Year' + (yrs !== 1 ? 's' : ' ') + ' and ' + mo + ' Month' + (mo !== 1 ? 's' : '')
+                    : '= ' + mo + ' Month' + (mo !== 1 ? 's' : '');
             }
         }
 
