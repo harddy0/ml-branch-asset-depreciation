@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../src/classes/AssetReportService.php';
 
 $reportService = new \App\AssetReportService($pdo, $pdo2);
 
+// Gather filter inputs with defaults for dates
 $filters = [
     'zone'        => $_GET['zone'] ?? '',
     'region'      => $_GET['region'] ?? '',
@@ -14,14 +15,43 @@ $filters = [
     'date_to'     => $_GET['date_to'] ?? date('Y-m-t')     
 ];
 
+// Fetch dropdown data strictly from Masterdata DB2
 $zones    = $reportService->getZones();
 $regions  = $reportService->getRegions($filters['zone']);
 $branches = $reportService->getBranches($filters['zone'], $filters['region']);
 
+// Fetch report data
 $reportData = $reportService->getFilteredAssets($filters);
 $data   = $reportData['data'];
 $totals = $reportData['totals'];
 ?>
+
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    /* Custom Overrides to match Tailwind Design */
+    .ts-wrapper .ts-control {
+        border: 1px solid #cbd5e1 !important; 
+        border-radius: 0.25rem !important;    
+        padding: 0.375rem 0.625rem !important; 
+        font-size: 0.875rem !important;       
+        font-weight: 500 !important;          
+        color: #1e293b !important;            
+        box-shadow: none !important;
+        background-color: #ffffff !important;
+        min-height: 34px !important;
+    }
+    .ts-wrapper.focus .ts-control {
+        border-color: #3b82f6 !important;     
+        box-shadow: 0 0 0 1px #3b82f6 !important;
+    }
+    .ts-dropdown {
+        font-size: 0.875rem !important;
+        border-radius: 0.25rem !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
+    }
+</style>
 
 <div class="mb-5 flex justify-between items-end">
     <div>
@@ -39,21 +69,21 @@ $totals = $reportData['totals'];
     <div class="bg-slate-50 border-b border-slate-200 px-5 py-3">
         <form method="GET" action="" id="filterForm" class="flex flex-wrap items-center gap-3">
             
-            <select name="zone" onchange="this.form.submit()" class="border border-slate-300 rounded px-2.5 py-1.5 text-sm text-slate-800 font-medium min-w-[110px] outline-none focus:border-blue-500 cursor-pointer bg-white">
+            <select name="zone" class="search-select min-w-[110px]" placeholder="-- All Zones --">
                 <option value="">-- All Zones --</option>
                 <?php foreach($zones as $z): ?>
                     <option value="<?= htmlspecialchars($z) ?>" <?= $filters['zone'] === $z ? 'selected' : '' ?>><?= htmlspecialchars($z) ?></option>
                 <?php endforeach; ?>
             </select>
 
-            <select name="region" onchange="this.form.submit()" class="border border-slate-300 rounded px-2.5 py-1.5 text-sm text-slate-800 font-medium min-w-[140px] outline-none focus:border-blue-500 cursor-pointer bg-white">
+            <select name="region" class="search-select min-w-[150px]" placeholder="-- All Regions --">
                 <option value="">-- All Regions --</option>
                 <?php foreach($regions as $r): ?>
                     <option value="<?= htmlspecialchars($r) ?>" <?= $filters['region'] === $r ? 'selected' : '' ?>><?= htmlspecialchars($r) ?></option>
                 <?php endforeach; ?>
             </select>
 
-            <select name="branch_name" onchange="this.form.submit()" class="border border-slate-300 rounded px-2.5 py-1.5 text-sm text-slate-800 font-medium min-w-[180px] outline-none focus:border-blue-500 cursor-pointer bg-white">
+            <select name="branch_name" class="search-select min-w-[200px]" placeholder="-- All Branches --">
                 <option value="">-- All Branches --</option>
                 <?php foreach($branches as $b): ?>
                     <option value="<?= htmlspecialchars($b) ?>" <?= $filters['branch_name'] === $b ? 'selected' : '' ?>><?= htmlspecialchars($b) ?></option>
@@ -62,9 +92,9 @@ $totals = $reportData['totals'];
 
             <div class="flex items-center gap-2 border border-slate-300 rounded px-2 py-1 bg-white ml-auto">
                 <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Period:</span>
-                <input type="date" name="date_from" value="<?= htmlspecialchars($filters['date_from']) ?>" onchange="this.form.submit()" required class="text-sm text-slate-800 font-medium outline-none cursor-pointer">
+                <input type="text" name="date_from" value="<?= htmlspecialchars($filters['date_from']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer min-w-[130px] bg-transparent text-center" placeholder="Start Date">
                 <span class="text-slate-300 font-bold">-</span>
-                <input type="date" name="date_to" value="<?= htmlspecialchars($filters['date_to']) ?>" onchange="this.form.submit()" required class="text-sm text-slate-800 font-medium outline-none cursor-pointer">
+                <input type="text" name="date_to" value="<?= htmlspecialchars($filters['date_to']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer min-w-[130px] bg-transparent text-center" placeholder="End Date">
             </div>
         </form>
     </div>
@@ -87,7 +117,7 @@ $totals = $reportData['totals'];
                         <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs text-right">Accu. Dep.</th>
                         <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs text-center">Life</th>
                         <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs text-right">Book Value</th>
-                        <th class="py-2.5 pl-3 pr-5 font-bold text-slate-500 uppercase tracking-wider text-xs text-center">Date Gen.</th>
+                        <th class="py-2.5 pl-3 pr-5 font-bold text-slate-500 uppercase tracking-wider text-xs text-center">Date Generated</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
@@ -102,7 +132,7 @@ $totals = $reportData['totals'];
                             <td class="py-2 px-3 text-right font-mono"><?= number_format($row['accumulated_depreciation'], 2) ?></td>
                             <td class="py-2 px-3 text-center font-bold"><?= $row['remaining_life'] ?></td>
                             <td class="py-2 px-3 text-right font-mono font-bold text-slate-900"><?= number_format($row['book_value'], 2) ?></td>
-                            <td class="py-2 pl-3 pr-5 text-center text-slate-400 text-xs"><?= htmlspecialchars($row['period_date']) ?></td>
+                            <td class="py-2 pl-3 pr-5 text-center text-slate-500 text-xs"><?= date('F j, Y', strtotime($row['period_date'])) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -133,11 +163,35 @@ $totals = $reportData['totals'];
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
 <script>
-function exportExcel() {
-    const form = document.getElementById('filterForm');
-    const params = new URLSearchParams(new FormData(form)).toString();
-    window.location.href = '<?= BASE_URL ?>/public/actions/export_assets.php?' + params;
-}
+    // Initialize Searchable Dropdowns
+    document.querySelectorAll('.search-select').forEach((el) => {
+        new TomSelect(el, {
+            create: false,
+            maxOptions: null, 
+            onChange: function() {
+                document.getElementById('filterForm').submit();
+            }
+        });
+    });
+
+    // Initialize English date pickers
+    flatpickr(".date-formatter", {
+        altInput: true,
+        altFormat: "F j, Y",
+        dateFormat: "Y-m-d",
+        onChange: function(selectedDates, dateStr, instance) {
+            document.getElementById('filterForm').submit();
+        }
+    });
+
+    function exportExcel() {
+        const form = document.getElementById('filterForm');
+        const params = new URLSearchParams(new FormData(form)).toString();
+        window.location.href = '<?= BASE_URL ?>/public/actions/export_assets.php?' + params;
+    }
 </script>
 <script src="<?= ASSET_URL ?>js/main.js"></script>

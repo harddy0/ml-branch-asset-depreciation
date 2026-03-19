@@ -44,12 +44,10 @@ class ImportService {
         $this->db->beginTransaction();
 
         try {
-            // UPDATED: Now selecting 'zone' and 'code' from the masterdata db
             $masterCheck = $this->dbMaster->prepare(
                 "SELECT zone, code FROM branch_profile WHERE zone = ? AND region = ? AND cost_center = ? LIMIT 1"
             );
 
-            // UPDATED: Added system_asset_code and made reference_no accept the raw Excel value
             $insertAsset = $this->db->prepare("
                 INSERT INTO assets (
                     system_asset_code, reference_no, category_code, zone, region, cost_center_code, branch_name, 
@@ -57,7 +55,6 @@ class ImportService {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
-            // Initial Ledger Entry: Accumulated = 0, Book Value = Acquisition Cost
             $insertLedger = $this->db->prepare("
                 INSERT INTO running_depreciation (
                     asset_id, period_date, period_depreciation_expense, accumulated_depreciation, book_value, generated_by
@@ -65,36 +62,41 @@ class ImportService {
             ");
 
             foreach ($rows as $index => $row) {
-                $rowNum = $index + 2; // +1 for 0-index, +1 for header
+                $rowNum = $index + 2; 
                 $rowErrors = [];
                 
-                // Parse Schema Mapping
                 $zone       = trim((string)($row[0] ?? ''));
                 $region     = trim((string)($row[1] ?? ''));
                 $costCenter = trim((string)($row[2] ?? ''));
                 $branch     = strtoupper(trim((string)($row[3] ?? '')));
                 
-                // NEW: Capture Excel Column E (Reference Number)
                 $excelRef   = trim((string)($row[4] ?? '')); 
                 $dbReferenceNo = $excelRef === '' ? null : $excelRef;
 
                 $catName    = strtolower(trim((string)($row[5] ?? '')));
                 $assetCode  = trim((string)($row[6] ?? ''));
                 
-                // Parse Date Received
+                // --- THE FIX: ROBUST DATE PARSING ---
                 $dateRecVal = $row[7] ?? null;
-                $dateReceived = is_numeric($dateRecVal) 
-                    ? \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($dateRecVal)->format('Y-m-d')
-                    : date('Y-m-d');
+                if (is_numeric($dateRecVal)) {
+                    // It's an Excel Serial Number
+                    $dateReceived = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($dateRecVal)->format('Y-m-d');
+                } elseif (!empty($dateRecVal) && strtotime((string)$dateRecVal) !== false) {
+                    // It's a standard text date like '2026-03-15'
+                    $dateReceived = date('Y-m-d', strtotime((string)$dateRecVal));
+                } else {
+                    // Failsafe only if completely blank
+                    $dateReceived = date('Y-m-d');
+                }
 
-                // Depreciation Start Date is the last day of the received month
+                // Depreciation Start Date strictly calculated as the LAST DAY ('t') of the Received month
                 $depreciationStartDate = date('Y-m-t', strtotime($dateReceived));
+                // ------------------------------------
 
-                $acqCost    = (int)($row[9] ?? 0);
+                $acqCost    = (float)($row[9] ?? 0);
                 $assetLife  = (int)($row[10] ?? 12);
                 $desc       = trim((string)($row[11] ?? ''));
 
-                // --- STRICT VALIDATIONS ---
                 if (empty($zone) || empty($costCenter) || empty($branch)) {
                     $rowErrors[] = "Missing required branch fields.";
                 }
@@ -111,7 +113,6 @@ class ImportService {
                     $rowErrors[] = "Asset life out of range ({$assetLife} months).";
                 }
 
-                // Master Data Check & Fetching Master Branch Code
                 $masterZone = '';
                 $masterBranchCode = '';
                 if (empty($rowErrors)) {
@@ -122,27 +123,21 @@ class ImportService {
                         $rowErrors[] = "Branch Profile ({$zone}, {$region}, {$costCenter}) not found in Master Data.";
                     } else {
                         $masterZone = $masterData['zone'];
-                        $masterBranchCode = $masterData['code']; // Fetched from second DB
+                        $masterBranchCode = $masterData['code']; 
                     }
                 }
 
-                // Category Check
                 $catCode = $categories[$catName] ?? null;
                 if (!$catCode) {
                     $rowErrors[] = "Asset Category '{$row[5]}' does not exist in the system.";
                 }
 
-                // If this row has errors, append to the global tracker and skip DB insertion for now
                 if (!empty($rowErrors)) {
                     $errors[] = "<strong>Row {$rowNum}:</strong> " . implode(" ", $rowErrors);
                     continue; 
                 }
 
-                // --- INSERTIONS (Only runs if the whole file is currently clean) ---
                 if (empty($errors)) {
-                    // Generate the precise combination requested
-                    // Format: AssetCategory - Zone - BranchCode - ExcelReference
-                    // If Excel Reference is blank, we append a 5-char unique string to ensure the column stays unique
                     $suffix = $excelRef !== '' ? $excelRef : strtoupper(substr(uniqid(), -5));
                     $systemAssetCode = sprintf("%s-%s-%s-%s", $catCode, $masterZone, $masterBranchCode, $suffix);
                     
@@ -155,15 +150,13 @@ class ImportService {
                     
                     $assetId = $this->db->lastInsertId();
 
-                    // Insert initial running depreciation ledger entry
                     $insertLedger->execute([$assetId, $acqCost, $userId]);
                     $successCount++;
                 }
             }
 
-            // --- FINAL ATOMIC CHECK ---
             if (!empty($errors)) {
-                $this->db->rollBack(); // Reject everything if even one row failed
+                $this->db->rollBack(); 
                 return [
                     'success' => false, 
                     'error' => 'Import rejected. Please fix the validation errors below and try again.', 
@@ -171,7 +164,7 @@ class ImportService {
                 ];
             }
 
-            $this->db->commit(); // Save everything
+            $this->db->commit(); 
             return ['success' => true, 'count' => $successCount];
 
         } catch (\Exception $e) {
