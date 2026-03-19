@@ -74,7 +74,7 @@
                 <button type="submit"
                     class="flex-1 bg-[#ce2216] hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest
                            py-3 rounded-xl shadow-lg shadow-slate-100 transition-all">
-                    Save Changes
+                    Save
                 </button>
             </div>
         </form>

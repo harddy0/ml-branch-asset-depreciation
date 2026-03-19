@@ -70,12 +70,19 @@ function confirmToggleStatus(id, name, currentStatus) {
     var toRestrict = currentStatus === 'ACTIVE';
     document.getElementById('status-user-id').value               = id;
     document.getElementById('status-target').value                = toRestrict ? 'RESTRICTED' : 'ACTIVE';
-    document.getElementById('status-name-display').textContent    = name;
+    var _statusNameEl = document.getElementById('status-name-display');
+    if (_statusNameEl) {
+        _statusNameEl.textContent = '';
+        _statusNameEl.style.display = 'none';
+    }
     document.getElementById('status-action-label').textContent    = toRestrict ? 'Restrict' : 'Activate';
     document.getElementById('status-modal-title').textContent     = toRestrict ? 'Restrict User?' : 'Activate User?';
-    document.getElementById('status-modal-desc').textContent      = toRestrict
-        ? 'This user will no longer be able to log in until reactivated.'
-        : 'This user will be able to log in again.';
+    var _statusDescEl = document.getElementById('status-modal-desc');
+    if (_statusDescEl) {
+        _statusDescEl.innerHTML = toRestrict
+            ? '<strong>' + name + '</strong> will no longer be able to log in unless reactivated.'
+            : '<strong>' + name + '</strong> will be able to log in again.';
+    }
 
     var btn = document.getElementById('status-confirm-btn');
     if (toRestrict) {
