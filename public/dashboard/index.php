@@ -8,13 +8,10 @@ require_once __DIR__ . '/../../src/includes/init.php';
     
     <div class="mb-6 flex justify-between items-end">
         <div>
-            <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Financial Dashboard</h1>
-            <p class="text-sm text-slate-500 mt-0.5">Visualized breakdown of asset valuations across the network.</p>
+            <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Dashboard</h1>
+            <p class="text-sm text-slate-500 mt-0.5">Visualized breakdown of asset values.</p>
         </div>
-        <button id="refreshDashboardBtn" class="bg-white border border-slate-200 text-slate-600 hover:text-red-600 hover:border-red-200 px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors shadow-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            Sync Data
-        </button>
+        
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative mb-6">
