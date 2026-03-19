@@ -28,18 +28,15 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['import_er
 </div>
 <?php endif; ?>
 
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+<div class="flex flex-col  min-h-0 sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
     <div>
-        <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Import Assets</h1>
-        <p class="text-sm text-slate-500 mt-1">
-            Upload new branch assets. Data will be validated against Master Data automatically.
-        </p>
+        <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Import Asset</h1>
     </div>
 </div>
 
-<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+<div class="p-1 pt-3">
     <form id="import-form" action="<?= BASE_URL ?>/public/actions/asset_import_process.php" method="POST" enctype="multipart/form-data">
-        <div id="drop-zone" class="w-full border-2 border-dashed border-slate-300 rounded-2xl p-12 text-center hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer group relative">
+        <div id="drop-zone" class="w-full h-[480px] flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-2xl p-12 text-center hover:border-red-500 transition-all cursor-pointer group relative">
             <input type="file" id="file-upload" name="import_file" class="hidden" accept=".csv, .xlsx, .xls" required>
             
             <div class="w-20 h-20 bg-slate-50 group-hover:bg-red-100 rounded-full flex items-center justify-center mx-auto mb-5 transition-colors shadow-sm">
@@ -48,16 +45,10 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['import_er
                 </svg>
             </div>
             
-            <h3 class="text-lg font-black text-slate-700 mb-1 group-hover:text-red-700 transition-colors">Drag and drop your file here</h3>
-            <p class="text-sm text-slate-500 mb-6">or click to browse from your computer</p>
+            <h3 class="text-lg font-black text-slate-700 mb-1 group-hover:text-red-700 transition-colors">Drag and Drop File Here</h3>
+            <p class="text-sm text-slate-500 mb-6 hover:text-red-700 transition-colors underline">or Click here</p>
             
-            <div id="file-display" class="hidden absolute inset-0 bg-white/90 backdrop-blur-sm rounded-2xl flex-col items-center justify-center border-2 border-green-500 z-10">
-                <p id="file-name" class="text-sm font-bold text-slate-800 mb-4"></p>
-                <div class="flex gap-3">
-                    <button type="button" id="btn-cancel" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest rounded-lg transition-colors">Cancel</button>
-                    <button type="submit" id="btn-process" class="px-4 py-2 bg-[#ce1126] hover:bg-red-700 text-white text-xs font-black uppercase tracking-widest rounded-lg shadow-lg shadow-red-200 transition-colors">Process File</button>
-                </div>
-            </div>
+            <!-- file-display moved to modal: src/includes/modals/import-file-display.php -->
         </div>
     </form>
 </div>
@@ -71,6 +62,11 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['import_er
         });
     </script>
 <?php endif; ?>
+
+<?php
+// Include the file-display modal (separate modal file)
+require_once __DIR__ . '/../../src/includes/modals/import-file-display.php';
+?>
 
 <script src="<?= ASSET_URL ?>js/main.js"></script>
 <script src="<?= ASSET_URL ?>js/asset-import.js"></script>
