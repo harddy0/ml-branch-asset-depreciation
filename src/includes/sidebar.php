@@ -2,10 +2,11 @@
 $baseUrl = BASE_URL . '/public';
 if (!isset($currentPage)) {
     $uri = $_SERVER['REQUEST_URI'];
-    if     (str_contains($uri, '/dashboard'))    $currentPage = 'dashboard';
-    elseif (str_contains($uri, '/asset-import')) $currentPage = 'asset-import';
-    elseif (str_contains($uri, '/category-mgt')) $currentPage = 'category-mgt';
-    elseif (str_contains($uri, '/user-mgt'))     $currentPage = 'user-mgt';
+    if     (str_contains($uri, '/dashboard'))     $currentPage = 'dashboard';
+    elseif (str_contains($uri, '/manage-assets')) $currentPage = 'manage-assets'; // ADD THIS LINE
+    elseif (str_contains($uri, '/asset-import'))  $currentPage = 'asset-import';
+    elseif (str_contains($uri, '/category-mgt'))  $currentPage = 'category-mgt';
+    elseif (str_contains($uri, '/user-mgt'))      $currentPage = 'user-mgt';
     else                                          $currentPage = '';
 }
 ?>
@@ -55,6 +56,21 @@ if (!isset($currentPage)) {
                     </svg>
                     <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
                         Import Assets
+                    </span>
+                </a>
+            </li>
+
+            <li class="<?= $currentPage === 'manage-assets'
+                ? 'bg-black/25 border-l-4 border-white'
+                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
+                <a href="<?= $baseUrl ?>/manage-assets/"
+                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                        Asset Overview
                     </span>
                 </a>
             </li>
