@@ -50,3 +50,20 @@
 
 /* Keep hover highlight visible (slightly lighten on hover) */
 #users-tbody tr:hover { background-color: rgba(255,255,255,0.9); }
+
+/* Categories table: alternate row backgrounds (odd = white, even = slate-50) */
+#categories-tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+#categories-tbody tr:nth-child(even) {
+    background-color: #f8fafc; /* slate-50 */
+}
+
+#categories-tbody tr:hover { background-color: rgba(255,255,255,0.92); }
+
+/* Asset life number alignment: ensure single-digit values align with two-digit values */
+.life-number {
+    display: inline-block;
+    min-width: 2ch; /* reserve space for two digits */
+    text-align: right;
+}
