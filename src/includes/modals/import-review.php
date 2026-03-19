@@ -28,10 +28,6 @@
         <!-- Legend-->
         <div class="flex items-center gap-6 px-7 py-3 bg-white border-b border-slate-100 text-xs font-semibold text-slate-500 shrink-0">
             <span class="flex items-center gap-1.5">
-                <span class="w-3 h-3 rounded-full bg-blue-400 inline-block"></span>
-                System-computed value
-            </span>
-            <span class="flex items-center gap-1.5">
                 <span class="w-3 h-3 rounded-full bg-green-400 inline-block"></span>
                 Valid row
             </span>
@@ -57,7 +53,6 @@
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Zone</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Region</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Cost Center</th>
-                        <!-- System-computed column headers get a blue tint-->
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Branch</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Reference Number</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Category</th>
@@ -96,11 +91,12 @@
     </div>
 </div>
 
-<!-- Hidden form for the commit phase-->
+<!-- Hidden form for the commit phase -->
 <form id="import-commit-form"
       method="POST"
       action="<?= BASE_URL ?>/public/actions/asset_import_process.php"
       class="hidden">
     <input type="hidden" name="action" value="commit">
     <input type="hidden" name="selected_rows" id="selected-rows" value="">
+    <input type="hidden" name="edited_rows"   id="edited-rows"   value="">
 </form>

@@ -13,7 +13,7 @@ class ImportService {
     }
 
     // ══════════════════════════════════════════════════════════════════
-    //  NEW: Parse & validate only — returns preview rows, no DB writes
+    //  PREVIEW: Parse & validate only — returns preview rows, no DB writes
     // ══════════════════════════════════════════════════════════════════
     public function previewImport(string $filePath): array {
         if (!$this->dbMaster) {
@@ -34,13 +34,17 @@ class ImportService {
 
         array_shift($rows); // strip header
 
-        // Pre-fetch categories: name (lowercase) → [code, asset_life_months]
+        // ── Pre-fetch categories ─────────────────────────────────────
+        // Key: name (lowercase) → [code, life, display_name]
+        // display_name is the original casing from the DB — sent to JS
+        // so the edit dropdown can show proper labels.
         $catStmt    = $this->db->query("SELECT category_code, category_name, asset_life_months FROM asset_categories");
         $categories = [];
-        while ($row = $catStmt->fetch(\PDO::FETCH_ASSOC)) {
-            $categories[strtolower(trim($row['category_name']))] = [
-                'code' => $row['category_code'],
-                'life' => (int)$row['asset_life_months'],
+        while ($cat = $catStmt->fetch(\PDO::FETCH_ASSOC)) {
+            $categories[strtolower(trim($cat['category_name']))] = [
+                'code'         => $cat['category_code'],
+                'life'         => (int)$cat['asset_life_months'],
+                'display_name' => $cat['category_name'],   // ← original casing for JS dropdown
             ];
         }
 
@@ -51,11 +55,11 @@ class ImportService {
               LIMIT 1"
         );
 
-        // Pre-load ALL existing system_asset_codes from DB for O(1) duplicate lookup
+        // Pre-load ALL existing system_asset_codes for O(1) duplicate lookup
         $existingCodes = [];
         $existStmt = $this->db->query("SELECT system_asset_code FROM assets");
         while ($r = $existStmt->fetch(\PDO::FETCH_ASSOC)) {
-            $existingCodes[strtolower($r["system_asset_code"])] = true;
+            $existingCodes[strtolower($r['system_asset_code'])] = true;
         }
 
         // Track codes seen within THIS file to catch within-batch duplicates
@@ -65,72 +69,64 @@ class ImportService {
         $errors  = [];
 
         foreach ($rows as $index => $row) {
-            $rowNum     = $index + 2;
-            $rowErrors  = [];
+            $rowNum    = $index + 2;
+            $rowErrors = [];
 
-            // ── Column mapping (NEW 9-column format) ────────────────
-            // 0: Zone | 1: Region | 2: Cost Center | 3: Branch (display-only, validated)
+            // ── Column mapping (9-column format) ────────────────────
+            // 0: Zone | 1: Region | 2: Cost Center | 3: Branch (display-only)
             // 4: Reference Number | 5: Asset Category | 6: Date Received
             // 7: Acquisition Cost | 8: Description
-            $zone       = trim((string)($row[0] ?? ''));
-            $region     = trim((string)($row[1] ?? ''));
-            $costCenter = trim((string)($row[2] ?? ''));
-            $excelBranch = strtoupper(trim((string)($row[3] ?? '')));  // user-supplied, for display only
+            $zone        = trim((string)($row[0] ?? ''));
+            $region      = trim((string)($row[1] ?? ''));
+            $costCenter  = trim((string)($row[2] ?? ''));
+            $excelBranch = strtoupper(trim((string)($row[3] ?? '')));
 
-            $excelRef    = trim((string)($row[4] ?? ''));
+            $excelRef      = trim((string)($row[4] ?? ''));
             $dbReferenceNo = $excelRef === '' ? null : $excelRef;
 
-            $catName     = strtolower(trim((string)($row[5] ?? '')));
+            $catName = strtolower(trim((string)($row[5] ?? '')));
 
-            // Robust date parsing — accepts:
-            //   Excel serial number  (e.g. 46023)
-            //   ISO        Y-m-d     (e.g. 2026-01-31)
-            //   m/d/Y      MDY slash (e.g. 01/31/2026)
-            //   M j, Y     MDY long  (e.g. Jan 31, 2026  /  January 31, 2026)
-            //   m-d-Y      MDY dash  (e.g. 01-31-2026)
-            $dateRecVal  = $row[6] ?? null;
+            // ── Robust date parsing ──────────────────────────────────
+            // Accepts: Excel serial, ISO Y-m-d, m/d/Y, M j Y, m-d-Y, etc.
+            $dateRecVal   = $row[6] ?? null;
             $dateReceived = null;
 
             if (is_numeric($dateRecVal)) {
-                // Excel serial
                 $dateReceived = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float)$dateRecVal)
                                     ->format('Y-m-d');
             } elseif (!empty($dateRecVal)) {
                 $raw = trim((string)$dateRecVal);
 
-                // Try explicit formats in priority order (most specific first)
                 $formats = [
-                    'Y-m-d',       // 2026-01-31  (ISO — DB format, keep first)
-                    'm/d/Y',       // 01/31/2026
-                    'n/j/Y',       // 1/31/2026
-                    'm-d-Y',       // 01-31-2026
-                    'n-j-Y',       // 1-31-2026
-                    'M j, Y',      // Jan 31, 2026
-                    'F j, Y',      // January 31, 2026
-                    'M j Y',       // Jan 31 2026
-                    'F j Y',       // January 31 2026
-                    'm.d.Y',       // 01.31.2026
+                    'Y-m-d',   // 2026-01-31
+                    'm/d/Y',   // 01/31/2026
+                    'n/j/Y',   // 1/31/2026
+                    'm-d-Y',   // 01-31-2026
+                    'n-j-Y',   // 1-31-2026
+                    'M j, Y',  // Jan 31, 2026
+                    'F j, Y',  // January 31, 2026
+                    'M j Y',   // Jan 31 2026
+                    'F j Y',   // January 31 2026
+                    'm.d.Y',   // 01.31.2026
                 ];
 
                 foreach ($formats as $fmt) {
                     $dt = \DateTime::createFromFormat($fmt, $raw);
                     if ($dt !== false) {
-                        // Validate — createFromFormat can silently overflow (e.g. 31/13/2026)
-                        $errors = \DateTime::getLastErrors();
-                        if (empty($errors['warning_count']) && empty($errors['error_count'])) {
+                        $errs = \DateTime::getLastErrors();
+                        if (empty($errs['warning_count']) && empty($errs['error_count'])) {
                             $dateReceived = $dt->format('Y-m-d');
                             break;
                         }
                     }
                 }
 
-                // Last resort: PHP strtotime (handles many English formats)
                 if ($dateReceived === null && strtotime($raw) !== false) {
                     $dateReceived = date('Y-m-d', strtotime($raw));
                 }
             }
 
-            // Absolute fallback — today (flags as a data issue in preview)
+            // Absolute fallback — today
             if ($dateReceived === null) {
                 $dateReceived = date('Y-m-d');
             }
@@ -138,8 +134,8 @@ class ImportService {
             // Depreciation start = last day of received month (system rule)
             $depreciationStartDate = date('Y-m-t', strtotime($dateReceived));
 
-            $acqCost    = (float)($row[7] ?? 0);
-            $desc       = trim((string)($row[8] ?? ''));
+            $acqCost = (float)($row[7] ?? 0);
+            $desc    = trim((string)($row[8] ?? ''));
 
             // ── Validations ──────────────────────────────────────────
             if (empty($zone) || empty($costCenter)) {
@@ -175,104 +171,114 @@ class ImportService {
             }
 
             if (!empty($rowErrors)) {
-                $errors[] = "<strong>Row {$rowNum}:</strong> " . implode(" ", $rowErrors);
-                // Still add to preview so user can see which row failed
+                $errors[]  = "<strong>Row {$rowNum}:</strong> " . implode(" ", $rowErrors);
                 $preview[] = [
-                    'row_num'                => $rowNum,
-                    'has_error'              => true,
-                    'zone'                   => $zone,
-                    'region'                 => $region,
-                    'cost_center'            => $costCenter,
-                    'branch_name'            => $excelBranch,
-                    'reference_no'           => $dbReferenceNo,
-                    'category_name'          => $row[5] ?? '',
-                    'category_code'          => $catEntry['code'] ?? '—',
-                    'asset_life_months'      => $catEntry['life'] ?? '—',
-                    'date_received'          => $dateReceived,
-                    'depreciation_start'     => $depreciationStartDate,
-                    'acquisition_cost'       => $acqCost,
-                    'monthly_depreciation'   => 0,
-                    'description'            => $desc,
-                    'errors'                 => $rowErrors,
+                    'row_num'              => $rowNum,
+                    'has_error'            => true,
+                    'zone'                 => $zone,
+                    'region'               => $region,
+                    'cost_center'          => $costCenter,
+                    'branch_name'          => $excelBranch,
+                    'reference_no'         => $dbReferenceNo,
+                    'category_name'        => $row[5] ?? '',
+                    'category_code'        => $catEntry['code']         ?? '—',
+                    'asset_life_months'    => $catEntry['life']         ?? '—',
+                    'date_received'        => $dateReceived,
+                    'depreciation_start'   => $depreciationStartDate,
+                    'acquisition_cost'     => $acqCost,
+                    'monthly_depreciation' => 0,
+                    'description'          => $desc,
+                    'errors'               => $rowErrors,
                 ];
                 continue;
             }
 
-            $catCode   = $catEntry['code'];
-            $assetLife = $catEntry['life'];
+            $catCode    = $catEntry['code'];
+            $assetLife  = $catEntry['life'];
             $monthlyDep = $assetLife > 0 ? round($acqCost / $assetLife, 2) : 0;
 
             $suffix          = $excelRef !== '' ? $excelRef : strtoupper(substr(uniqid(), -5));
             $systemAssetCode = sprintf("%s-%s-%s-%s", $catCode, $masterData['zone'], $masterData['branch_code'], $suffix);
 
             // ── Duplicate Detection ──────────────────────────────────
-            $codeKey = strtolower($systemAssetCode);
+            $codeKey     = strtolower($systemAssetCode);
             $isDuplicate = false;
 
             if (isset($existingCodes[$codeKey])) {
-                // Already exists in the database
                 $rowErrors[] = "Duplicate: System code {$systemAssetCode} already exists in the database.";
                 $isDuplicate = true;
             } elseif (isset($seenInFile[$codeKey])) {
-                // Duplicate within this very file
                 $rowErrors[] = "Duplicate: System code {$systemAssetCode} appears more than once in this file (first seen on row {$seenInFile[$codeKey]}).";
                 $isDuplicate = true;
             }
 
             if ($isDuplicate) {
-                $errors[] = "<strong>Row {$rowNum}:</strong> " . implode(" ", $rowErrors);
+                $errors[]  = "<strong>Row {$rowNum}:</strong> " . implode(" ", $rowErrors);
                 $preview[] = [
-                    'row_num'            => $rowNum,
-                    'has_error'          => true,
-                    'is_duplicate'       => true,
-                    'zone'               => $masterData['zone'],
-                    'region'             => $masterData['region'],
-                    'cost_center'        => $costCenter,
-                    'branch_name'        => $masterData['branch_name'],
-                    'reference_no'       => $dbReferenceNo,
-                    'category_name'      => $row[5],
-                    'category_code'      => $catCode,
-                    'asset_life_months'  => $assetLife,
-                    'date_received'      => $dateReceived,
-                    'depreciation_start' => $depreciationStartDate,
-                    'acquisition_cost'   => $acqCost,
+                    'row_num'              => $rowNum,
+                    'has_error'            => true,
+                    'is_duplicate'         => true,
+                    'zone'                 => $masterData['zone'],
+                    'region'               => $masterData['region'],
+                    'cost_center'          => $costCenter,
+                    'branch_name'          => $masterData['branch_name'],
+                    'reference_no'         => $dbReferenceNo,
+                    'category_name'        => $row[5],
+                    'category_code'        => $catCode,
+                    'asset_life_months'    => $assetLife,
+                    'date_received'        => $dateReceived,
+                    'depreciation_start'   => $depreciationStartDate,
+                    'acquisition_cost'     => $acqCost,
                     'monthly_depreciation' => $monthlyDep,
-                    'description'        => $desc,
-                    'system_asset_code'  => $systemAssetCode,
-                    'errors'             => $rowErrors,
+                    'description'          => $desc,
+                    'system_asset_code'    => $systemAssetCode,
+                    'errors'               => $rowErrors,
                 ];
                 continue;
             }
 
-            // Register in file-level tracker so subsequent rows in same batch are caught
+            // Register in file-level tracker
             $seenInFile[$codeKey] = $rowNum;
 
             $preview[] = [
-                'row_num'                => $rowNum,
-                'has_error'              => false,
-                'zone'                   => $masterData['zone'],
-                'region'                 => $masterData['region'],
-                'cost_center'            => $costCenter,
-                'branch_name'            => $masterData['branch_name'],
-                'reference_no'           => $dbReferenceNo,
-                'category_name'          => $row[5],
-                'category_code'          => $catCode,
-                'asset_life_months'      => $assetLife,
-                'date_received'          => $dateReceived,
-                'depreciation_start'     => $depreciationStartDate,
-                'acquisition_cost'       => $acqCost,
-                'monthly_depreciation'   => $monthlyDep,
-                'description'            => $desc,
-                'system_asset_code'      => $systemAssetCode,
-                'errors'                 => [],
+                'row_num'              => $rowNum,
+                'has_error'            => false,
+                'zone'                 => $masterData['zone'],
+                'region'               => $masterData['region'],
+                'cost_center'          => $costCenter,
+                'branch_name'          => $masterData['branch_name'],
+                'branch_code'          => $masterData['branch_code'],   // ← stored for system_asset_code rebuild
+                'reference_no'         => $dbReferenceNo,
+                'category_name'        => $row[5],
+                'category_code'        => $catCode,
+                'asset_life_months'    => $assetLife,
+                'date_received'        => $dateReceived,
+                'depreciation_start'   => $depreciationStartDate,
+                'acquisition_cost'     => $acqCost,
+                'monthly_depreciation' => $monthlyDep,
+                'description'          => $desc,
+                'system_asset_code'    => $systemAssetCode,
+                'errors'               => [],
+            ];
+        }
+
+        // ── Build the categories map for the JS edit dropdown ────────
+        // Keyed by lowercase name so JS can match category_name → entry.
+        $categoriesForJs = [];
+        foreach ($categories as $nameLower => $entry) {
+            $categoriesForJs[$nameLower] = [
+                'display_name' => $entry['display_name'],
+                'code'         => $entry['code'],
+                'life'         => $entry['life'],
             ];
         }
 
         return [
-            'success'  => true,
-            'preview'  => $preview,
-            'errors'   => $errors,
-            'hasErrors' => !empty($errors),
+            'success'    => true,
+            'preview'    => $preview,
+            'errors'     => $errors,
+            'hasErrors'  => !empty($errors),
+            'categories' => $categoriesForJs,   // ← consumed by JS edit modal dropdown
         ];
     }
 
@@ -302,18 +308,18 @@ class ImportService {
             ");
 
             // Hard guard: re-check for duplicates at commit time
-            // (in case the file was processed twice or DB changed between preview and commit)
             $dupCheck = $this->db->prepare(
                 "SELECT COUNT(*) FROM assets WHERE system_asset_code = ?"
             );
 
             $count   = 0;
             $skipped = 0;
+
             foreach ($previewRows as $r) {
                 $dupCheck->execute([$r['system_asset_code']]);
                 if ((int)$dupCheck->fetchColumn() > 0) {
                     $skipped++;
-                    continue; // silently skip — already in DB
+                    continue;
                 }
 
                 $insertAsset->execute([
