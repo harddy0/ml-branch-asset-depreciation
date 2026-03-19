@@ -5,18 +5,11 @@
          style="max-height:92vh">
 
         <!-- Header-->
-        <div class="flex items-center justify-between px-7 py-5 border-b border-slate-100 shrink-0">
+        <div class="flex items-center justify-between px-7 py-2 border-b border-slate-100 shrink-0">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
-                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                </div>
                 <div>
-                    <h2 class="text-lg font-black text-slate-800 uppercase tracking-tight">Import Review</h2>
+                    <h2 class="text-md text-slate-800 uppercase tracking-wide">Import Review</h2>
                     <p class="text-xs text-slate-500 mt-0.5">
-                        Review parsed data before committing.
                         <span id="review-summary-ok"
                               class="font-bold text-green-600"></span>
                         <span id="review-summary-err"
@@ -33,7 +26,7 @@
         </div>
 
         <!-- Legend-->
-        <div class="flex items-center gap-6 px-7 py-3 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 shrink-0">
+        <div class="flex items-center gap-6 px-7 py-3 bg-white border-b border-slate-100 text-xs font-semibold text-slate-500 shrink-0">
             <span class="flex items-center gap-1.5">
                 <span class="w-3 h-3 rounded-full bg-blue-400 inline-block"></span>
                 System-computed value
@@ -44,7 +37,7 @@
             </span>
             <span class="flex items-center gap-1.5">
                 <span class="w-3 h-3 rounded-full bg-red-400 inline-block"></span>
-                Row has errors — will be skipped
+                Row has errors — skipped
             </span>
             <span class="flex items-center gap-1.5">
                 <span class="w-3 h-3 rounded-full bg-orange-400 inline-block"></span>
@@ -54,25 +47,20 @@
 
         <!-- Table-->
         <div class="overflow-auto flex-1 px-2">
-            <table class="w-full text-xs border-separate border-spacing-0 min-w-[1200px]">
+            <table class="w-full text-xs border-separate border-spacing-0 min-w-[900px]">
                 <thead class="sticky top-0 z-10">
-                    <tr class="bg-slate-100">
-                        <th class="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">#</th>
-                        <th class="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Zone</th>
-                        <th class="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Region</th>
-                        <th class="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Cost Center</th>
+                    <tr class="bg-[#ce2216]">
+                        <th class="text-center text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">
+                            <input type="checkbox" id="review-select-all" class="w-3.5 h-3.5 rounded border-slate-300 text-[#ce1126] focus:ring-red-200">
+                        </th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">No.</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Zone</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Region</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Cost Center</th>
                         <!-- System-computed column headers get a blue tint-->
-                        <th class="text-left text-[10px] font-black text-blue-500 uppercase tracking-widest px-3 py-3 border-b border-blue-200 bg-blue-50 whitespace-nowrap">Branch ⚙</th>
-                        <th class="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Ref #</th>
-                        <th class="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Category</th>
-                        <th class="text-left text-[10px] font-black text-blue-500 uppercase tracking-widest px-3 py-3 border-b border-blue-200 bg-blue-50 whitespace-nowrap">Code ⚙</th>
-                        <th class="text-left text-[10px] font-black text-blue-500 uppercase tracking-widest px-3 py-3 border-b border-blue-200 bg-blue-50 whitespace-nowrap">Life (mo) ⚙</th>
-                        <th class="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Date Received</th>
-                        <th class="text-left text-[10px] font-black text-blue-500 uppercase tracking-widest px-3 py-3 border-b border-blue-200 bg-blue-50 whitespace-nowrap">Dep. Start ⚙</th>
-                        <th class="text-right text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Acq. Cost</th>
-                        <th class="text-right text-[10px] font-black text-blue-500 uppercase tracking-widest px-3 py-3 border-b border-blue-200 bg-blue-50 whitespace-nowrap">Monthly Dep. ⚙</th>
-                        <th class="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Description</th>
-                        <th class="text-left text-[10px] font-black text-blue-500 uppercase tracking-widest px-3 py-3 border-b border-blue-200 bg-blue-50 whitespace-nowrap">System Code ⚙</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Branch</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Reference Number</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Category</th>
                     </tr>
                 </thead>
                 <tbody id="review-tbody">
@@ -114,4 +102,5 @@
       action="<?= BASE_URL ?>/public/actions/asset_import_process.php"
       class="hidden">
     <input type="hidden" name="action" value="commit">
+    <input type="hidden" name="selected_rows" id="selected-rows" value="">
 </form>
