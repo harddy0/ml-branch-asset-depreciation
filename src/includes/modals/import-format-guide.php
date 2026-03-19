@@ -58,7 +58,7 @@
                         ['D', 'Branch',           'ML PULANGLUPA DOS',                 'For reference only; authoritative value fetched from Master Data'],
                         ['E', 'Reference Number', '342',                               'Optional — external document reference'],
                         ['F', 'Asset Category',   'Computer Equipment and Peripherals','Must match a category name exactly'],
-                        ['G', 'Date Received',    '2026-01-31',                        'Date format or Excel date serial'],
+                        ['G', 'Date Received',    'Jan 31, 2026',                      'Month Day Year — also accepts Excel serial or ISO'],
                         ['H', 'Acquisition Cost', '35000',                             'Numeric — must be greater than 0'],
                         ['I', 'Description',      'Inverter Split Type 1.5HP',         'Item description — required'],
                     ];

@@ -132,7 +132,7 @@ $totals = $reportData['totals'];
                             <td class="py-2 px-3 text-right font-mono"><?= number_format($row['accumulated_depreciation'], 2) ?></td>
                             <td class="py-2 px-3 text-center font-bold"><?= $row['remaining_life'] ?></td>
                             <td class="py-2 px-3 text-right font-mono font-bold text-slate-900"><?= number_format($row['book_value'], 2) ?></td>
-                            <td class="py-2 pl-3 pr-5 text-center text-slate-500 text-xs"><?= date('F j, Y', strtotime($row['period_date'])) ?></td>
+                            <td class="py-2 pl-3 pr-5 text-center text-slate-500 text-xs"><?= date('M j, Y', strtotime($row['period_date'])) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -181,7 +181,7 @@ $totals = $reportData['totals'];
     // Initialize English date pickers
     flatpickr(".date-formatter", {
         altInput: true,
-        altFormat: "F j, Y",
+        altFormat: "M j, Y",
         dateFormat: "Y-m-d",
         onChange: function(selectedDates, dateStr, instance) {
             document.getElementById('filterForm').submit();

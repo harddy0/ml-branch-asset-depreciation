@@ -227,8 +227,8 @@ function buildReviewModal(data) {
             cell(row.category_name) +
             sysCell(row.category_code) +         // ⚙ system-derived
             sysCell(row.asset_life_months) +     // ⚙ system-derived
-            cell(row.date_received) +
-            sysCell(row.depreciation_start) +    // ⚙ system-computed
+            cell(formatDate(row.date_received)) +
+            sysCell(formatDate(row.depreciation_start)) +    // ⚙ system-computed
             '<td class="px-3 py-2.5 text-right text-slate-700 font-medium whitespace-nowrap">' + costFmt + '</td>' +
             '<td class="px-3 py-2.5 bg-blue-50/60 text-right text-blue-700 font-bold whitespace-nowrap">' + depFmt + '</td>' + // ⚙
             cell(row.description, 'max-w-[220px] overflow-hidden text-ellipsis') +
@@ -250,6 +250,19 @@ function closeImportReview() {
 }
 
 // ── Util ─────────────────────────────────────────────────────────────
+
+// Format ISO date string (Y-m-d) → "Jan 31, 2026"
+function formatDate(iso) {
+    if (!iso) return '—';
+    var parts = String(iso).split('-');
+    if (parts.length !== 3) return iso;
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var d = parseInt(parts[2], 10);
+    var m = parseInt(parts[1], 10) - 1;
+    var y = parts[0];
+    return (months[m] || parts[1]) + ' ' + d + ', ' + y;
+}
+
 function escHtml(str) {
     return str
         .replace(/&/g, '&amp;')

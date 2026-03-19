@@ -82,14 +82,56 @@ class ImportService {
 
             $catName     = strtolower(trim((string)($row[5] ?? '')));
 
-            // Robust date parsing
+            // Robust date parsing — accepts:
+            //   Excel serial number  (e.g. 46023)
+            //   ISO        Y-m-d     (e.g. 2026-01-31)
+            //   m/d/Y      MDY slash (e.g. 01/31/2026)
+            //   M j, Y     MDY long  (e.g. Jan 31, 2026  /  January 31, 2026)
+            //   m-d-Y      MDY dash  (e.g. 01-31-2026)
             $dateRecVal  = $row[6] ?? null;
+            $dateReceived = null;
+
             if (is_numeric($dateRecVal)) {
+                // Excel serial
                 $dateReceived = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float)$dateRecVal)
                                     ->format('Y-m-d');
-            } elseif (!empty($dateRecVal) && strtotime((string)$dateRecVal) !== false) {
-                $dateReceived = date('Y-m-d', strtotime((string)$dateRecVal));
-            } else {
+            } elseif (!empty($dateRecVal)) {
+                $raw = trim((string)$dateRecVal);
+
+                // Try explicit formats in priority order (most specific first)
+                $formats = [
+                    'Y-m-d',       // 2026-01-31  (ISO — DB format, keep first)
+                    'm/d/Y',       // 01/31/2026
+                    'n/j/Y',       // 1/31/2026
+                    'm-d-Y',       // 01-31-2026
+                    'n-j-Y',       // 1-31-2026
+                    'M j, Y',      // Jan 31, 2026
+                    'F j, Y',      // January 31, 2026
+                    'M j Y',       // Jan 31 2026
+                    'F j Y',       // January 31 2026
+                    'm.d.Y',       // 01.31.2026
+                ];
+
+                foreach ($formats as $fmt) {
+                    $dt = \DateTime::createFromFormat($fmt, $raw);
+                    if ($dt !== false) {
+                        // Validate — createFromFormat can silently overflow (e.g. 31/13/2026)
+                        $errors = \DateTime::getLastErrors();
+                        if (empty($errors['warning_count']) && empty($errors['error_count'])) {
+                            $dateReceived = $dt->format('Y-m-d');
+                            break;
+                        }
+                    }
+                }
+
+                // Last resort: PHP strtotime (handles many English formats)
+                if ($dateReceived === null && strtotime($raw) !== false) {
+                    $dateReceived = date('Y-m-d', strtotime($raw));
+                }
+            }
+
+            // Absolute fallback — today (flags as a data issue in preview)
+            if ($dateReceived === null) {
                 $dateReceived = date('Y-m-d');
             }
 
