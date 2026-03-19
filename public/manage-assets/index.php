@@ -41,8 +41,7 @@ if ($hasFiltersApplied) {
 
 <div class="mb-5 flex justify-between items-end">
     <div>
-        <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Asset Overview</h1>
-        <p class="text-sm text-slate-500 mt-0.5">Review and export current depreciation statuses across branches.</p>
+        <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Asset Depreciation Records</h1>
     </div>
     
     <button type="button" id="exportExcelBtn" class="bg-red-50 border border-red-200 text-red-800 hover:bg-red-100 px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors shadow-sm">
