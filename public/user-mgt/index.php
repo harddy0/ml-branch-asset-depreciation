@@ -157,7 +157,7 @@ $users = $auth->getAllUsers();
 
                     <td class="px-6 py-0 text-slate-500 text-xs font-medium">
                         <?= $u['last_login']
-                            ? date('M j, Y g:i A', strtotime($u['last_login']))
+                            ? date('j M Y, g:i A', strtotime($u['last_login']))
                             : '<span class="text-slate-300 font-bold">Never</span>' ?>
                     </td>
 
