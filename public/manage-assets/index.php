@@ -44,14 +44,14 @@ if ($hasFiltersApplied) {
         <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Asset Depreciation Records</h1>
     </div>
     
-    <button type="button" id="exportExcelBtn" class="bg-red-50 border border-red-200 text-red-800 hover:bg-red-100 px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-colors shadow-sm">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+    <button type="button" id="exportExcelBtn" class="border border-slate-200 text-slate-800 hover:bg-[#ce2216] hover:text-white px-4 py-1 rounded-md text-sm font-mono flex items-center gap-2 transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"/></svg>
         Export
     </button>
 </div>
 
 <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-    <div class="bg-slate-50 border-b border-slate-200 px-5 py-3">
+    <div class="bg-slate-50 border-b border-slate-200 px-3 py-0 pt-1">
         <form id="filterForm" 
               data-api-url="<?= BASE_URL ?>/public/api/get_assets.php" 
               data-export-url="<?= BASE_URL ?>/public/actions/export_assets.php"
@@ -71,7 +71,7 @@ if ($hasFiltersApplied) {
                 <?php endforeach; ?>
             </select>
 
-            <select name="branch_name" id="branchSelect" class="min-w-[200px]" placeholder="-- All Branches --">
+            <select name="branch_name" id="branchSelect" class="min-w-[290px]" placeholder="-- All Branches --">
                 <option value="">-- All Branches --</option>
                 <?php foreach($branches as $b): ?>
                     <option value="<?= htmlspecialchars($b) ?>" <?= $filters['branch_name'] === $b ? 'selected' : '' ?>><?= htmlspecialchars($b) ?></option>
@@ -79,10 +79,9 @@ if ($hasFiltersApplied) {
             </select>
 
             <div class="flex items-center gap-2 border border-slate-300 rounded px-2 py-1 bg-white ml-auto focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 transition-all">
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Period:</span>
-                <input type="text" name="date_from" value="<?= htmlspecialchars($filters['date_from']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer min-w-[130px] bg-transparent text-center" placeholder="Start Date">
+                <input type="text" name="date_from" value="<?= htmlspecialchars($filters['date_from']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer min-w-[130px] bg-slate-50 text-center" placeholder="Start Date">
                 <span class="text-slate-300 font-bold">-</span>
-                <input type="text" name="date_to" value="<?= htmlspecialchars($filters['date_to']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer min-w-[130px] bg-transparent text-center" placeholder="End Date">
+                <input type="text" name="date_to" value="<?= htmlspecialchars($filters['date_to']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer min-w-[130px] bg-slate-50 text-center" placeholder="End Date">
             </div>
         </form>
     </div>
