@@ -1,5 +1,5 @@
 <?php
-$pageTitle   = 'Active Assets Report';
+$pageTitle   = 'Asset Overview';
 $currentPage = 'manage-assets';
 require_once __DIR__ . '/../../src/includes/init.php';
 require_once __DIR__ . '/../../src/classes/AssetReportService.php';

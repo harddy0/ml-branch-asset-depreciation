@@ -2,10 +2,11 @@
 $baseUrl = BASE_URL . '/public';
 if (!isset($currentPage)) {
     $uri = $_SERVER['REQUEST_URI'];
-    if     (str_contains($uri, '/dashboard'))    $currentPage = 'dashboard';
-    elseif (str_contains($uri, '/asset-import')) $currentPage = 'asset-import';
-    elseif (str_contains($uri, '/category-mgt')) $currentPage = 'category-mgt';
-    elseif (str_contains($uri, '/user-mgt'))     $currentPage = 'user-mgt';
+    if     (str_contains($uri, '/dashboard'))     $currentPage = 'dashboard';
+    elseif (str_contains($uri, '/manage-assets')) $currentPage = 'manage-assets'; // ADD THIS LINE
+    elseif (str_contains($uri, '/asset-import'))  $currentPage = 'asset-import';
+    elseif (str_contains($uri, '/category-mgt'))  $currentPage = 'category-mgt';
+    elseif (str_contains($uri, '/user-mgt'))      $currentPage = 'user-mgt';
     else                                          $currentPage = '';
 }
 ?>
@@ -69,7 +70,7 @@ if (!isset($currentPage)) {
                             d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
                     <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
-                        Manage Assets
+                        Asset Overview
                     </span>
                 </a>
             </li>
