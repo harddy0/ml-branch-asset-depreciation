@@ -27,6 +27,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'preview') {
         exit;
     }
 
+    // Read directly from PHP's temporary uploaded file path
     $fileTmp  = $_FILES['import_file']['tmp_name'];
     $fileName = $_FILES['import_file']['name'];
     $ext      = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
@@ -38,21 +39,13 @@ if (isset($_POST['action']) && $_POST['action'] === 'preview') {
         exit;
     }
 
-    // Move to storage so it survives the AJAX round-trip for the commit phase
-    $storedName = 'import_' . session_id() . '_' . time() . '.' . $ext;
-    $storedPath = __DIR__ . '/../../storage/uploads/' . $storedName;
+    // Parse the data directly from the temporary file
+    $result = $importService->previewImport($fileTmp);
 
-    if (!move_uploaded_file($fileTmp, $storedPath)) {
-        while (ob_get_level() > 0) ob_end_clean();
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['success' => false, 'error' => 'Failed to store the uploaded file. Check storage/uploads permissions.']);
-        exit;
+    // Save the parsed JSON results into the session so we don't have to re-read the file
+    if ($result['success']) {
+        $_SESSION['pending_import_data'] = $result;
     }
-
-    // Keep the stored filename in session for the commit step
-    $_SESSION['pending_import_file'] = $storedName;
-
-    $result = $importService->previewImport($storedPath);
 
     // Strip any BOM or leaked whitespace before sending JSON
     while (ob_get_level() > 0) ob_end_clean();
@@ -67,28 +60,18 @@ if (isset($_POST['action']) && $_POST['action'] === 'preview') {
 //  User has reviewed the modal and clicked "Confirm Import".
 // ══════════════════════════════════════════════════════════════════════
 if (isset($_POST['action']) && $_POST['action'] === 'commit') {
-    $storedName = $_SESSION['pending_import_file'] ?? null;
+    
+    // Retrieve the parsed data from the session
+    $parsed = $_SESSION['pending_import_data'] ?? null;
 
-    if (!$storedName) {
-        $_SESSION['flash_error'] = 'Session expired. Please upload the file again.';
+    if (!$parsed) {
+        $_SESSION['flash_error'] = 'Session expired or no import data found. Please upload the file again.';
         header('Location: ' . BASE_URL . '/public/asset-import/');
         exit;
     }
 
-    $storedPath = __DIR__ . '/../../storage/uploads/' . $storedName;
-
-    if (!file_exists($storedPath)) {
-        $_SESSION['flash_error'] = 'Uploaded file not found. Please upload again.';
-        header('Location: ' . BASE_URL . '/public/asset-import/');
-        exit;
-    }
-
-    // Re-parse (source of truth stays the file, not user-supplied POST data)
-    $parsed = $importService->previewImport($storedPath);
-
-    // Clean up stored file regardless of outcome
-    @unlink($storedPath);
-    unset($_SESSION['pending_import_file']);
+    // Clean up the session data immediately so it cannot be double-submitted
+    unset($_SESSION['pending_import_data']);
 
     if (!$parsed['success']) {
         $_SESSION['flash_error'] = $parsed['error'];
@@ -104,7 +87,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'commit') {
     }
 
     // Only commit the clean rows
-    $cleanRows = array_filter($parsed['preview'], fn($r) => !$r['has_error']);
+    $cleanRows = array_filter($parsed['preview'], fn($r) => empty($r['has_error']));
     $result    = $importService->commitImport(array_values($cleanRows), (int)$_SESSION['user_id']);
 
     if ($result['success']) {
