@@ -7,14 +7,13 @@
             <div class="flex items-center gap-3">
                 <div>
                     <h2 class="text-base font-black text-slate-800 uppercase tracking-tight">Asset Details</h2>
-                    <p id="depr-details-subtitle" class="text-xs text-slate-400 mt-0.5"></p>
                 </div>
                 <!-- Edit mode badge -->
                 <span id="depr-edit-badge"
-                      class="hidden inline-flex items-center gap-1 bg-red-100 text-[#ce1126] text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
+                    class="hidden inline-flex items-center gap-1 bg-red-100 text-[#ce1126] text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                     </svg>
                     Editing
                 </span>
@@ -74,7 +73,7 @@
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
-                    Save Changes
+                    Save
                 </button>
             </div>
         </div>
