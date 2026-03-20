@@ -12,8 +12,8 @@ $rawFilters = [
     'zone'        => $_GET['zone'] ?? '',
     'region'      => $_GET['region'] ?? '',
     'branch_name' => $_GET['branch_name'] ?? '',
-    'date_from'   => $_GET['date_from'] ?? date('Y-m-01'), 
-    'date_to'     => $_GET['date_to'] ?? date('Y-m-t')
+    'date_from'   => $_GET['date_from'] ?? '',
+    'date_to'     => $_GET['date_to'] ?? ''
 ];
 
 // Normalize explicit "all" sentinels so backend queries stay unfiltered
@@ -29,7 +29,11 @@ $regions  = $reportService->getRegions($filters['zone']);
 $branches = $reportService->getBranches($filters['zone'], $filters['region']);
 
 if ($hasFiltersApplied) {
-    $reportData = $reportService->getFilteredAssets($filters);
+    $queryFilters = $filters;
+    if (empty($queryFilters['date_from'])) $queryFilters['date_from'] = date('Y-m-01');
+    if (empty($queryFilters['date_to'])) $queryFilters['date_to'] = date('Y-m-t');
+
+    $reportData = $reportService->getFilteredAssets($queryFilters);
     $data   = $reportData['data'];
     $totals = $reportData['totals'];
 } else {
@@ -120,6 +124,10 @@ if ($hasFiltersApplied) {
     </button>
 </div>
 
+<div class="mb-1 mr-6 text-right">
+    <p class="text-[11px] font-mono text-slate-500">Filtered by date imported into the system</p>
+</div>
+
 <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
     <div class="bg-slate-50 border-b border-slate-200 px-3 py-0 pt-1">
        <form id="filterForm" 
@@ -155,9 +163,9 @@ if ($hasFiltersApplied) {
     </div>
     
     <div class="flex items-center gap-2 border border-slate-300 rounded px-2 py-1 bg-white focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 transition-all">
-        <input type="text" name="date_from" value="<?= htmlspecialchars($filters['date_from']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="Start Date">
+        <input type="text" name="date_from" value="<?= htmlspecialchars($rawFilters['date_from']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="Select From">
         <span class="text-slate-300 font-bold">-</span>
-        <input type="text" name="date_to" value="<?= htmlspecialchars($filters['date_to']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="End Date">
+        <input type="text" name="date_to" value="<?= htmlspecialchars($rawFilters['date_to']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="Select To">
     </div>
 </form>
     </div>
@@ -165,12 +173,11 @@ if ($hasFiltersApplied) {
     <div class="overflow-x-auto">
         <div id="initialStateWrapper" class="<?= !$hasFiltersApplied ? '' : 'hidden' ?> flex flex-col items-center justify-center py-20 bg-white">
             <svg class="w-12 h-12 text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-            <p class="text-slate-500 font-bold text-base">Select All Zones</p>
-            <p class="text-slate-400 text-xs mt-1">Or Choose any</p>
+            <p class="text-slate-500 font-bold text-base">Select from all required filters</p>
         </div>
 
         <div id="noDataWrapper" class="<?= ($hasFiltersApplied && empty($data)) ? '' : 'hidden' ?> text-center py-16 text-slate-500 font-bold text-sm bg-white">
-            No assets records found for the selected filters and date range.
+            No assets records found. Please check the date range.
         </div>
         
         <div id="tableWrapper" class="<?= empty($data) ? 'hidden' : '' ?>">
