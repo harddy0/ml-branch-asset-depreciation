@@ -190,7 +190,11 @@ class AssetReportService {
             $sheet->setCellValue('G' . $rowNum, $row['accumulated_depreciation']);
             $sheet->setCellValue('H' . $rowNum, $row['remaining_life']);
             $sheet->setCellValue('I' . $rowNum, $row['book_value']);
-            $sheet->setCellValue('J' . $rowNum, $row['period_date']);
+            $sheet->setCellValue('J' . $rowNum,
+    !empty($row['period_date'])
+        ? date('F j, Y', strtotime($row['period_date']))
+        : ''
+);
 
             // Apply number formatting for accounting columns
             $sheet->getStyle('E'.$rowNum.':I'.$rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
