@@ -84,7 +84,7 @@
                         class="px-8 py-2.5 bg-[#ce1126] hover:bg-red-700 text-white font-black text-xs
                                uppercase tracking-widest rounded-xl shadow-lg shadow-red-200
                                hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0">
-                    Confirm Import
+                    Save
                 </button>
             </div>
         </div>
