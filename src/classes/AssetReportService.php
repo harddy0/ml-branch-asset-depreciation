@@ -61,6 +61,9 @@ class AssetReportService {
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
+   /**
+     * Fetch filtered asset data and calculate totals strictly by date range
+     */
     /**
      * Fetch filtered asset data and calculate totals strictly by date range
      */
@@ -69,13 +72,23 @@ class AssetReportService {
             return ['data' => [], 'totals' => ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0]];
         }
 
-        // STRICT INNER JOIN: ONLY returns assets with a generated record in the dates.
+        // STRICT INNER JOIN: Added c.category_code to the SELECT statement
         $sql = "
             SELECT 
+                a.id as asset_id,
                 a.system_asset_code, 
+                a.reference_no,
+                a.zone,
+                a.region,
+                a.cost_center_code as cost_center,
                 a.branch_name, 
+                c.category_code,       -- <=== ADDED THIS BACK IN
                 c.category_name, 
+                c.asset_life_months,
                 a.description, 
+                a.date_received,
+                a.depreciation_start_date,
+                a.retirement_date,
                 a.acquisition_cost, 
                 
                 -- Calculated dynamically: Cost / Asset Lives

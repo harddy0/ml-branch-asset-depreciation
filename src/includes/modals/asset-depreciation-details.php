@@ -2,14 +2,12 @@
      class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 backdrop-blur-sm p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl animate-fadeIn flex flex-col" style="max-height:94vh">
 
-        <!-- Header -->
         <div class="flex items-center justify-between px-7 py-3 border-b-2 border-[#ce2216] shrink-0">
             <div class="flex items-center gap-3">
                 <div>
                     <h2 class="text-base font-black text-slate-800 uppercase tracking-tight">Asset Details</h2>
                     <p id="depr-details-subtitle" class="text-xs text-slate-400 mt-0.5"></p>
                 </div>
-                <!-- Edit mode badge -->
                 <span id="depr-edit-badge"
                       class="hidden inline-flex items-center gap-1 bg-red-100 text-[#ce1126] text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -27,13 +25,10 @@
             </button>
         </div>
 
-        <!-- Body: populated by JS -->
         <div id="asset-depr-detail-content" class="overflow-auto flex-1 px-7 py-6 space-y-6 bg-slate-50/40">
         </div>
 
-        <!-- Footer -->
         <div class="px-7 py-3 border-t border-slate-100 shrink-0 flex items-center justify-between gap-3 bg-white rounded-b-2xl">
-            <!-- Left: unsaved changes hint (view mode shows nothing; edit mode shows hint) -->
             <p id="depr-unsaved-hint" class="hidden text-xs text-[#ce1126] font-semibold flex items-center gap-1.5">
                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -42,7 +37,6 @@
                 Unsaved changes — click Save to apply.
             </p>
             <div class="flex gap-3 ml-auto">
-                <!-- View mode buttons -->
                 <button type="button" id="depr-btn-edit"
                         onclick="enableDeprEdit()"
                         class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs
@@ -59,7 +53,6 @@
                             font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all">
                     Close
                 </button>
-                <!-- Edit mode buttons (hidden initially) -->
                 <button type="button" id="depr-btn-cancel-edit"
                         onclick="cancelDeprEdit()"
                         class="hidden border-2 border-slate-200 text-slate-600 hover:bg-slate-100
