@@ -109,125 +109,56 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    // Click handler for table rows — parses embedded row data and opens modal
+    // Click handler for table rows — parses embedded row data and opens modal instantly
     function assetRowClickHandler(e) {
         const tr = e.target.closest && e.target.closest('tr.asset-row');
         if (!tr) return;
 
-        // Prefer dataset (browser-decoded) value when available
         let raw = tr.dataset && tr.dataset.asset ? tr.dataset.asset : tr.getAttribute('data-asset');
         if (!raw) return;
+        
         try {
-            // First attempt: parse directly (dataset usually provides decoded JSON)
-            const parsed = JSON.parse(raw);
-            const code = parsed.system_asset_code || parsed.system_asset_code?.toString();
-            if (code) {
-                // prefer fetching by numeric id if available on parsed payload
-                const id = parsed.id || parsed.asset_id || null;
-                const endpoint = id
-                    ? `${BASE_URL}/public/api/get_asset_by_id.php?id=${encodeURIComponent(id)}`
-                    : `${BASE_URL}/public/api/get_asset_details.php?code=${encodeURIComponent(code)}`;
+            // Safely decode HTML entities and parse the complete JSON row data
+            const decoded = raw.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+            let parsed = JSON.parse(decoded);
+            
+            // 1. Normalize field names so the global render function finds them
+            parsed.depreciation_start = parsed.depreciation_start_date || parsed.depreciation_start;
+            parsed.monthly_depreciation = parsed.period_depreciation_expense || parsed.monthly_depreciation;
+            
+            // 2. Dynamically Calculate Retirement Date if it's missing
+            let retDate = parsed.retirement_date;
+            if (!retDate || String(retDate).startsWith('0000-00-00')) {
+                if (parsed.depreciation_start && parsed.asset_life_months) {
+                    const safeDepr = String(parsed.depreciation_start).includes(' ') ? parsed.depreciation_start : String(parsed.depreciation_start).replace(/-/g, '/');
+                    const dDate = new Date(safeDepr);
+                    if (!isNaN(dDate.getTime())) {
+                        const targetYear = dDate.getFullYear();
+                        const targetMonth = dDate.getMonth() + parseInt(parsed.asset_life_months);
+                        const calcRetDate = new Date(targetYear, targetMonth + 1, 0);
+                        parsed.retirement_date = `${calcRetDate.getFullYear()}-${String(calcRetDate.getMonth() + 1).padStart(2, '0')}-${String(calcRetDate.getDate()).padStart(2, '0')}`;
+                    }
+                }
+            }
 
-                fetch(endpoint)
-                    .then(r => r.text())
-                    .then(text => {
-                        let res;
-                        try {
-                            res = JSON.parse(text);
-                        } catch (e) {
-                            console.error('Asset details fetch returned invalid JSON:', text);
-                            // fallback to parsed payload
-                            res = null;
-                        }
+            // 3. Hand off the enriched data to your REAL design function (renderDeprDetails)
+            if (typeof renderDeprDetails === 'function') {
+                renderDeprDetails(parsed, false); // false = view-only mode
+                if (typeof setDeprEditMode === 'function') setDeprEditMode(false);
+                
+                // === FORCE HIDE THE EDIT BUTTON FOR THE MANAGE ASSETS VIEW ===
+                const editBtn = document.getElementById('depr-btn-edit');
+                if (editBtn) editBtn.style.display = 'none';
+                // ==============================================================
 
-                        if (res && res.success && res.row) {
-                            const full = res.row;
-                            if (typeof renderDeprDetails === 'function') {
-                                renderDeprDetails(full, false);
-                                if (typeof setDeprEditMode === 'function') setDeprEditMode(false);
-                                openModal('modal-asset-depr-details');
-                            } else {
-                                openAssetDepreciationDetails(full);
-                            }
-                        } else {
-                            // fallback to parsed payload
-                            if (typeof renderDeprDetails === 'function') {
-                                renderDeprDetails(parsed, false);
-                                if (typeof setDeprEditMode === 'function') setDeprEditMode(false);
-                                openModal('modal-asset-depr-details');
-                            } else {
-                                openAssetDepreciationDetails(parsed);
-                            }
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Asset details fetch error', err);
-                        if (typeof renderDeprDetails === 'function') {
-                            renderDeprDetails(parsed, false);
-                            if (typeof setDeprEditMode === 'function') setDeprEditMode(false);
-                            openModal('modal-asset-depr-details');
-                        } else {
-                            openAssetDepreciationDetails(parsed);
-                        }
-                    });
-                return;
+                openModal('modal-asset-depr-details');
             } else {
-                // no code — use parsed
-                const row = parsed;
-                if (typeof renderDeprDetails === 'function') {
-                    renderDeprDetails(row, false);
-                    if (typeof setDeprEditMode === 'function') setDeprEditMode(false);
-                    openModal('modal-asset-depr-details');
-                } else {
-                    openAssetDepreciationDetails(row);
-                }
-                return;
+                // Fallback only if the global function isn't loaded
+                openAssetDepreciationDetails(parsed);
             }
-        } catch (errDirect) {
-            try {
-                // Fallback: decode common HTML entities then parse
-                const decoded = raw.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-                const parsed = JSON.parse(decoded);
-                const code = parsed.system_asset_code || parsed.system_asset_code?.toString();
-                    if (code) {
-                    const id = parsed.id || parsed.asset_id || null;
-                    const endpoint = id
-                        ? `${BASE_URL}/public/api/get_asset_by_id.php?id=${encodeURIComponent(id)}`
-                        : `${BASE_URL}/public/api/get_asset_details.php?code=${encodeURIComponent(code)}`;
 
-                    fetch(endpoint)
-                        .then(r => r.text())
-                        .then(text => {
-                            let res;
-                            try { res = JSON.parse(text); } catch (e) {
-                                console.error('Asset details fetch returned invalid JSON:', text);
-                                res = null;
-                            }
-                            const full = (res && res.success && res.row) ? res.row : parsed;
-                            if (typeof renderDeprDetails === 'function') {
-                                renderDeprDetails(full, false);
-                                if (typeof setDeprEditMode === 'function') setDeprEditMode(false);
-                                openModal('modal-asset-depr-details');
-                            } else {
-                                openAssetDepreciationDetails(full);
-                            }
-                        })
-                        .catch(err => {
-                            console.error('Asset details fetch error', err);
-                            if (typeof renderDeprDetails === 'function') {
-                                renderDeprDetails(parsed, false);
-                                if (typeof setDeprEditMode === 'function') setDeprEditMode(false);
-                                openModal('modal-asset-depr-details');
-                            } else {
-                                openAssetDepreciationDetails(parsed);
-                            }
-                        });
-                    return;
-                }
-                return;
-            } catch (errFallback) {
-                console.error('Failed to parse asset row payload (direct):', errDirect, ' fallback:', errFallback, 'raw:', raw);
-            }
+        } catch (err) {
+            console.error('Failed to parse asset row payload:', err, 'raw:', raw);
         }
     }
 
@@ -241,6 +172,38 @@ document.addEventListener("DOMContentLoaded", function() {
         // Simple formatters local to this module
         const currency = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const dateFmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        
+        // ROBUST DATE FORMATTER
+        const formatDate = (val) => {
+            if (!val || String(val).startsWith('0000-00-00')) return '—';
+            const safeVal = String(val).includes(' ') ? val : String(val).replace(/-/g, '/');
+            const d = new Date(safeVal);
+            return isNaN(d.getTime()) ? '—' : dateFmt.format(d);
+        };
+
+        // 1. Extract Depreciation Date safely
+        let deprDateStr = row.depreciation_start_date || row.depreciation_start || null;
+
+        // 2. Dynamically Calculate Retirement Date if missing
+        let retirementDateStr = row.retirement_date;
+        if (!retirementDateStr || String(retirementDateStr).startsWith('0000-00-00')) {
+            if (deprDateStr && row.asset_life_months) {
+                const safeDepr = String(deprDateStr).includes(' ') ? deprDateStr : String(deprDateStr).replace(/-/g, '/');
+                const dDate = new Date(safeDepr);
+                
+                if (!isNaN(dDate.getTime())) {
+                    // Add asset life months to the start date
+                    const targetYear = dDate.getFullYear();
+                    const targetMonth = dDate.getMonth() + parseInt(row.asset_life_months);
+                    
+                    // The "0" day of the next month gives us the exact LAST day of the target month
+                    const calcRetDate = new Date(targetYear, targetMonth + 1, 0);
+                    
+                    // Format back to YYYY-MM-DD for the formatter
+                    retirementDateStr = `${calcRetDate.getFullYear()}-${String(calcRetDate.getMonth() + 1).padStart(2, '0')}-${String(calcRetDate.getDate()).padStart(2, '0')}`;
+                }
+            }
+        }
 
         subtitle.textContent = (row.branch_name ? row.branch_name + ' — ' : '') + (row.category_name || '');
 
@@ -251,8 +214,20 @@ document.addEventListener("DOMContentLoaded", function() {
                     <div class="text-sm font-black text-slate-800">${row.system_asset_code || '—'}</div>
                 </div>
                 <div class="space-y-2">
-                    <div class="text-xs text-slate-500">Date Generated</div>
-                    <div class="text-sm font-black text-slate-800">${row.period_date ? dateFmt.format(new Date(row.period_date)) : '—'}</div>
+                    <div class="text-xs text-slate-500">Reference / Serial No</div>
+                    <div class="text-sm text-slate-800">${row.reference_no || '—'}</div>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-xs text-slate-500">Zone</div>
+                    <div class="text-sm text-slate-800">${row.zone || '—'}</div>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-xs text-slate-500">Region</div>
+                    <div class="text-sm text-slate-800">${row.region || '—'}</div>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-xs text-slate-500">Cost Center</div>
+                    <div class="text-sm text-slate-800">${row.cost_center || row.cost_center_code || '—'}</div>
                 </div>
                 <div class="space-y-2">
                     <div class="text-xs text-slate-500">Branch</div>
@@ -262,29 +237,45 @@ document.addEventListener("DOMContentLoaded", function() {
                     <div class="text-xs text-slate-500">Category</div>
                     <div class="text-sm text-slate-800">${row.category_name || '—'}</div>
                 </div>
+                <div class="space-y-2">
+                    <div class="text-xs text-slate-500">Date Generated</div>
+                    <div class="text-sm font-black text-slate-800">${formatDate(row.period_date)}</div>
+                </div>
                 <div class="col-span-2">
                     <div class="text-xs text-slate-500">Description</div>
                     <div class="text-sm text-slate-800">${row.description || '—'}</div>
                 </div>
                 <div class="space-y-2">
-                    <div class="text-xs text-slate-500">Acquisition Cost</div>
-                    <div class="text-sm font-mono text-slate-800">${currency.format(row.acquisition_cost)}</div>
+                    <div class="text-xs text-slate-500">Date Received</div>
+                    <div class="text-sm text-slate-800">${formatDate(row.date_received)}</div>
                 </div>
                 <div class="space-y-2">
-                    <div class="text-xs text-slate-500">Period Depreciation</div>
-                    <div class="text-sm font-mono text-red-600">${currency.format(row.period_depreciation_expense)}</div>
+                    <div class="text-xs text-slate-500">Depreciation Date</div>
+                    <div class="text-sm text-slate-800">${formatDate(deprDateStr)}</div>
                 </div>
                 <div class="space-y-2">
-                    <div class="text-xs text-slate-500">Accumulated Depreciation</div>
-                    <div class="text-sm font-mono text-slate-800">${currency.format(row.accumulated_depreciation)}</div>
+                    <div class="text-xs text-slate-500">Retirement Date</div>
+                    <div class="text-sm text-slate-800">${formatDate(retirementDateStr)}</div>
                 </div>
                 <div class="space-y-2">
                     <div class="text-xs text-slate-500">Remaining Life (months)</div>
                     <div class="text-sm font-black text-slate-800">${row.remaining_life != null ? row.remaining_life : '—'}</div>
                 </div>
                 <div class="space-y-2">
+                    <div class="text-xs text-slate-500">Acquisition Cost</div>
+                    <div class="text-sm font-mono text-slate-800">${currency.format(row.acquisition_cost || 0)}</div>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-xs text-slate-500">Monthly Depreciation</div>
+                    <div class="text-sm font-mono text-slate-800">${currency.format(row.monthly_depreciation || row.period_depreciation_expense || 0)}</div>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-xs text-slate-500">Accumulated Depreciation</div>
+                    <div class="text-sm font-mono text-slate-800">${currency.format(row.accumulated_depreciation || 0)}</div>
+                </div>
+                <div class="space-y-2">
                     <div class="text-xs text-slate-500">Book Value</div>
-                    <div class="text-sm font-mono text-slate-800">${currency.format(row.book_value)}</div>
+                    <div class="text-sm font-mono text-slate-800">${currency.format(row.book_value || 0)}</div>
                 </div>
             </div>
         `;
@@ -292,7 +283,6 @@ document.addEventListener("DOMContentLoaded", function() {
         container.innerHTML = html;
         openModal('modal-asset-depr-details');
     }
-
     function renderTable(data, totals) {
         const tbody = document.getElementById('tableBody');
         const wrapper = document.getElementById('tableWrapper');
