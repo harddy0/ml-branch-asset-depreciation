@@ -66,25 +66,28 @@ if ($hasFiltersApplied) {
     <div class="flex flex-1 items-center gap-2">
         
         <select name="zone" id="zoneSelect" class="flex-1 min-w-0 outline-none text-sm">
-            <option value="">-- All Zones --</option>
-            <?php foreach($zones as $z): ?>
-                <option value="<?= htmlspecialchars($z) ?>" <?= $filters['zone'] === $z ? 'selected' : '' ?>><?= htmlspecialchars($z) ?></option>
-            <?php endforeach; ?>
-        </select>
+    <option value="" disabled <?= empty($filters['zone']) ? 'selected' : '' ?>>-- Select Zone --</option>
+    <option value="__ALL__" <?= $filters['zone'] === '__ALL__' ? 'selected' : '' ?>>-- All Zones --</option>
+    <?php foreach($zones as $z): ?>
+        <option value="<?= htmlspecialchars($z) ?>" <?= $filters['zone'] === $z ? 'selected' : '' ?>><?= htmlspecialchars($z) ?></option>
+    <?php endforeach; ?>
+</select>
 
         <div class="h-4 w-px bg-slate-200"></div> <select name="region" id="regionSelect" class="flex-1 min-w-0 outline-none text-sm">
-            <option value="">-- All Regions --</option>
-            <?php foreach($regions as $r): ?>
-                <option value="<?= htmlspecialchars($r) ?>" <?= $filters['region'] === $r ? 'selected' : '' ?>><?= htmlspecialchars($r) ?></option>
-            <?php endforeach; ?>
-        </select>
+    <option value="" disabled <?= empty($filters['region']) ? 'selected' : '' ?>>-- Select Region --</option>
+    <option value="__ALL__" <?= $filters['region'] === '__ALL__' ? 'selected' : '' ?>>-- All Regions --</option>
+    <?php foreach($regions as $r): ?>
+        <option value="<?= htmlspecialchars($r) ?>" <?= $filters['region'] === $r ? 'selected' : '' ?>><?= htmlspecialchars($r) ?></option>
+    <?php endforeach; ?>
+</select>
 
         <div class="h-4 w-px bg-slate-200"></div> <select name="branch_name" id="branchSelect" class="flex-[2] min-w-0 outline-none text-sm font-semibold">
-            <option value="">-- All Branches --</option>
-            <?php foreach($branches as $b): ?>
-                <option value="<?= htmlspecialchars($b) ?>" <?= $filters['branch_name'] === $b ? 'selected' : '' ?>><?= htmlspecialchars($b) ?></option>
-            <?php endforeach; ?>
-        </select>
+    <option value="" disabled <?= empty($filters['branch_name']) ? 'selected' : '' ?>>-- Select Branch --</option>
+    <option value="__ALL__" <?= $filters['branch_name'] === '__ALL__' ? 'selected' : '' ?>>-- All Branches --</option>
+    <?php foreach($branches as $b): ?>
+        <option value="<?= htmlspecialchars($b) ?>" <?= $filters['branch_name'] === $b ? 'selected' : '' ?>><?= htmlspecialchars($b) ?></option>
+    <?php endforeach; ?>
+</select>
     </div>
     
     <div class="flex items-center gap-2 border border-slate-300 rounded px-2 py-1 bg-white focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 transition-all">
