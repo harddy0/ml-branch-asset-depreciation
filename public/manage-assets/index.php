@@ -113,7 +113,7 @@ if ($hasFiltersApplied) {
     #tableWrapper { transition: opacity 0.2s ease-in-out; }
 </style>
 
-<div class="mb-5 flex justify-between items-end">
+<div class="mb-2 flex justify-between items-end">
     <div>
         <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Asset Depreciation Records</h1>
     </div>
@@ -129,45 +129,45 @@ if ($hasFiltersApplied) {
 </div>
 
 <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-    <div class="bg-slate-50 border-b border-slate-200 px-3 py-0 pt-1">
+        <div class="bg-slate-50 border-b border-slate-200 px-3 py-2">
        <form id="filterForm" 
-    data-api-url="<?= BASE_URL ?>/public/api/get_assets.php" 
-    data-export-url="<?= BASE_URL ?>/public/actions/export_assets.php"
-    class="flex flex-row items-center gap-4 w-full">
+            data-api-url="<?= BASE_URL ?>/public/api/get_assets.php" 
+            data-export-url="<?= BASE_URL ?>/public/actions/export_assets.php"
+            class="m-0 flex flex-row items-center gap-4 w-full">
 
-    <div class="flex flex-1 items-center gap-2">
-        
-        <select name="zone" id="zoneSelect" class="flex-1 min-w-0 outline-none text-sm">
-            <option value="">Select Zone</option>
-            <option value="__ALL__" <?= ($rawFilters['zone'] ?? '') === '__ALL__' ? 'selected' : '' ?>>All Zones</option>
-            <?php foreach($zones as $z): ?>
-                <option value="<?= htmlspecialchars($z) ?>" <?= $filters['zone'] === $z ? 'selected' : '' ?>><?= htmlspecialchars($z) ?></option>
-            <?php endforeach; ?>
-        </select>
+            <div class="flex flex-1 items-center gap-2">
+                
+                <select name="zone" id="zoneSelect" class="flex-1 min-w-0 outline-none text-sm">
+                    <option value="">Select Zone</option>
+                    <option value="__ALL__" <?= ($rawFilters['zone'] ?? '') === '__ALL__' ? 'selected' : '' ?>>All Zones</option>
+                    <?php foreach($zones as $z): ?>
+                        <option value="<?= htmlspecialchars($z) ?>" <?= $filters['zone'] === $z ? 'selected' : '' ?>><?= htmlspecialchars($z) ?></option>
+                    <?php endforeach; ?>
+                </select>
 
-        <div class="h-4 w-px bg-slate-200"></div> <select name="region" id="regionSelect" class="flex-1 min-w-0 outline-none text-sm">
-            <option value="">Select Region</option>
-            <option value="__ALL__" <?= ($rawFilters['region'] ?? '') === '__ALL__' ? 'selected' : '' ?>>All Regions</option>
-            <?php foreach($regions as $r): ?>
-                <option value="<?= htmlspecialchars($r) ?>" <?= $filters['region'] === $r ? 'selected' : '' ?>><?= htmlspecialchars($r) ?></option>
-            <?php endforeach; ?>
-        </select>
+                <div class="h-4 w-px bg-slate-200"></div> <select name="region" id="regionSelect" class="flex-1 min-w-0 outline-none text-sm">
+                    <option value="">Select Region</option>
+                    <option value="__ALL__" <?= ($rawFilters['region'] ?? '') === '__ALL__' ? 'selected' : '' ?>>All Regions</option>
+                    <?php foreach($regions as $r): ?>
+                        <option value="<?= htmlspecialchars($r) ?>" <?= $filters['region'] === $r ? 'selected' : '' ?>><?= htmlspecialchars($r) ?></option>
+                    <?php endforeach; ?>
+                </select>
 
-        <div class="h-4 w-px bg-slate-200"></div> <select name="branch_name" id="branchSelect" class="flex-[2] min-w-0 outline-none text-sm font-semibold">
-            <option value="">Select Branch</option>
-            <option value="__ALL__" <?= ($rawFilters['branch_name'] ?? '') === '__ALL__' ? 'selected' : '' ?>>All Branches</option>
-            <?php foreach($branches as $b): ?>
-                <option value="<?= htmlspecialchars($b) ?>" <?= $filters['branch_name'] === $b ? 'selected' : '' ?>><?= htmlspecialchars($b) ?></option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    
-    <div class="flex items-center gap-2 border border-slate-300 rounded px-2 py-1 bg-white focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 transition-all">
-        <input type="text" name="date_from" value="<?= htmlspecialchars($rawFilters['date_from']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="Select From">
-        <span class="text-slate-300 font-bold">-</span>
-        <input type="text" name="date_to" value="<?= htmlspecialchars($rawFilters['date_to']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="Select To">
-    </div>
-</form>
+                <div class="h-4 w-px bg-slate-200"></div> <select name="branch_name" id="branchSelect" class="flex-[2] min-w-0 outline-none text-sm font-semibold">
+                    <option value="">Select Branch</option>
+                    <option value="__ALL__" <?= ($rawFilters['branch_name'] ?? '') === '__ALL__' ? 'selected' : '' ?>>All Branches</option>
+                    <?php foreach($branches as $b): ?>
+                        <option value="<?= htmlspecialchars($b) ?>" <?= $filters['branch_name'] === $b ? 'selected' : '' ?>><?= htmlspecialchars($b) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
+            <div class="flex items-center gap-2 border border-slate-300 rounded px-2 py-1 bg-white focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 transition-all">
+                <input type="text" name="date_from" value="<?= htmlspecialchars($rawFilters['date_from']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="Select From">
+                <span class="text-slate-300 font-bold">-</span>
+                <input type="text" name="date_to" value="<?= htmlspecialchars($rawFilters['date_to']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="Select To">
+            </div>
+        </form>
     </div>
 
     <div class="overflow-x-auto">
