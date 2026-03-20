@@ -8,13 +8,21 @@ $reportService = new \App\AssetReportService($pdo, $pdo2);
 
 $hasFiltersApplied = !empty($_GET);
 
-$filters = [
+$rawFilters = [
     'zone'        => $_GET['zone'] ?? '',
     'region'      => $_GET['region'] ?? '',
     'branch_name' => $_GET['branch_name'] ?? '',
     'date_from'   => $_GET['date_from'] ?? date('Y-m-01'), 
-    'date_to'     => $_GET['date_to'] ?? date('Y-m-t')     
+    'date_to'     => $_GET['date_to'] ?? date('Y-m-t')
 ];
+
+// Normalize explicit "all" sentinels so backend queries stay unfiltered
+$filters = $rawFilters;
+foreach (['zone', 'region', 'branch_name'] as $k) {
+    if (($filters[$k] ?? '') === '__ALL__') {
+        $filters[$k] = '';
+    }
+}
 
 $zones    = $reportService->getZones();
 $regions  = $reportService->getRegions($filters['zone']);
@@ -33,11 +41,67 @@ if ($hasFiltersApplied) {
 <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
-    .ts-wrapper .ts-control { border: 1px solid #cbd5e1 !important; border-radius: 0.25rem !important; padding: 0.375rem 0.625rem !important; font-size: 0.875rem !important; font-weight: 500 !important; color: #1e293b !important; box-shadow: none !important; background-color: #ffffff !important; height: 34px !important; min-height: 34px !important; max-height: 34px !important; display: flex !important; align-items: center !important; flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden !important; }
+    .ts-wrapper .ts-control { border: 1px solid #cbd5e1 !important; border-radius: 0.25rem !important; padding: 0.375rem 0.625rem !important; font-size: 0.875rem !important; font-weight: 500 !important; color: #1e293b !important; box-shadow: none !important; background-color: #ffffff !important; height: 34px !important; min-height: 34px !important; max-height: 34px !important; display: flex !important; align-items: center !important; flex-wrap: nowrap !important; overflow: hidden !important; position: relative !important; }
     .ts-wrapper.focus .ts-control { border-color: #dc2626 !important; box-shadow: 0 0 0 1px #dc2626 !important; }
-    .ts-dropdown { font-size: 0.875rem !important; border-radius: 0.25rem !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important; }
+    .ts-dropdown { font-size: 0.875rem !important; border-radius: 0.25rem !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important; z-index: 9999 !important; }
     .ts-wrapper { width: 100% !important; }
-    .ts-wrapper.single .ts-control > .item { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 100% !important; }
+    .ts-wrapper.single .ts-control > .item { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 100% !important; position: relative !important; z-index: 2 !important; }
+    /* Ensure the internal Tom Select input shows full, non-faded text when focused */
+    .ts-wrapper .ts-control input {
+        color: #1e293b !important;
+        background-color: transparent !important;
+        opacity: 1 !important;
+        caret-color: #1e293b !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        line-height: 1 !important;
+        position: absolute !important;
+        inset: 0.375rem 0.625rem !important;
+        width: calc(100% - 1.25rem) !important;
+        min-width: calc(100% - 1.25rem) !important;
+        z-index: 1 !important;
+        pointer-events: none !important;
+    }
+
+    /* In normal mode with selected value, show item and hide input text layer */
+    .ts-wrapper.has-items:not(.ts-typing-mode) .ts-control input {
+        opacity: 0 !important;
+    }
+
+    .ts-wrapper.ts-typing-mode .ts-control input {
+        opacity: 1 !important;
+        z-index: 3 !important;
+        pointer-events: auto !important;
+    }
+
+    .ts-wrapper.ts-typing-mode .ts-control > .item {
+        opacity: 0 !important;
+    }
+
+    /* Make selected label smaller and monospace for Zone, Region and Branch selects */
+    select#zoneSelect + .ts-wrapper .ts-control .item,
+    select#regionSelect + .ts-wrapper .ts-control .item,
+    select#branchSelect + .ts-wrapper .ts-control .item {
+        font-size: 0.75rem !important; /* xs */
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace !important;
+        font-weight: 600 !important;
+    }
+
+    select#zoneSelect + .ts-wrapper input,
+    select#regionSelect + .ts-wrapper input,
+    select#branchSelect + .ts-wrapper input {
+        font-size: 0.75rem !important; /* xs */
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace !important;
+        font-weight: 600 !important;
+    }
+
+    /* Match date inputs typography with Region selection style */
+    .date-formatter {
+        font-size: 0.75rem !important; /* xs */
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace !important;
+        font-weight: 600 !important;
+    }
     /* Even table rows background */
     #tableWrapper table tbody tr:nth-child(even) { background-color: #f8fafc; }
     /* Hover row background (slate-100) */
@@ -66,21 +130,24 @@ if ($hasFiltersApplied) {
     <div class="flex flex-1 items-center gap-2">
         
         <select name="zone" id="zoneSelect" class="flex-1 min-w-0 outline-none text-sm">
-            <option value="">-- All Zones --</option>
+            <option value="">Select Zone</option>
+            <option value="__ALL__" <?= ($rawFilters['zone'] ?? '') === '__ALL__' ? 'selected' : '' ?>>All Zones</option>
             <?php foreach($zones as $z): ?>
                 <option value="<?= htmlspecialchars($z) ?>" <?= $filters['zone'] === $z ? 'selected' : '' ?>><?= htmlspecialchars($z) ?></option>
             <?php endforeach; ?>
         </select>
 
         <div class="h-4 w-px bg-slate-200"></div> <select name="region" id="regionSelect" class="flex-1 min-w-0 outline-none text-sm">
-            <option value="">-- All Regions --</option>
+            <option value="">Select Region</option>
+            <option value="__ALL__" <?= ($rawFilters['region'] ?? '') === '__ALL__' ? 'selected' : '' ?>>All Regions</option>
             <?php foreach($regions as $r): ?>
                 <option value="<?= htmlspecialchars($r) ?>" <?= $filters['region'] === $r ? 'selected' : '' ?>><?= htmlspecialchars($r) ?></option>
             <?php endforeach; ?>
         </select>
 
         <div class="h-4 w-px bg-slate-200"></div> <select name="branch_name" id="branchSelect" class="flex-[2] min-w-0 outline-none text-sm font-semibold">
-            <option value="">-- All Branches --</option>
+            <option value="">Select Branch</option>
+            <option value="__ALL__" <?= ($rawFilters['branch_name'] ?? '') === '__ALL__' ? 'selected' : '' ?>>All Branches</option>
             <?php foreach($branches as $b): ?>
                 <option value="<?= htmlspecialchars($b) ?>" <?= $filters['branch_name'] === $b ? 'selected' : '' ?>><?= htmlspecialchars($b) ?></option>
             <?php endforeach; ?>
@@ -98,12 +165,12 @@ if ($hasFiltersApplied) {
     <div class="overflow-x-auto">
         <div id="initialStateWrapper" class="<?= !$hasFiltersApplied ? '' : 'hidden' ?> flex flex-col items-center justify-center py-20 bg-white">
             <svg class="w-12 h-12 text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-            <p class="text-slate-500 font-bold text-base">Select a filter above to view asset data.</p>
-            <p class="text-slate-400 text-xs mt-1">Choose a zone, region, branch, or specific date range.</p>
+            <p class="text-slate-500 font-bold text-base">Select All Zones</p>
+            <p class="text-slate-400 text-xs mt-1">Or Choose any</p>
         </div>
 
         <div id="noDataWrapper" class="<?= ($hasFiltersApplied && empty($data)) ? '' : 'hidden' ?> text-center py-16 text-slate-500 font-bold text-sm bg-white">
-            No active assets found for the selected filters and date range.
+            No assets records found for the selected filters and date range.
         </div>
         
         <div id="tableWrapper" class="<?= empty($data) ? 'hidden' : '' ?>">

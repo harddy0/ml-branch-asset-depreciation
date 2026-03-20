@@ -18,6 +18,12 @@ $filters = [
     'date_to'     => $_GET['date_to'] ?? ''
 ];
 
+foreach (['zone', 'region', 'branch_name'] as $k) {
+    if (($filters[$k] ?? '') === '__ALL__') {
+        $filters[$k] = '';
+    }
+}
+
 if (empty($filters['date_from']) || empty($filters['date_to'])) {
     die("Error: Date range is required for export.");
 }
