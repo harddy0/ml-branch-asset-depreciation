@@ -25,6 +25,12 @@ try {
         'date_to'     => $_GET['date_to'] ?? date('Y-m-t')     
     ];
 
+    foreach (['zone', 'region', 'branch_name'] as $k) {
+        if (($filters[$k] ?? '') === '__ALL__') {
+            $filters[$k] = '';
+        }
+    }
+
     // Get table data
     $reportData = $reportService->getFilteredAssets($filters);
 
