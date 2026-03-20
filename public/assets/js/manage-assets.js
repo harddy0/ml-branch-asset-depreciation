@@ -17,7 +17,11 @@ document.addEventListener("DOMContentLoaded", function() {
     tsZone = new TomSelect('#zoneSelect', {
         create: false, maxOptions: null, valueField: 'value', labelField: 'text', searchField: 'text', placeholder: 'Select Zone', dropdownParent: 'body',
         onChange: function(value) {
+            if (_suppressChange) return;
             if (tsZone && tsZone.wrapper) tsZone.wrapper.classList.remove('ts-typing-mode');
+            // Zone changed: wipe Region and Branch, then fetch
+            _resetToPlaceholder(tsRegion);
+            _resetToPlaceholder(tsBranch);
             fetchData('zone');
             setTomSelectTitleAndScroll(tsZone, 'Select Zone');
         }
@@ -26,7 +30,10 @@ document.addEventListener("DOMContentLoaded", function() {
     tsRegion = new TomSelect('#regionSelect', {
         create: false, maxOptions: null, valueField: 'value', labelField: 'text', searchField: 'text', placeholder: 'Select Region', dropdownParent: 'body',
         onChange: function(value) {
+            if (_suppressChange) return;
             if (tsRegion && tsRegion.wrapper) tsRegion.wrapper.classList.remove('ts-typing-mode');
+            // Region changed: wipe Branch, then fetch
+            _resetToPlaceholder(tsBranch);
             fetchData('region');
             setTomSelectTitleAndScroll(tsRegion, 'Select Region');
         }
@@ -35,16 +42,15 @@ document.addEventListener("DOMContentLoaded", function() {
     tsBranch = new TomSelect('#branchSelect', {
         create: false, maxOptions: null, valueField: 'value', labelField: 'text', searchField: 'text', placeholder: 'Select Branch', dropdownParent: 'body',
         onChange: function() {
+            if (_suppressChange) return;
             if (tsBranch && tsBranch.wrapper) tsBranch.wrapper.classList.remove('ts-typing-mode');
+            // Branch: nothing to clear above, just fetch
             fetchData('branch');
             setTomSelectTitleAndScroll(tsBranch, 'Select Branch');
         }
     });
 
-    // ─── Deferred-input behavior for TomSelect controls ───────────────
-    // Click: show full selected label (keep input hidden). Typing after click
-    // will enable the input, clear it, insert the first typed character and
-    // open the dropdown to search.
+    // ─── Deferred-input behavior for TomSelect controls ──────────────────
     let _deferredTS = null;
 
     function setTypingMode(ts, isTyping) {
@@ -53,7 +59,6 @@ document.addEventListener("DOMContentLoaded", function() {
             ts.wrapper.classList.add('ts-typing-mode');
         } else {
             ts.wrapper.classList.remove('ts-typing-mode');
-            // Clear any hidden search term so opening the dropdown shows all options
             try {
                 if (typeof ts.setTextboxValue === 'function') {
                     ts.setTextboxValue('');
@@ -67,19 +72,15 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function attachDeferredInput(ts) {
         if (!ts || !ts.wrapper) return;
-        // prevent TomSelect from auto-opening when input receives focus
         ts.settings.openOnFocus = false;
 
         const ctrl = ts.wrapper.querySelector('.ts-control');
-        const input = ts.input;
 
         setTypingMode(ts, false);
 
         ctrl.addEventListener('click', function(e) {
-            // open dropdown but keep internal input hidden so user sees full label
             _deferredTS = ts;
             setTypingMode(ts, false);
-            // Ensure option list is not pre-filtered by any stale textbox value
             try {
                 if (typeof ts.setTextboxValue === 'function') {
                     ts.setTextboxValue('');
@@ -88,30 +89,24 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             } catch (err) {}
             ts.open();
-            // keep label anchored from the start to avoid clipped values
             try { ctrl.scrollLeft = 0; } catch (err) {}
         });
 
-        // when TomSelect loses focus, reset input visibility
-        if (typeof ts.onBlur !== 'function') ts.onBlur = function() {};
-        const origBlur = ts.onBlur;
+        const origBlur = ts.onBlur || function() {};
         ts.onBlur = function() {
             setTypingMode(ts, false);
             if (typeof origBlur === 'function') origBlur.apply(this, arguments);
         };
     }
 
-    // Attach deferred behavior to our selects
     attachDeferredInput(tsZone);
     attachDeferredInput(tsRegion);
     attachDeferredInput(tsBranch);
 
-    // Global key handler: if a TomSelect was clicked (deferred), enable input
     document.addEventListener('keydown', function(e) {
         if (!_deferredTS) return;
         const key = e.key;
         const isPrintable = key.length === 1;
-        // Only handle printable characters; allow Backspace to be ignored until input is active
         if (!isPrintable) return;
 
         e.preventDefault();
@@ -120,20 +115,17 @@ document.addEventListener("DOMContentLoaded", function() {
         const input = ts.input;
         if (!input) return;
 
-        // show and focus input, clear it, insert the first typed char
         setTypingMode(ts, true);
         try { input.value = ''; } catch (err) {}
         input.focus();
         try {
             input.value = key;
-            input.setSelectionRange(1,1);
+            input.setSelectionRange(1, 1);
         } catch (err) {}
 
-        // trigger TomSelect's input handling and open dropdown
         input.dispatchEvent(new Event('input', { bubbles: true }));
         try { ts.open(); } catch (err) {}
 
-        // clear deferred marker so subsequent keys go straight to the input
         _deferredTS = null;
     });
 
@@ -147,8 +139,6 @@ document.addEventListener("DOMContentLoaded", function() {
         const rawParams   = new URLSearchParams(new FormData(form));
         const cleanParams = new URLSearchParams();
         rawParams.forEach((val, key) => {
-            // __ALL__ sentinel → '' (no filter applied for this field)
-            // disabled placeholder '' → also '' (same meaning)
             cleanParams.set(key, (val === '__ALL__') ? '' : val);
         });
 
@@ -166,16 +156,12 @@ document.addEventListener("DOMContentLoaded", function() {
                 _suppressChange = true;
                 try {
                     if (source === 'zone') {
-                        // Repopulate Region and Branch with zone-filtered options
-                        // Both were already reset to placeholder before the fetch
+                        // Repopulate both dependents with zone-filtered lists
                         _rebuildSelect(tsRegion, res.regions,  'Region');
                         _rebuildSelect(tsBranch, res.branches, 'Branch');
-
                     } else if (source === 'region') {
-                        // Repopulate Branch with zone+region-filtered options
-                        // Branch was already reset to placeholder before the fetch
+                        // Repopulate Branch with zone+region-filtered list
                         _rebuildSelect(tsBranch, res.branches, 'Branch');
-
                     }
                     // 'branch' and 'date': no dropdown rebuilds needed
                 } finally {
@@ -190,27 +176,39 @@ document.addEventListener("DOMContentLoaded", function() {
             });
     }
 
-    // ─── 3. DOM Manipulation Helpers ─────────────────────────────────────
-    function updateTomSelect(instance, optionsData, labelPlural) {
-        const current = instance.getValue();
+    // ─── 3. Dropdown Helpers ─────────────────────────────────────────────
+
+    /**
+     * Silently reset a TomSelect back to the empty placeholder.
+     * Wrapped in _suppressChange so it never triggers onChange.
+     */
+    function _resetToPlaceholder(instance) {
+        _suppressChange = true;
+        try {
+            instance.setValue('', true);
+            setTomSelectTitleAndScroll(instance, instance.settings.placeholder || '');
+        } finally {
+            _suppressChange = false;
+        }
+    }
+
+    /**
+     * Rebuild a dependent TomSelect's option list after its parent changes.
+     * Lands on __ALL__ so data loads immediately for the selected parent scope.
+     */
+    function _rebuildSelect(instance, optionsData, labelSingular) {
         instance.clearOptions();
-        const singular = labelPlural === 'Zones' ? 'Zone' : (labelPlural === 'Regions' ? 'Region' : (labelPlural === 'Branches' ? 'Branch' : labelPlural));
-        const defaultLabel = 'Select ' + singular;
-        instance.addOption({value: '', text: defaultLabel});
-        instance.addOption({value: '__ALL__', text: 'All ' + labelPlural});
-        optionsData.forEach(item => {
-            instance.addOption({value: item, text: item});
+
+        const allLabel = 'All ' + labelSingular + 's';
+        instance.addOption({ value: '__ALL__', text: allLabel });
+
+        (optionsData || []).forEach(item => {
+            instance.addOption({ value: item, text: item });
         });
         instance.refreshOptions(false);
 
-        // restore previous selection when still available, otherwise reset to default
-        if (current === '__ALL__' || (current && optionsData.includes(current))) {
-            instance.setValue(current, true);
-        } else {
-            instance.setValue('', true);
-        }
-
-        setTomSelectTitleAndScroll(instance, defaultLabel);
+        instance.setValue('__ALL__', true);
+        setTomSelectTitleAndScroll(instance, allLabel);
     }
 
     function setTomSelectTitleAndScroll(instance, defaultLabel) {
@@ -224,49 +222,8 @@ document.addEventListener("DOMContentLoaded", function() {
         if (instance.wrapper) {
             instance.wrapper.title = label;
             const ctrl = instance.wrapper.querySelector('.ts-control');
-            if (ctrl) {
-                // Keep text anchored from the start to avoid clipped/cut labels
-                ctrl.scrollLeft = 0;
-            }
+            if (ctrl) ctrl.scrollLeft = 0;
         }
-    }
-
-    /**
-     * Rebuild a dependent TomSelect's option list after a parent changes.
-     * Always lands on __ALL__ after rebuild (user must drill down further if wanted).
-     */
-    function _rebuildSelect(instance, optionsData, labelSingular) {
-        // clearOptions + addOption does not fire onChange while _suppressChange is true
-        instance.clearOptions();
-
-        const allLabel = '-- All ' + labelSingular + 's --';
-        instance.addOption({ value: '__ALL__', text: allLabel });
-
-        (optionsData || []).forEach(item => {
-            instance.addOption({ value: item, text: item });
-        });
-        instance.refreshOptions(false);
-
-        // Land on __ALL__ — shows all options under the selected parent
-        instance.setValue('__ALL__', true);
-        _updateTitle(instance, allLabel);
-    }
-
-    /** Refresh the visible label on a TomSelect control */
-    function _updateTitle(instance, fallbackLabel) {
-        if (!instance || !instance.wrapper) return;
-        const val = instance.getValue();
-        let label = fallbackLabel || '';
-        if (val && val !== '__ALL__' && val !== '') {
-            const opt = instance.options && instance.options[val];
-            label = (opt && opt.text) ? opt.text : val;
-        } else if (val === '__ALL__') {
-            const allOpt = instance.options && instance.options['__ALL__'];
-            label = (allOpt && allOpt.text) ? allOpt.text : fallbackLabel || '';
-        }
-        instance.wrapper.title = label;
-        const ctrl = instance.wrapper.querySelector('.ts-control');
-        if (ctrl) ctrl.scrollLeft = ctrl.scrollWidth;
     }
 
     // ─── 4. Table Renderer ───────────────────────────────────────────────
