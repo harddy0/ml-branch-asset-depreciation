@@ -330,22 +330,22 @@ function renderDeprDetails(row, editMode) {
     if (hintEl)   hintEl.classList.add('hidden');
 
     // ── CSS helpers ──────────────────────────────────────────
-    var inputBase  = 'w-full border rounded-md px-3 py-2 text-sm font-semibold outline-none transition-all';
-    var inputEdit  = inputBase + ' border-slate-300 bg-white text-slate-800 focus:border-[#ce1126] focus:ring-1 focus:ring-red-100';
-    var inputView  = inputBase + ' border-transparent bg-slate-100 text-slate-700 cursor-default';
-    var inputSys   = inputBase + ' border-transparent bg-red-50 text-[#ce1126] cursor-default font-bold';
-    var labelCls   = 'block text-xs font-black text-slate-500 uppercase tracking-widest mb-1';
-    var sysLabelCls = 'block text-xs font-black text-[#ce1126] uppercase tracking-widest mb-1 flex items-center gap-1';
+    var inputBase  = 'w-full border rounded-md px-3 py-1 text-sm font-semibold outline-none transition-all';
+    var inputEdit  = inputBase + ' border-slate-200 bg-white text-slate-800 focus:border-[#ce1126] focus:ring-1 focus:ring-red-100';
+    var inputView  = inputBase + ' border-slate-200 bg-slate-100 text-slate-700 cursor-default';
+    var inputSys   = inputBase + ' border-slate-200 bg-slate-100 text-slate-700 cursor-default';
+    var labelCls   = 'block text-xs font-mono text-slate-500 uppercase tracking-widest mb-1';
+    var sysLabelCls = 'block text-xs font-mono text-slate-500 uppercase tracking-widest mb-1';
 
     function sysLabel(txt) {
         return '<label class="' + sysLabelCls + '">'
-            + '<svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">'
             + '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>'
             + '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>'
             + '</svg>' + escHtml(txt) + '</label>';
     }
 
-    function field(id, labelTxt, val, type, isEditable, isSystem) {
+    function field(id, labelTxt, val, type, isEditable, isSystem, opts) {
+        opts = opts || {};
         var lbl = isSystem
             ? sysLabel(labelTxt)
             : '<label class="' + labelCls + '" for="' + id + '">' + escHtml(labelTxt) + '</label>';
@@ -353,6 +353,9 @@ function renderDeprDetails(row, editMode) {
         var cls = isSystem ? inputSys : (editMode && isEditable ? inputEdit : inputView);
         var readonlyAttr = (editMode && isEditable && !isSystem) ? '' : ' readonly';
         var typeAttr = (type === 'date' && editMode && isEditable) ? ' type="date"' : ' type="text"';
+        var isCurrencyField = (id === 'depr-f-acqcost' || id === 'depr-f-monthlydepr');
+        var wrapperClass = opts.wrapperClass ? ' ' + opts.wrapperClass : '';
+        var inputExtraClass = opts.inputClass ? ' ' + opts.inputClass : '';
 
         // In view mode: always show full English date for date fields
         // In edit mode for editable date fields: keep ISO for the date picker
@@ -363,12 +366,39 @@ function renderDeprDetails(row, editMode) {
             } else {
                 displayVal = formatDateFull(val); // full English for read-only display
             }
+        } else if (isCurrencyField) {
+            displayVal = formatMoney(val);
         }
 
-        return '<div>'
+        var inputClass = cls + (isCurrencyField ? ' pl-8 text-right' : '') + inputExtraClass;
+
+        if (isCurrencyField) {
+            return '<div class="' + wrapperClass.trim() + '">'
+                + lbl
+                + '<div class="relative">'
+                + '<span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold select-none">₱</span>'
+                + '<input id="' + id + '" ' + typeAttr + readonlyAttr
+                + ' class="' + inputClass + '" value="' + escHtml(String(displayVal ?? '')) + '">'
+                + '</div>'
+                + '</div>';
+        }
+
+        if (type === 'textarea') {
+            var textareaReadonly = (editMode && isEditable && !isSystem) ? '' : ' readonly';
+            var textareaSizeClass = opts.textareaClass || 'h-24';
+            return '<div class="' + wrapperClass.trim() + '">'
+                + lbl
+                + '<textarea id="' + id + '"' + textareaReadonly
+                + ' class="' + inputClass + ' resize-none ' + textareaSizeClass + '">'
+                + escHtml(String(displayVal ?? ''))
+                + '</textarea>'
+                + '</div>';
+        }
+
+        return '<div class="' + wrapperClass.trim() + '">'
             + lbl
             + '<input id="' + id + '" ' + typeAttr + readonlyAttr
-            + ' class="' + cls + '" value="' + escHtml(String(displayVal ?? '')) + '">'
+            + ' class="' + inputClass + '" value="' + escHtml(String(displayVal ?? '')) + '">'
             + '</div>';
     }
 
@@ -438,9 +468,9 @@ function renderDeprDetails(row, editMode) {
     // ══════════════════════════════════════════════════════════
     var sec1 = '<section>'
         + '<h3 class="text-xs font-black text-slate-600 uppercase tracking-wider mb-3 flex items-center gap-2">'
-        + '<span class="w-1 h-4 bg-slate-400 rounded-full inline-block"></span>Branch Details'
+        + '<span class="w-1 h-4 bg-[#ce1126] rounded-full inline-block"></span>Branch Details'
         + '</h3>'
-        + '<div class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4">'
+        + '<div class="p-1 grid grid-cols-2 md:grid-cols-4 gap-4">'
         + field('depr-f-zone',        'Zone',        row.zone,        'text',  false, false)
         + field('depr-f-region',      'Region',      row.region,      'text',  false, false)
         + field('depr-f-costcenter',  'Cost Center', row.cost_center, 'text',  false, false)
@@ -455,19 +485,23 @@ function renderDeprDetails(row, editMode) {
         + '<h3 class="text-xs font-black text-slate-600 uppercase tracking-wider mb-3 flex items-center gap-2">'
         + '<span class="w-1 h-4 bg-[#ce1126] rounded-full inline-block"></span>Asset Details'
         + '</h3>'
-        + '<div class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4">'
-        + field('depr-f-refno',       'Reference / Serial No', row.reference_no,     'text',  true,  false)
+        + '<div class="p-1 grid grid-cols-1 md:grid-cols-4 gap-4">'
+        + '<div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:col-span-3 content-start">'
+        + field('depr-f-refno',       'Reference / Serial No', row.reference_no,      'text',  true,  false)
         + categoryField(row.category_name, row.category_code)
-        + field('depr-f-code',        'Code',                  row.category_code,    'text',  false, true)
-        + field('depr-f-desc',        'Description',           row.description,      'text',  true,  false)
+        + field('depr-f-code',        'Code',                  row.category_code,     'text',  false, true)
         + field('depr-f-datereceived','Date Received',
-                editMode ? row.date_received : dateReceivedDisplay,
-                'date',  true,  false)
-        + field('depr-f-acqcost',     'Acquisition Cost',      row.acquisition_cost, 'text',  true,  false)
-        + field('depr-f-assetlife',   'Asset Life (months)',   row.asset_life_months,'text',  false, true)
-        + field('depr-f-deprstart',   'Depreciation Date',     deprStartDisplay,     'text',  false, true)
-        + field('depr-f-monthlydepr', 'Monthly Depreciation',  monthlyDep,           'text',  false, true)
-        + field('depr-f-retirement',  'Retirement Date',       retirementDisplay,    'text',  false, true)
+            editMode ? row.date_received : dateReceivedDisplay,
+            'date',  true,  false)
+        + field('depr-f-acqcost',     'Acquisition Cost',      row.acquisition_cost,  'text',  true,  false)
+        + field('depr-f-monthlydepr', 'Monthly Depreciation',  monthlyDep,            'text',  false, true)
+        + field('depr-f-deprstart',   'Depreciation Date',     deprStartDisplay,      'text',  false, true)
+        + field('depr-f-retirement',  'Retirement Date',       retirementDisplay,     'text',  false, true)
+        + field('depr-f-assetlife',   'Asset Life (months)',   row.asset_life_months, 'text',  false, true)
+        + '</div>'
+        + '<div class="md:col-span-1">'
+        + field('depr-f-desc',        'Description',           row.description,       'textarea', true, false, { textareaClass: 'min-h-[10.5rem]' })
+        + '</div>'
         + '</div>'
         + '</section>';
 
@@ -476,11 +510,10 @@ function renderDeprDetails(row, editMode) {
     // ══════════════════════════════════════════════════════════
     var sec3 = '<section>'
         + '<h3 class="text-xs font-black text-slate-600 uppercase tracking-wider mb-3 flex items-center gap-2">'
-        + '<span class="w-1 h-4 bg-red-300 rounded-full inline-block"></span>System Info'
-        + '<span class="text-[10px] text-red-300 font-semibold normal-case tracking-normal">&nbsp;— auto-generated, read-only</span>'
+        + '<span class="w-1 h-4 bg-[#ce2216] rounded-full inline-block"></span>System Transaction Number'
         + '</h3>'
-        + '<div class="bg-white border border-slate-200 rounded-xl p-4 grid grid-cols-1 gap-4">'
-        + field('depr-f-syscode', 'System Asset Code', row.system_asset_code, 'text', false, true)
+        + '<div class="p-1 grid grid-cols-1 gap-4">'
+        + field('depr-f-syscode', '', row.system_asset_code, 'text', false, true)
         + '</div>'
         + '</section>';
 
@@ -502,7 +535,9 @@ function _wireDeprAutoCompute() {
     function recompute() {
         var row        = reviewPreviewRows[_deprCurrentRowIndex];
         var dateRecv   = drEl   ? drEl.value   : (row.date_received || '');
-        var acqCost    = costEl ? parseFloat(costEl.value) || 0 : parseFloat(row.acquisition_cost) || 0;
+        var acqCost    = costEl
+            ? parseFloat(String(costEl.value || '').replace(/,/g, '')) || 0
+            : parseFloat(String(row.acquisition_cost || '').replace(/,/g, '')) || 0;
 
         // Resolve category life from select (or current row)
         var assetLife  = parseInt(row.asset_life_months, 10) || 0;
@@ -558,7 +593,7 @@ function _wireDeprAutoCompute() {
 
         if (dsEl)  dsEl.value  = deprStart  ? formatDateFull(deprStart)  : '';
         if (retEl) retEl.value = retDate     ? formatDateFull(retDate)    : '';
-        if (mdEl)  mdEl.value  = monthlyDep;
+        if (mdEl)  mdEl.value  = formatMoney(monthlyDep);
 
         // Show unsaved hint
         var hintEl = document.getElementById('depr-unsaved-hint');
@@ -567,7 +602,30 @@ function _wireDeprAutoCompute() {
 
     if (drEl)   drEl.addEventListener('change', recompute);
     if (catEl)  catEl.addEventListener('change', recompute);
-    if (costEl) costEl.addEventListener('input',  recompute);
+    if (costEl) {
+        costEl.addEventListener('input', function () {
+            var raw = String(costEl.value || '').replace(/[^0-9.]/g, '');
+            var parts = raw.split('.');
+            if (parts.length > 2) {
+                raw = parts.shift() + '.' + parts.join('');
+            }
+
+            if (!raw) {
+                costEl.value = '';
+                recompute();
+                return;
+            }
+
+            var num = parseFloat(raw);
+            if (Number.isNaN(num)) {
+                recompute();
+                return;
+            }
+
+            costEl.value = formatMoney(num);
+            recompute();
+        });
+    }
     if (refEl)  refEl.addEventListener('input',   recompute);
 }
 
@@ -634,7 +692,7 @@ function saveDeprEdit() {
     if (refEl)  row.reference_no      = refEl.value.trim();
     if (descEl) row.description        = descEl.value.trim();
     if (drEl)   row.date_received      = drEl.value;
-    if (costEl) row.acquisition_cost   = parseFloat(costEl.value) || 0;
+    if (costEl) row.acquisition_cost   = parseFloat(String(costEl.value || '').replace(/,/g, '')) || 0;
 
     // Recompute system values from latest inputs
     var assetLife = parseInt(row.asset_life_months, 10) || 0;
@@ -776,6 +834,16 @@ function formatDate(iso) {
     var m = parseInt(parts[1], 10) - 1;
     var y = parts[0];
     return (months[m] || parts[1]) + ' ' + d + ', ' + y;
+}
+
+function formatMoney(val) {
+    if (val === null || val === undefined || val === '') return '';
+    var num = parseFloat(String(val).replace(/,/g, ''));
+    if (Number.isNaN(num)) return '';
+    return num.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
 function escHtml(str) {
