@@ -33,16 +33,6 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['import_er
     <div>
         <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Import Assets</h1>
     </div>
-
-    <!-- Format Guide Button (compact info icon) -->
-    <button onclick="openModal('modal-format-guide')" aria-label="Column format guide"
-            class="inline-flex items-center justify-center bg-slate-100 text-slate-700 w-9 h-9 rounded-full hover:bg-slate-200 transition-colors"
-            title="Column Format Guide">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8h.01M11 12h1v4h1" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a10 10 0 110 20 10 10 0 010-20z" />
-        </svg>
-    </button>
 </div>
 
 <!-- Upload -->

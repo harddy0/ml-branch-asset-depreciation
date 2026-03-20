@@ -8,8 +8,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
     
     <div class="mb-6 flex justify-between items-end">
         <div>
-            <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Dashboard</h1>
-            <p class="text-sm text-slate-500 mt-0.5">Visualized breakdown of asset values.</p>
+            <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Dashboard</h1>
         </div>
         
     </div>
