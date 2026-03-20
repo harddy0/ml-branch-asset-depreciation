@@ -33,9 +33,15 @@ if ($hasFiltersApplied) {
 <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
-    .ts-wrapper .ts-control { border: 1px solid #cbd5e1 !important; border-radius: 0.25rem !important; padding: 0.375rem 0.625rem !important; font-size: 0.875rem !important; font-weight: 500 !important; color: #1e293b !important; box-shadow: none !important; background-color: #ffffff !important; min-height: 34px !important; }
+    .ts-wrapper .ts-control { border: 1px solid #cbd5e1 !important; border-radius: 0.25rem !important; padding: 0.375rem 0.625rem !important; font-size: 0.875rem !important; font-weight: 500 !important; color: #1e293b !important; box-shadow: none !important; background-color: #ffffff !important; height: 34px !important; min-height: 34px !important; max-height: 34px !important; display: flex !important; align-items: center !important; flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden !important; }
     .ts-wrapper.focus .ts-control { border-color: #dc2626 !important; box-shadow: 0 0 0 1px #dc2626 !important; }
     .ts-dropdown { font-size: 0.875rem !important; border-radius: 0.25rem !important; border: 1px solid #cbd5e1 !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important; }
+    .ts-wrapper { width: 100% !important; }
+    .ts-wrapper.single .ts-control > .item { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 100% !important; }
+    /* Even table rows background */
+    #tableWrapper table tbody tr:nth-child(even) { background-color: #f8fafc; }
+    /* Hover row background (slate-100) */
+    #tableWrapper table tbody tr:hover { background-color: #f1f5f9; transition: background-color 0.15s ease; }
     #tableWrapper { transition: opacity 0.2s ease-in-out; }
 </style>
 
@@ -52,38 +58,41 @@ if ($hasFiltersApplied) {
 
 <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
     <div class="bg-slate-50 border-b border-slate-200 px-3 py-0 pt-1">
-        <form id="filterForm" 
-              data-api-url="<?= BASE_URL ?>/public/api/get_assets.php" 
-              data-export-url="<?= BASE_URL ?>/public/actions/export_assets.php"
-              class="flex flex-wrap items-center gap-3">
-            
-            <select name="zone" id="zoneSelect" class="min-w-[110px]" placeholder="-- All Zones --">
-                <option value="">-- All Zones --</option>
-                <?php foreach($zones as $z): ?>
-                    <option value="<?= htmlspecialchars($z) ?>" <?= $filters['zone'] === $z ? 'selected' : '' ?>><?= htmlspecialchars($z) ?></option>
-                <?php endforeach; ?>
-            </select>
+       <form id="filterForm" 
+    data-api-url="<?= BASE_URL ?>/public/api/get_assets.php" 
+    data-export-url="<?= BASE_URL ?>/public/actions/export_assets.php"
+    class="flex flex-row items-center gap-4 w-full">
 
-            <select name="region" id="regionSelect" class="min-w-[150px]" placeholder="-- All Regions --">
-                <option value="">-- All Regions --</option>
-                <?php foreach($regions as $r): ?>
-                    <option value="<?= htmlspecialchars($r) ?>" <?= $filters['region'] === $r ? 'selected' : '' ?>><?= htmlspecialchars($r) ?></option>
-                <?php endforeach; ?>
-            </select>
+    <div class="flex flex-1 items-center gap-2">
+        
+        <select name="zone" id="zoneSelect" class="flex-1 min-w-0 outline-none text-sm">
+            <option value="">-- All Zones --</option>
+            <?php foreach($zones as $z): ?>
+                <option value="<?= htmlspecialchars($z) ?>" <?= $filters['zone'] === $z ? 'selected' : '' ?>><?= htmlspecialchars($z) ?></option>
+            <?php endforeach; ?>
+        </select>
 
-            <select name="branch_name" id="branchSelect" class="min-w-[290px]" placeholder="-- All Branches --">
-                <option value="">-- All Branches --</option>
-                <?php foreach($branches as $b): ?>
-                    <option value="<?= htmlspecialchars($b) ?>" <?= $filters['branch_name'] === $b ? 'selected' : '' ?>><?= htmlspecialchars($b) ?></option>
-                <?php endforeach; ?>
-            </select>
+        <div class="h-4 w-px bg-slate-200"></div> <select name="region" id="regionSelect" class="flex-1 min-w-0 outline-none text-sm">
+            <option value="">-- All Regions --</option>
+            <?php foreach($regions as $r): ?>
+                <option value="<?= htmlspecialchars($r) ?>" <?= $filters['region'] === $r ? 'selected' : '' ?>><?= htmlspecialchars($r) ?></option>
+            <?php endforeach; ?>
+        </select>
 
-            <div class="flex items-center gap-2 border border-slate-300 rounded px-2 py-1 bg-white ml-auto focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 transition-all">
-                <input type="text" name="date_from" value="<?= htmlspecialchars($filters['date_from']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer min-w-[130px] bg-slate-50 text-center" placeholder="Start Date">
-                <span class="text-slate-300 font-bold">-</span>
-                <input type="text" name="date_to" value="<?= htmlspecialchars($filters['date_to']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer min-w-[130px] bg-slate-50 text-center" placeholder="End Date">
-            </div>
-        </form>
+        <div class="h-4 w-px bg-slate-200"></div> <select name="branch_name" id="branchSelect" class="flex-[2] min-w-0 outline-none text-sm font-semibold">
+            <option value="">-- All Branches --</option>
+            <?php foreach($branches as $b): ?>
+                <option value="<?= htmlspecialchars($b) ?>" <?= $filters['branch_name'] === $b ? 'selected' : '' ?>><?= htmlspecialchars($b) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    
+    <div class="flex items-center gap-2 border border-slate-300 rounded px-2 py-1 bg-white focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 transition-all">
+        <input type="text" name="date_from" value="<?= htmlspecialchars($filters['date_from']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="Start Date">
+        <span class="text-slate-300 font-bold">-</span>
+        <input type="text" name="date_to" value="<?= htmlspecialchars($filters['date_to']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="End Date">
+    </div>
+</form>
     </div>
 
     <div class="overflow-x-auto">
@@ -100,32 +109,33 @@ if ($hasFiltersApplied) {
         <div id="tableWrapper" class="<?= empty($data) ? 'hidden' : '' ?>">
             <table class="w-full text-sm text-left whitespace-nowrap">
                 <thead>
-                    <tr class="border-b-2 border-slate-200 bg-white">
-                        <th class="py-2.5 pl-5 pr-3 font-bold text-slate-500 uppercase tracking-wider text-xs">Codes</th>
-                        <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs">Branches</th>
-                        <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs">Category</th>
-                        <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs w-full">Description</th>
-                        <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs text-right">Cost</th>
-                        <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs text-right">Depreciation</th>
-                        <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs text-right">Accu. Dep.</th>
-                        <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs text-center">Life</th>
-                        <th class="py-2.5 px-3 font-bold text-slate-500 uppercase tracking-wider text-xs text-right">Book Value</th>
-                        <th class="py-2.5 pl-3 pr-5 font-bold text-slate-500 uppercase tracking-wider text-xs text-center">Date Gen.</th>
+                    <tr class="border-b-2 border-slate-200 bg-[#ce2216]">
+                        <th class="py-2.5 pl-5 pr-3 font-bold text-white uppercase tracking-wider text-xs">Codes</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs">Branches</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs">Category</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs w-full">Description</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-right">Cost</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-right">Depreciation</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-right">Accu. Dep.</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-center">Life</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-right">Book Value</th>
+                        <th class="py-2.5 pl-3 pr-5 font-bold text-white uppercase tracking-wider text-xs text-center">Date Gen.</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody" class="divide-y divide-slate-100 font-medium text-slate-700">
                     <?php foreach ($data as $row): ?>
-                        <tr class="hover:bg-red-50/40 transition-colors">
-                            <td class="py-2 pl-5 pr-3 font-semibold text-slate-900"><?= htmlspecialchars($row['system_asset_code']) ?></td>
-                            <td class="py-2 px-3"><?= htmlspecialchars($row['branch_name']) ?></td>
-                            <td class="py-2 px-3 text-xs"><?= htmlspecialchars($row['category_name']) ?></td>
-                            <td class="py-2 px-3 truncate max-w-[200px]" title="<?= htmlspecialchars($row['description']) ?>"><?= htmlspecialchars($row['description']) ?></td>
-                            <td class="py-2 px-3 text-right font-mono"><?= number_format($row['acquisition_cost'], 2) ?></td>
-                            <td class="py-2 px-3 text-right font-mono text-red-600"><?= number_format($row['period_depreciation_expense'], 2) ?></td>
-                            <td class="py-2 px-3 text-right font-mono"><?= number_format($row['accumulated_depreciation'], 2) ?></td>
-                            <td class="py-2 px-3 text-center font-bold"><?= $row['remaining_life'] ?></td>
-                            <td class="py-2 px-3 text-right font-mono font-bold text-slate-900"><?= number_format($row['book_value'], 2) ?></td>
-                            <td class="py-2 pl-3 pr-5 text-center text-slate-500 text-xs"><?= date('M j, Y', strtotime($row['period_date'])) ?></td>
+                        <?php $payload = htmlspecialchars(json_encode($row), ENT_QUOTES); ?>
+                        <tr class="asset-row cursor-pointer" data-asset='<?= $payload ?>'>
+                            <td class="py-0 pl-5 pr-3 text-xs text-slate-900"><?= htmlspecialchars($row['system_asset_code']) ?></td>
+                            <td class="py-0 px-3 text-xs"><?= htmlspecialchars($row['branch_name']) ?></td>
+                            <td class="py-0 px-3 text-xs"><?= htmlspecialchars($row['category_name']) ?></td>
+                            <td class="py-0 px-3 truncate max-w-[200px] text-xs" title="<?= htmlspecialchars($row['description']) ?>"><?= htmlspecialchars($row['description']) ?></td>
+                            <td class="py-0 px-3 text-right font-mono text-xs"><?= number_format($row['acquisition_cost'], 2) ?></td>
+                            <td class="py-0 px-3 text-right font-mono text-slate-900"><?= number_format($row['period_depreciation_expense'], 2) ?></td>
+                            <td class="py-0 px-3 text-right font-mono text-xs"><?= number_format($row['accumulated_depreciation'], 2) ?></td>
+                            <td class="py-0 px-3 text-center font-bold text-xs"><?= $row['remaining_life'] ?></td>
+                            <td class="py-0 px-3 text-right font-mono text-xs text-slate-900"><?= number_format($row['book_value'], 2) ?></td>
+                            <td class="py-0 pl-3 pr-5 text-center text-slate-500 text-xs"><?= date('M j, Y', strtotime($row['period_date'])) ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -156,8 +166,13 @@ if ($hasFiltersApplied) {
     </div>
 </div>
 
+<?php include_once __DIR__ . '/../../src/includes/modals/asset-depreciation-details-manage.php'; ?>
+
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+<!-- reuse import page's detail renderer (defines renderDeprDetails, setDeprEditMode, closeAssetDepreciationDetails) -->
+<script src="<?= ASSET_URL ?>js/asset-import.js"></script>
 
 <script src="<?= ASSET_URL ?>js/manage-assets.js"></script>
 <script src="<?= ASSET_URL ?>js/main.js"></script>
