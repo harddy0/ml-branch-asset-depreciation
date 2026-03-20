@@ -63,7 +63,18 @@ register_shutdown_function(function () {
     global $noLayout;
 
     if (isset($noLayout) && $noLayout === true) {
-        // No layout — but still inject Tailwind into <head> if not already present
+        // If this request is intended to return JSON (API), do not inject any HTML
+        $isJson = false;
+        foreach (headers_list() as $h) {
+            if (stripos($h, 'application/json') !== false) { $isJson = true; break; }
+        }
+
+        if ($isJson) {
+            echo $content;
+            return;
+        }
+
+        // No layout and not JSON: inject Tailwind into <head> if not already present
         $tailwindTag = '<script src="https://cdn.tailwindcss.com"></script>';
         if (stripos($content, 'cdn.tailwindcss.com') === false) {
             $content = str_ireplace('</head>', $tailwindTag . "\n</head>", $content);
