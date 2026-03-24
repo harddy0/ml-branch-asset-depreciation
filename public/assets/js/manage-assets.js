@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const apiUrl    = form.getAttribute('data-api-url');
     const exportUrl = form.getAttribute('data-export-url');
+    const generatedBy = (form.getAttribute('data-generated-by') || 'User').toUpperCase();
 
     let tsZone, tsRegion, tsBranch;
 
@@ -199,7 +200,14 @@ document.addEventListener("DOMContentLoaded", function() {
     function _rebuildSelect(instance, optionsData, labelSingular) {
         instance.clearOptions();
 
-        const allLabel = 'All ' + labelSingular + 's';
+        function _pluralize(label) {
+            if (/ch$/i.test(label)) return label + 'es';
+            if (/y$/i.test(label)) return label.replace(/y$/i, 'ies');
+            if (/s$/i.test(label)) return label + 'es';
+            return label + 's';
+        }
+
+        const allLabel = 'All ' + _pluralize(labelSingular);
         instance.addOption({ value: '__ALL__', text: allLabel });
 
         (optionsData || []).forEach(item => {
@@ -238,9 +246,11 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!data || data.length === 0) {
             wrapper.classList.add('hidden');
             noData.classList.remove('hidden');
+            setExportAvailability(false);
         } else {
             wrapper.classList.remove('hidden');
             noData.classList.add('hidden');
+            setExportAvailability(true);
 
             const currency = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const dateFmt  = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -315,20 +325,228 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    // ─── 6. Export ───────────────────────────────────────────────────────
-    const exportBtn = document.getElementById('exportExcelBtn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', function() {
+    // ─── 6. Export / Print ──────────────────────────────────────────────
+    function setExportAvailability(hasData) {
+        const exportToggleBtn = document.getElementById('exportToggleBtn');
+        const excelBtn = document.getElementById('exportExcelBtn');
+        const printBtn = document.getElementById('exportPrintBtn');
+        const exportMenu = document.getElementById('exportMenu');
+        const exportDisabledTooltip = document.getElementById('exportDisabledTooltip');
+
+        if (!exportToggleBtn || !excelBtn || !printBtn) return;
+
+        exportToggleBtn.disabled = !hasData;
+        excelBtn.disabled = !hasData;
+        printBtn.disabled = !hasData;
+
+        exportToggleBtn.classList.toggle('opacity-50', !hasData);
+        exportToggleBtn.classList.toggle('cursor-not-allowed', !hasData);
+        excelBtn.classList.toggle('opacity-50', !hasData);
+        excelBtn.classList.toggle('cursor-not-allowed', !hasData);
+        printBtn.classList.toggle('opacity-50', !hasData);
+        printBtn.classList.toggle('cursor-not-allowed', !hasData);
+
+        if (!hasData && exportMenu) {
+            exportMenu.classList.add('hidden');
+            exportToggleBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        if (hasData && exportDisabledTooltip) {
+            exportDisabledTooltip.classList.add('hidden');
+        }
+    }
+
+    // Toggle dropdown
+    const exportToggleBtn = document.getElementById('exportToggleBtn');
+    const exportMenu = document.getElementById('exportMenu');
+    const exportContainer = exportToggleBtn ? exportToggleBtn.closest('.relative') : null;
+    let exportDisabledTooltip = null;
+
+    if (exportContainer) {
+        exportDisabledTooltip = document.createElement('div');
+        exportDisabledTooltip.id = 'exportDisabledTooltip';
+        exportDisabledTooltip.className = 'hidden absolute top-full right-0 mt-2 px-3 py-1.5 rounded-md border border-slate-200 bg-slate-800 text-white text-[11px] font-mono shadow-lg pointer-events-none z-50 whitespace-nowrap';
+        exportDisabledTooltip.textContent = 'Table is empty.';
+        exportContainer.appendChild(exportDisabledTooltip);
+    }
+
+    function toggleExportDisabledTooltip(show) {
+        if (!exportDisabledTooltip || !exportToggleBtn || !exportToggleBtn.disabled) return;
+        exportDisabledTooltip.classList.toggle('hidden', !show);
+    }
+
+    if (exportToggleBtn && exportMenu) {
+        exportToggleBtn.addEventListener('click', function(e) {
+            if (exportToggleBtn.disabled) return;
+            const hidden = exportMenu.classList.contains('hidden');
+            exportMenu.classList.toggle('hidden', !hidden);
+            exportToggleBtn.setAttribute('aria-expanded', String(hidden));
+        });
+
+        exportToggleBtn.addEventListener('mouseenter', function() {
+            toggleExportDisabledTooltip(true);
+        });
+
+        exportToggleBtn.addEventListener('mouseleave', function() {
+            if (exportDisabledTooltip) exportDisabledTooltip.classList.add('hidden');
+        });
+
+        exportToggleBtn.addEventListener('focus', function() {
+            toggleExportDisabledTooltip(true);
+        });
+
+        exportToggleBtn.addEventListener('blur', function() {
+            if (exportDisabledTooltip) exportDisabledTooltip.classList.add('hidden');
+        });
+
+        if (exportContainer) {
+            exportContainer.addEventListener('mouseleave', function() {
+                if (exportDisabledTooltip) exportDisabledTooltip.classList.add('hidden');
+            });
+        }
+
+        // close on outside click
+        document.addEventListener('click', function(e) {
+            if (!exportMenu || !exportToggleBtn) return;
+            if (!exportMenu.classList.contains('hidden')) {
+                if (!exportMenu.contains(e.target) && !exportToggleBtn.contains(e.target)) {
+                    exportMenu.classList.add('hidden');
+                    exportToggleBtn.setAttribute('aria-expanded', 'false');
+                }
+            }
+            if (exportDisabledTooltip && !exportContainer?.contains(e.target)) {
+                exportDisabledTooltip.classList.add('hidden');
+            }
+        });
+    }
+
+    const excelBtn = document.getElementById('exportExcelBtn');
+    if (excelBtn) {
+        excelBtn.addEventListener('click', function() {
+            if (excelBtn.disabled) return;
             const rawParams   = new URLSearchParams(new FormData(form));
             const cleanParams = new URLSearchParams();
             rawParams.forEach((val, key) => {
                 cleanParams.set(key, (val === '__ALL__') ? '' : val);
             });
+            // navigate to export URL (existing behavior)
             window.location.href = `${exportUrl}?${cleanParams.toString()}`;
+        });
+    }
+
+    const printBtn = document.getElementById('exportPrintBtn');
+    if (printBtn) {
+        printBtn.addEventListener('click', function() {
+            if (printBtn.disabled) return;
+            // create printable window using current table HTML
+            const tableWrapper = document.getElementById('tableWrapper');
+            if (!tableWrapper) {
+                alert('No data to print.');
+                return;
+            }
+
+            const printWin = window.open('', '_blank');
+            if (!printWin) {
+                alert('Popup blocked. Please allow popups to print.');
+                return;
+            }
+
+            const style = `
+                <style>
+                    @page { size: A4 landscape; }
+                    body { font-family: Arial, Helvetica, sans-serif; padding: 12px; color: #1e293b }
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; }
+                    th { background: #ce2216; color: #fff; font-weight: 700; }
+                    .print-totals { width: 620px; max-width: 100%; margin: 12px auto 0; table-layout: fixed; border-collapse: collapse; }
+                    .print-totals td { border: 1px solid #c9cccf; padding: 4px 8px; text-align: right; white-space: nowrap; }
+                    .print-totals .amount-wrap { display:flex; justify-content:space-between; align-items:center; }
+                    .print-meta { position: fixed; left: 12px; bottom: 10px; font-size: 11px; color: #475569; line-height: 1.35; }
+                    [name="logo-container"] {
+                        display: flex;
+                        width: 100%;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 24px;
+                        background: #fff;
+                        border-bottom: 1px solid #e2e8f0;
+                        padding: 8px 12px;
+                        margin-bottom: 10px;
+                    }
+                    [name="logo-container"] img { height: 28px; }
+                    [name="logo-container"] > div { display:flex; align-items:center; justify-content:center; border-right:1px solid #e2e8f0; padding-right:16px; }
+                    [name="logo-container"] > span { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace; letter-spacing: .08em; font-size: 18px; color:#94a3b8; }
+                </style>`;
+
+            // Clone the visible main table (exclude surrounding totals block)
+            const tableEl = tableWrapper.querySelector('table');
+            const tableHtml = tableEl ? tableEl.outerHTML : tableWrapper.innerHTML;
+
+            // Read totals values from the page (these are the numeric formatted strings)
+            const totCost = document.getElementById('totCost') ? document.getElementById('totCost').innerText : '';
+            const totDE   = document.getElementById('totDE')   ? document.getElementById('totDE').innerText   : '';
+            const totAD   = document.getElementById('totAD')   ? document.getElementById('totAD').innerText   : '';
+            const totBV   = document.getElementById('totBV')   ? document.getElementById('totBV').innerText   : '';
+            const generatedAt = new Intl.DateTimeFormat('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            }).format(new Date());
+
+            const totalsHtml = `
+                <table class="print-totals">
+                    <colgroup>
+                        <col style="width:22%;">
+                        <col style="width:28%;">
+                        <col style="width:30%;">
+                        <col style="width:22%;">
+                    </colgroup>
+                    <tbody>
+                        <tr>
+                            <td colspan="4" style="font-weight:700; text-align:center;">Grand Total</td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight:700; text-align:right;">Cost</td>
+                            <td style="font-weight:700; text-align:right;">Monthly Depreciation</td>
+                            <td style="font-weight:700; text-align:right;">Accumulated Depreciation</td>
+                            <td style="font-weight:700; text-align:right;">Book Value</td>
+                        </tr>
+                        <tr>
+                            <td><div class="amount-wrap"><span>₱</span><span>${totCost}</span></div></td>
+                            <td><div class="amount-wrap"><span>₱</span><span>${totDE}</span></div></td>
+                            <td><div class="amount-wrap"><span>₱</span><span>${totAD}</span></div></td>
+                            <td><div class="amount-wrap"><span>₱</span><span>${totBV}</span></div></td>
+                        </tr>
+                    </tbody>
+                </table>`;
+
+            const headerTemplate = document.getElementById('exportHeaderTemplate');
+            const headerHtml = headerTemplate ? headerTemplate.innerHTML : '';
+
+            printWin.document.open();
+            printWin.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Print - Assets</title>${style}</head><body>${headerHtml}${tableHtml}${totalsHtml}<div class="print-meta">Generated by: ${generatedBy}<br>Generated on: ${generatedAt}</div></body></html>`);
+            printWin.document.close();
+
+            // give time to render then print
+            printWin.focus();
+            setTimeout(() => {
+                try { printWin.print(); } catch (e) { console.error(e); }
+            }, 500);
         });
     }
 
     const initialTbody = document.getElementById('tableBody');
     if (initialTbody) initialTbody.addEventListener('click', assetRowClickHandler);
+
+    // Initial enablement state: export only when data table is visible and has rows.
+    const initialHasData = (() => {
+        const wrapper = document.getElementById('tableWrapper');
+        const tbody = document.getElementById('tableBody');
+        if (!wrapper || wrapper.classList.contains('hidden') || !tbody) return false;
+        return tbody.querySelectorAll('tr').length > 0;
+    })();
+    setExportAvailability(initialHasData);
 
 });
