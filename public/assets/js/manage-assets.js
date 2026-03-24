@@ -461,7 +461,13 @@ document.addEventListener("DOMContentLoaded", function() {
                     .print-totals { width: 620px; max-width: 100%; margin: 12px auto 0; table-layout: fixed; border-collapse: collapse; }
                     .print-totals td { border: 1px solid #c9cccf; padding: 4px 8px; text-align: right; white-space: nowrap; }
                     .print-totals .amount-wrap { display:flex; justify-content:space-between; align-items:center; }
-                    .print-meta { position: fixed; left: 12px; bottom: 10px; font-size: 11px; color: #475569; line-height: 1.35; }
+                    .print-meta {
+                        margin-top: 10px;
+                        font-size: 11px;
+                        color: #475569;
+                        line-height: 1.35;
+                        page-break-inside: avoid;
+                    }
                     [name="logo-container"] {
                         display: flex;
                         width: 100%;
