@@ -44,12 +44,16 @@ try {
     $regions  = $reportService->getRegions($filters['zone']);
     $branches = $reportService->getBranches($filters['zone'], $filters['region']);
 
+    $allCategories = $pdo->query("SELECT category_name FROM asset_categories ORDER BY category_name ASC")
+                      ->fetchAll(\PDO::FETCH_COLUMN);
+
     $response = [
         'success'  => true,
         'data'     => $reportData['data'],
         'totals'   => $reportData['totals'],
         'regions'  => $regions,
         'branches' => $branches,
+        'all_categories' => $allCategories, 
     ];
 
     while (ob_get_level() > 0) ob_end_clean();
