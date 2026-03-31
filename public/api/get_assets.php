@@ -2,6 +2,7 @@
 $noLayout = true;
 require_once __DIR__ . '/../../src/includes/init.php';
 require_once __DIR__ . '/../../src/classes/AssetReportService.php';
+require_once __DIR__ . '/../../src/classes/CategoryService.php';
 
 ini_set('display_errors', '0');
 error_reporting(0);
@@ -17,8 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 try {
     $reportService = new \App\AssetReportService($pdo, $pdo2);
+    $categoryService = new \App\CategoryService($pdo);
 
-    // Normalize __ALL__ sentinel → '' (means no filter for this field)
+    // Normalize __ALL__ sentinel → ''
     $rawZone   = $_GET['zone']        ?? '';
     $rawRegion = $_GET['region']      ?? '';
     $rawBranch = $_GET['branch_name'] ?? '';
@@ -37,15 +39,12 @@ try {
         }
     }
 
-    // Get table data
     $reportData = $reportService->getFilteredAssets($filters);
-
-    // Always return the filtered dependent lists so the JS can repopulate dropdowns
     $regions  = $reportService->getRegions($filters['zone']);
     $branches = $reportService->getBranches($filters['zone'], $filters['region']);
-
-    $allCategories = $pdo->query("SELECT category_name FROM asset_categories ORDER BY category_name ASC")
-                      ->fetchAll(\PDO::FETCH_COLUMN);
+    
+    // Delegate to Service Class instead of direct $pdo->query
+    $allCategories = $categoryService->getAllCategoryNames();
 
     $response = [
         'success'  => true,

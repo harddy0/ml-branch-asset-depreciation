@@ -283,6 +283,62 @@ class ImportService {
     }
 
     // ══════════════════════════════════════════════════════════════════
+    //  PREPARE FOR COMMIT: Merges user edits and filters selected rows
+    // ══════════════════════════════════════════════════════════════════
+    public function prepareAndCommit(array $previewRows, array $selectedNums, array $editedMap, int $userId): array {
+        $rowsToCommit = [];
+        
+        foreach ($previewRows as $row) {
+            $rn = strval($row['row_num'] ?? '');
+
+            // Skip if not selected by the user
+            if (!empty($selectedNums) && !in_array($rn, $selectedNums, true)) {
+                continue;
+            }
+
+            // Skip error/duplicate rows — they can never be imported
+            if (!empty($row['has_error'])) {
+                continue;
+            }
+
+            // Merge in any edits the user made in the browser
+            if (isset($editedMap[$rn])) {
+                $edited = $editedMap[$rn];
+
+                // Overwrite only the user-editable fields
+                foreach (['reference_no', 'description', 'date_received',
+                          'acquisition_cost', 'monthly_depreciation',
+                          'category_name', 'category_code', 'depreciation_start'] as $field) {
+                    if (array_key_exists($field, $edited)) {
+                        $row[$field] = $edited[$field];
+                    }
+                }
+
+                // ── Rebuild system_asset_code from the updated parts ──────
+                $suffix = !empty($row['reference_no'])
+                    ? $row['reference_no']
+                    : strtoupper(substr(uniqid(), -5));
+                    
+                $row['system_asset_code'] = sprintf(
+                    "%s-%s-%s-%s",
+                    $row['category_code'],
+                    $row['zone'],
+                    $row['branch_code'] ?? '',
+                    $suffix
+                );
+            }
+
+            $rowsToCommit[] = $row;
+        }
+
+        if (empty($rowsToCommit)) {
+            return ['success' => false, 'error' => 'No valid rows were selected for import.'];
+        }
+
+        return $this->commitImport($rowsToCommit, $userId);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
     //  COMMIT: Accepts already-validated preview payload, writes to DB
     // ══════════════════════════════════════════════════════════════════
     public function commitImport(array $previewRows, int $userId): array {
