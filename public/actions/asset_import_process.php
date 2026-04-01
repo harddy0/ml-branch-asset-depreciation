@@ -1,6 +1,4 @@
 <?php
-// Must be set BEFORE init.php so the shutdown-function layout wrapper
-// never fires — this file serves both JSON (AJAX preview) and redirects (commit).
 $noLayout = true;
 
 require_once __DIR__ . '/../../src/includes/init.php';
@@ -15,11 +13,8 @@ $importService = new \App\ImportService($pdo, $pdo2);
 
 // ══════════════════════════════════════════════════════════════════════
 //  PHASE 1 — PREVIEW (AJAX)
-//  Triggered by JS before showing the review modal.
-//  Returns JSON: { success, preview[], errors[], hasErrors, categories{} }
 // ══════════════════════════════════════════════════════════════════════
 if (isset($_POST['action']) && $_POST['action'] === 'preview') {
-
     if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
         while (ob_get_level() > 0) ob_end_clean();
         header('Content-Type: application/json; charset=utf-8');
@@ -51,11 +46,9 @@ if (isset($_POST['action']) && $_POST['action'] === 'preview') {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  PHASE 2 — COMMIT (regular POST from the hidden confirm form)
-//  User has reviewed the modal and clicked "Confirm Import".
+//  PHASE 2 — COMMIT (regular POST)
 // ══════════════════════════════════════════════════════════════════════
 if (isset($_POST['action']) && $_POST['action'] === 'commit') {
-
     $parsed = $_SESSION['pending_import_data'] ?? null;
 
     if (!$parsed) {
@@ -64,7 +57,6 @@ if (isset($_POST['action']) && $_POST['action'] === 'commit') {
         exit;
     }
 
-    // Clean up session immediately — prevents double-submit
     unset($_SESSION['pending_import_data']);
 
     if (!$parsed['success']) {
@@ -73,91 +65,26 @@ if (isset($_POST['action']) && $_POST['action'] === 'commit') {
         exit;
     }
 
-    // ── Resolve which row_nums the user actually selected ────────────
-    // JS sends: selected_rows = JSON array of row_num strings e.g. ["2","4","7"]
-    $selectedRaw  = $_POST['selected_rows'] ?? '';
+    // Decode user selections and edits
     $selectedNums = [];
-    if (!empty($selectedRaw)) {
-        $decoded = json_decode($selectedRaw, true);
-        if (is_array($decoded)) {
-            // Normalise to strings for comparison (row_num is always a string or int)
-            $selectedNums = array_map('strval', $decoded);
-        }
+    if (!empty($_POST['selected_rows'])) {
+        $decoded = json_decode($_POST['selected_rows'], true);
+        if (is_array($decoded)) $selectedNums = array_map('strval', $decoded);
     }
 
-    // ── Apply any in-browser edits the user made ─────────────────────
-    // JS sends: edited_rows = JSON array of full row objects that were modified
-    $editedRaw  = $_POST['edited_rows'] ?? '';
-    $editedMap  = []; // keyed by row_num string
-    if (!empty($editedRaw)) {
-        $decoded = json_decode($editedRaw, true);
+    $editedMap = [];
+    if (!empty($_POST['edited_rows'])) {
+        $decoded = json_decode($_POST['edited_rows'], true);
         if (is_array($decoded)) {
             foreach ($decoded as $editedRow) {
                 $rn = strval($editedRow['row_num'] ?? '');
-                if ($rn !== '') {
-                    $editedMap[$rn] = $editedRow;
-                }
+                if ($rn !== '') $editedMap[$rn] = $editedRow;
             }
         }
     }
 
-    // ── Build the final list of rows to commit ────────────────────────
-    // Rules:
-    //   1. Only rows whose row_num is in $selectedNums
-    //   2. Must not have has_error = true
-    //   3. If the user edited a row (editedMap), use the edited version
-    $rowsToCommit = [];
-    foreach ($parsed['preview'] as $row) {
-        $rn = strval($row['row_num'] ?? '');
-
-        // Skip if not selected by the user
-        if (!empty($selectedNums) && !in_array($rn, $selectedNums, true)) {
-            continue;
-        }
-
-        // Skip error/duplicate rows — they can never be imported
-        if (!empty($row['has_error'])) {
-            continue;
-        }
-
-        // Merge in any edits the user made in the browser
-        if (isset($editedMap[$rn])) {
-            $edited = $editedMap[$rn];
-
-            // Overwrite only the user-editable fields
-            foreach (['reference_no', 'description', 'date_received',
-                      'acquisition_cost', 'monthly_depreciation',
-                      'category_name', 'category_code', 'depreciation_start'] as $field) {
-                if (array_key_exists($field, $edited)) {
-                    $row[$field] = $edited[$field];
-                }
-            }
-
-            // ── Rebuild system_asset_code from the updated parts ──────
-            // Format: {CATCODE}-{ZONE}-{BRANCHCODE}-{REFNO or random suffix}
-            // branch_code is stored on the row from previewImport (never editable)
-            $suffix = !empty($row['reference_no'])
-                ? $row['reference_no']
-                : strtoupper(substr(uniqid(), -5));
-            $row['system_asset_code'] = sprintf(
-                "%s-%s-%s-%s",
-                $row['category_code'],
-                $row['zone'],
-                $row['branch_code'] ?? '',
-                $suffix
-            );
-        }
-
-        $rowsToCommit[] = $row;
-    }
-
-    if (empty($rowsToCommit)) {
-        $_SESSION['flash_error'] = 'No valid rows were selected for import.';
-        header('Location: ' . BASE_URL . '/public/asset-import/');
-        exit;
-    }
-
-    $result = $importService->commitImport($rowsToCommit, (int)$_SESSION['user_id']);
+    // Delegate business logic to Service
+    $result = $importService->prepareAndCommit($parsed['preview'], $selectedNums, $editedMap, (int)$_SESSION['user_id']);
 
     if ($result['success']) {
         $msg = "Successfully imported {$result['count']} asset(s).";
@@ -173,7 +100,6 @@ if (isset($_POST['action']) && $_POST['action'] === 'commit') {
     exit;
 }
 
-// Fallback
 $_SESSION['flash_error'] = 'Invalid request.';
 header('Location: ' . BASE_URL . '/public/asset-import/');
 exit;

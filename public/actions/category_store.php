@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../src/includes/init.php';
+require_once __DIR__ . '/../../src/classes/CategoryService.php';
 
 if (!$auth->isAdmin()) {
     header('Location: ' . BASE_URL . '/public/dashboard/'); exit;
@@ -26,16 +27,14 @@ if (!preg_match('/^[A-Z0-9]+$/', $code)) {
     header('Location: ' . BASE_URL . '/public/category-mgt/'); exit;
 }
 
-try {
-    $stmt = $pdo->prepare("INSERT INTO asset_categories (category_code, category_name, asset_life_months) VALUES (?, ?, ?)");
-    $stmt->execute([$code, $name, $life]);
+// Delegate DB logic to the Service Class
+$categoryService = new \App\CategoryService($pdo);
+$result = $categoryService->createCategory($code, $name, $life);
+
+if ($result['success']) {
     $_SESSION['flash_success'] = "Category \"{$name}\" ({$code}) added successfully.";
-} catch (PDOException $e) {
-    if ($e->getCode() === '23000') {
-        $_SESSION['flash_error'] = "Category code \"{$code}\" already exists. Please choose a different code.";
-    } else {
-        $_SESSION['flash_error'] = 'Failed to add category. Please try again.';
-    }
+} else {
+    $_SESSION['flash_error'] = $result['error'];
 }
 
 header('Location: ' . BASE_URL . '/public/category-mgt/');
