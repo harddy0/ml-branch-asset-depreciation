@@ -12,7 +12,7 @@ if (!isset($currentPage)) {
 }
 ?>
 <aside id="sidebar"
-    class="w-64 bg-[#ce1126] text-white flex flex-col z-10 h-full sticky top-0 overflow-x-hidden shadow-xl shadow-red-900/20 -pb-50"
+    class="w-64 bg-[#ce2216] text-white flex flex-col z-10 h-full sticky top-0 overflow-x-hidden shadow-xl shadow-red-900/20 -pb-50"
     style="transition: width 300ms cubic-bezier(0.4,0,0.2,1);"
     onmouseenter="if(!sidebarPinned) this.style.width='256px'"
     onmouseleave="if(!sidebarPinned) this.style.width='64px'">
