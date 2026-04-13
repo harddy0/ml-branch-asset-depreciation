@@ -5,6 +5,7 @@ if (!isset($currentPage)) {
     if     (str_contains($uri, '/dashboard'))     $currentPage = 'dashboard';
     elseif (str_contains($uri, '/manage-assets')) $currentPage = 'manage-assets'; // ADD THIS LINE
     elseif (str_contains($uri, '/asset-import'))  $currentPage = 'asset-import';
+    elseif (str_contains($uri, '/depreciation-list')) $currentPage = 'depreciation-list';
     elseif (str_contains($uri, '/category-mgt'))  $currentPage = 'category-mgt';
     elseif (str_contains($uri, '/user-mgt'))      $currentPage = 'user-mgt';
     else                                          $currentPage = '';
@@ -20,8 +21,9 @@ if (!isset($currentPage)) {
         <span class="sidebar-text text-xs font-bold tracking-widest text-white/80 uppercase">Menu</span>
         <div class="controls ml-auto flex items-center gap-2">
             <button onclick="toggleSidebarPin()" class="p-1.5 hover:bg-white/20 rounded-lg transition-colors focus:outline-none" aria-label="Toggle sidebar">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+               <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
             </button>
         </div>
@@ -60,6 +62,23 @@ if (!isset($currentPage)) {
                 </a>
             </li>
 
+            <li class="<?= $currentPage === 'depreciation-list'
+                ? 'bg-black/25 border-l-4 border-white'
+                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
+                <a href="<?= $baseUrl ?>/depreciation-list/"
+                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3h6a2 2 0 012 2v0a2 2 0 01-2 2H9a2 2 0 01-2-2 2 2 0 012-2z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 12l1.5 1.5L14 11" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 16h4" />
+                    </svg>
+                    <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                        Assets
+                    </span>
+                </a>
+            </li>
+
             <li class="<?= $currentPage === 'manage-assets'
                 ? 'bg-black/25 border-l-4 border-white'
                 : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
@@ -70,7 +89,7 @@ if (!isset($currentPage)) {
                             d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
                     <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
-                        Asset Overview
+                        Depreciation Report
                     </span>
                 </a>
             </li>
@@ -87,7 +106,7 @@ if (!isset($currentPage)) {
                             d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
                     </svg>
                     <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
-                        Category
+                        Expense Type
                     </span>
                 </a>
             </li>
