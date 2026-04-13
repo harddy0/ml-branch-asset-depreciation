@@ -48,7 +48,7 @@ $total = count($categories);
         </p>
 
         <button onclick="openModal('modal-add-category')"
-            class="inline-flex items-center gap-2 bg-[#ce1126] hover:bg-red-700 active:bg-red-800
+            class="inline-flex items-center gap-2 bg-[#ce2216] hover:bg-red-700 active:bg-red-800
                     text-white text-xs font-black uppercase tracking-widest
                     px-4 py-2 rounded-xl shadow-md shadow-slate-200 hover:shadow-md transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
