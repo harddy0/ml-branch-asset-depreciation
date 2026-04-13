@@ -1,0 +1,187 @@
+<?php
+namespace App;
+
+class AssetService {
+    private \PDO $db;
+
+    public function __construct(\PDO $db) {
+        $this->db = $db;
+    }
+
+    /**
+     * ==========================================
+     * CREATE (Add New Asset Only)
+     * ==========================================
+     */
+    public function createAsset(array $data, int $userId): array {
+        try {
+            $sql = "
+                INSERT INTO assets (
+                    system_asset_code, reference_no, 
+                    main_zone_code, zone_code, region_code, cost_center_code, branch_name,
+                    group_code, asset_code, depreciation_code, 
+                    description, serial_number, quantity, property_type,
+                    date_received, depreciation_start_date, depreciation_end_date,
+                    acquisition_cost, monthly_depreciation, created_by
+                ) VALUES (
+                    :system_asset_code, :reference_no, 
+                    :main_zone_code, :zone_code, :region_code, :cost_center_code, :branch_name,
+                    :group_code, :asset_code, :depreciation_code, 
+                    :description, :serial_number, :quantity, :property_type,
+                    :date_received, :depreciation_start_date, :depreciation_end_date,
+                    :acquisition_cost, :monthly_depreciation, :created_by
+                )
+            ";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':system_asset_code'       => $data['system_asset_code'],
+                ':reference_no'            => $data['reference_no'] ?? null,
+                ':main_zone_code'          => $data['main_zone_code'],
+                ':zone_code'               => $data['zone_code'],
+                ':region_code'             => $data['region_code'],
+                ':cost_center_code'        => $data['cost_center_code'],
+                ':branch_name'             => $data['branch_name'],
+                ':group_code'              => $data['group_code'],
+                ':asset_code'              => $data['asset_code'],
+                ':depreciation_code'       => $data['depreciation_code'],
+                ':description'             => $data['description'],
+                ':serial_number'           => $data['serial_number'] ?? null,
+                ':quantity'                => $data['quantity'] ?? 1,
+                ':property_type'           => $data['property_type'] ?? 'PURCHASED',
+                ':date_received'           => $data['date_received'],
+                ':depreciation_start_date' => $data['depreciation_start_date'],
+                ':depreciation_end_date'   => $data['depreciation_end_date'],
+                ':acquisition_cost'        => $data['acquisition_cost'],
+                ':monthly_depreciation'    => $data['monthly_depreciation'],
+                ':created_by'              => $userId
+            ]);
+
+            return ['success' => true, 'asset_id' => $this->db->lastInsertId()];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * ==========================================
+     * READ (Get Single Asset)
+     * ==========================================
+     */
+    public function getAssetById(int $id): ?array {
+        $sql = "SELECT * FROM assets WHERE id = :id LIMIT 1";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        
+        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $result ?: null;
+    }
+
+    /**
+     * ==========================================
+     * READ (Get Multiple / Paginated / Filtered)
+     * ==========================================
+     */
+    public function getAssets(array $filters = [], int $limit = 50, int $offset = 0): array {
+        $sql = "
+            SELECT id, system_asset_code, description, branch_name, 
+                   acquisition_cost, status, date_received 
+            FROM assets 
+            WHERE 1=1
+        ";
+        
+        $params = [];
+
+        // Apply dynamic filters
+        if (!empty($filters['status'])) {
+            $sql .= " AND status = :status";
+            $params[':status'] = $filters['status'];
+        }
+        if (!empty($filters['zone_code'])) {
+            $sql .= " AND zone_code = :zone_code";
+            $params[':zone_code'] = $filters['zone_code'];
+        }
+
+        $sql .= " ORDER BY created_at DESC LIMIT :limit OFFSET :offset";
+
+        $stmt = $this->db->prepare($sql);
+        
+        // Bind parameters safely
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        
+        $stmt->execute();
+        
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * ==========================================
+     * UPDATE (Edit Asset Info)
+     * ==========================================
+     */
+    public function updateAsset(int $id, array $data): array {
+        $sql = "
+            UPDATE assets 
+            SET 
+                reference_no = :reference_no,
+                description = :description,
+                serial_number = :serial_number
+            WHERE id = :id
+        ";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                ':id'            => $id,
+                ':reference_no'  => $data['reference_no'] ?? null,
+                ':description'   => $data['description'],
+                ':serial_number' => $data['serial_number'] ?? null,
+            ]);
+
+            return ['success' => true];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * ==========================================
+     * DELETE / STATUS UPDATE (Dispose/Sell)
+     * ==========================================
+     */
+    public function changeStatus(int $id, string $newStatus, ?string $retirementDate = null): array {
+        $allowedStatuses = ['ACTIVE', 'SOLD', 'DISPOSED', 'DEPRECIATED'];
+        
+        if (!in_array($newStatus, $allowedStatuses)) {
+            return ['success' => false, 'error' => 'Invalid status provided.'];
+        }
+
+        $sql = "UPDATE assets SET status = :status";
+        $params = [
+            ':id' => $id, 
+            ':status' => $newStatus
+        ];
+
+        // If the asset is sold or disposed of, we log the exact date it left the company
+        if (in_array($newStatus, ['SOLD', 'DISPOSED']) && $retirementDate) {
+            $sql .= ", retirement_date = :retirement_date";
+            $params[':retirement_date'] = $retirementDate;
+        }
+
+        $sql .= " WHERE id = :id";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return ['success' => true];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+}
