@@ -80,23 +80,29 @@ $total = count($categories);
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <colgroup>
-                <col style="width:20%" />
+                <col style="width:12%" />
                 <col style="width:30%" />
-                <col style="width:25%" />
-                <col style="width:25%" />
+                <col style="width:12%" />
+                <col style="width:12%" />
+                <col style="width:12%" />
+                <col style="width:12%" />
+                <col style="width:10%" />
             </colgroup>
             <thead>
                 <tr class="bg-[#ce2216] border-b border-slate-200">
                     <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2">Code</th>
                     <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-2">Category Name</th>
                     <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2">Asset Life</th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">Group code</th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">Asset code</th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">Depreciation code</th>
                     <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2">Action</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100" id="categories-tbody">
                 <?php if (empty($categories)): ?>
                 <tr>
-                    <td colspan="4" class="text-center py-20">
+                    <td colspan="7" class="text-center py-20">
                         <div class="flex flex-col items-center gap-2">
                             <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center">
                                 <svg class="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,6 +141,21 @@ $total = count($categories);
                         </div>
                     </td>
 
+                    <!-- Group Code -->
+                    <td class="px-6 py-0 text-center group-code">
+                        <?= htmlspecialchars($cat['group_code'] ?? '') ?>
+                    </td>
+
+                    <!-- Asset Code -->
+                    <td class="px-6 py-0 text-center asset-code">
+                        <?= htmlspecialchars($cat['asset_code'] ?? '') ?>
+                    </td>
+
+                    <!-- Depreciation Code -->
+                    <td class="px-6 py-0 text-center depreciation-code">
+                        <?= htmlspecialchars($cat['depreciation_code'] ?? '') ?>
+                    </td>
+
                     <!-- Hidden edit button -->
                     <td class="px-6 py-0 text-center">
                         <button
@@ -143,6 +164,9 @@ $total = count($categories);
                                 'category_code'     => $cat['category_code'],
                                 'category_name'     => $cat['category_name'],
                                 'asset_life_months' => $cat['asset_life_months'],
+                                'group_code'        => $cat['group_code'] ?? '',
+                                'asset_code'        => $cat['asset_code'] ?? '',
+                                'depreciation_code' => $cat['depreciation_code'] ?? '',
                             ]), ENT_QUOTES) ?>)"
                             class="p-2 text-slate-400 hover:text-slate-900 hover:bg-red-50 rounded-lg transition-all opacity-100"
                             title="Edit Category">
