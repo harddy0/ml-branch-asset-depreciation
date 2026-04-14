@@ -295,12 +295,13 @@
                         3. Depreciation Schedule
                     </h3>
 
+                    <!-- Row 1: Date Received + Start Date -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">
                                 Date Received <span class="text-red-500">*</span>
                             </label>
-                            <input type="date" name="date_received" required
+                            <input type="date" name="date_received" id="date_received" required
                                 class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5
                                        focus:ring-2 focus:ring-red-500 outline-none transition-all">
                         </div>
@@ -308,12 +309,33 @@
                             <label class="block text-xs font-bold text-slate-700 mb-1">
                                 Depreciation Start Date <span class="text-red-500">*</span>
                             </label>
-                            <input type="date" name="depreciation_start_date" required
+                            <input type="date" name="depreciation_start_date" id="depreciation_start_date" required
                                 class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5
                                        focus:ring-2 focus:ring-red-500 outline-none transition-all">
+                            <p class="text-[10px] text-slate-400 mt-1">Defaults to Date Received if left unchanged.</p>
                         </div>
                     </div>
 
+                    <!-- Row 2: End Date (auto-computed, overridable) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                                Depreciation End Date <span class="text-red-500">*</span>
+                                <span id="end_date_auto_badge"
+                                    class="text-[9px] font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded uppercase tracking-wide">
+                                    Auto
+                                </span>
+                            </label>
+                            <input type="date" name="depreciation_end_date" id="depreciation_end_date" required
+                                class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5
+                                       focus:ring-2 focus:ring-red-500 outline-none transition-all bg-slate-50">
+                            <p id="end_date_hint" class="text-[10px] text-slate-400 mt-1">
+                                Auto-computed from Start Date + depreciation months. You can override.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Depreciate On + Specific Day -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">
@@ -337,6 +359,7 @@
                                        bg-slate-100 text-slate-400 outline-none transition-all cursor-not-allowed">
                         </div>
                     </div>
+
                 </section>
 
             </form>

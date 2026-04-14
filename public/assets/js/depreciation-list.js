@@ -168,20 +168,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // 3. GL GROUP SELECT — Load options + Auto-fill
     // ==========================================
 
-    const glGroupSelect       = document.getElementById('gl_group_select');
-    const glGroupCodeDisplay  = document.getElementById('gl_group_code_display');
-    const glGroupCodeValue    = document.getElementById('gl_group_code_value');   // hidden input → name="group_code"
-    const glAssetCodeDisplay  = document.getElementById('gl_asset_code_display'); // name="asset_code"
-    const glAssetNameDisplay  = document.getElementById('gl_asset_name_display');
-    const glDepCodeDisplay    = document.getElementById('gl_dep_code_display');   // name="depreciation_code"
-    const glDepNameDisplay    = document.getElementById('gl_dep_name_display');
+    const glGroupSelect      = document.getElementById('gl_group_select');     // <select name="group_code">
+    const glGroupCodeDisplay = document.getElementById('gl_group_code_display'); // read-only code box on the RIGHT
+    const glAssetCodeDisplay = document.getElementById('gl_asset_code_display'); // name="asset_code"
+    const glAssetNameDisplay = document.getElementById('gl_asset_name_display');
+    const glDepCodeDisplay   = document.getElementById('gl_dep_code_display');   // name="depreciation_code"
+    const glDepNameDisplay   = document.getElementById('gl_dep_name_display');
 
-    /**
-     * Clears all auto-fill GL fields back to empty/placeholder state.
-     */
+    /** Clears all auto-fill GL fields back to empty/placeholder state. */
     function clearGlFields() {
         if (glGroupCodeDisplay) glGroupCodeDisplay.value = '';
-        if (glGroupCodeValue)   glGroupCodeValue.value   = '';
         if (glAssetCodeDisplay) glAssetCodeDisplay.value = '';
         if (glAssetNameDisplay) glAssetNameDisplay.value = '';
         if (glDepCodeDisplay)   glDepCodeDisplay.value   = '';
@@ -189,46 +185,35 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /**
-     * Fetches all asset_groups from the DB and populates the Group select.
-     * Uses the existing get_group_details endpoint at the list level via
-     * AssetClassificationService::getDropdownOptions() — but we need a
-     * separate lightweight list endpoint.
-     *
-     * NOTE: The get_group_details.php endpoint returns one group at a time.
-     * We load the group list from a new get_asset_groups.php endpoint (see below),
-     * OR we can inline it via PHP in the modal.
-     *
-     * For now we use the PHP-inlined approach: the modal PHP file populates
-     * a JS array window.__assetGroups that this script reads.
+     * Populate the Group <select> from window.__assetGroups injected by PHP.
+     * Format: [{ group_code: 'OE24MOS', group_name: 'Office Equipment (24mos)' }, ...]
      */
     function initGroupDropdown() {
         if (!glGroupSelect) return;
 
         const groups = window.__assetGroups || [];
 
+        // Always reset first
         glGroupSelect.innerHTML = '<option value="" disabled selected>Select Group...</option>';
 
         if (groups.length === 0) {
-            const opt = document.createElement('option');
-            opt.disabled    = true;
-            opt.textContent = 'No groups available';
-            glGroupSelect.appendChild(opt);
+            glGroupSelect.innerHTML = '<option value="" disabled selected>No groups configured</option>';
+            console.warn('GL groups: window.__assetGroups is empty. Check inject_asset_groups_snippet.php is loaded before depreciation-list.js.');
             return;
         }
 
-        groups.forEach(g => {
-            const opt = document.createElement('option');
+        groups.forEach(function (g) {
+            const opt       = document.createElement('option');
             opt.value       = g.group_code;
             opt.textContent = g.group_name;
             glGroupSelect.appendChild(opt);
         });
     }
 
+    // Run immediately — window.__assetGroups must be set before this script loads
     initGroupDropdown();
 
-    /**
-     * On group change: fetch full details and auto-fill the read-only GL boxes.
-     */
+    /** On group change: show code on right, fetch chain, fill Asset + Dep rows. */
     if (glGroupSelect) {
         glGroupSelect.addEventListener('change', function () {
             const selectedCode = this.value;
@@ -238,46 +223,133 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // Show the code in the left display box immediately
+            // Show selected group_code in the right-side read-only box immediately
             if (glGroupCodeDisplay) glGroupCodeDisplay.value = selectedCode;
-            if (glGroupCodeValue)   glGroupCodeValue.value   = selectedCode;
 
-            // Fetch the full chain from the API
+            // Fetch the full classification chain from the API
             fetch(`${groupDetailsApiUrl}?group_code=${encodeURIComponent(selectedCode)}`)
-                .then(r => {
-                    if (!r.ok) throw new Error("HTTP " + r.status);
+                .then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
                     return r.json();
                 })
-                .then(res => {
+                .then(function (res) {
                     if (!res.success || !res.data) {
                         console.error('GL auto-fill failed:', res.error);
                         clearGlFields();
+                        // Still keep the group code display since user did pick something
+                        if (glGroupCodeDisplay) glGroupCodeDisplay.value = selectedCode;
                         return;
                     }
 
                     const d = res.data;
 
-                    // Group
+                    // Right-side code box (confirms what was selected)
                     if (glGroupCodeDisplay) glGroupCodeDisplay.value = d.group_code;
-                    if (glGroupCodeValue)   glGroupCodeValue.value   = d.group_code;
 
-                    // Asset (credit GL)
+                    // Asset row (credit GL account)
                     if (glAssetCodeDisplay) glAssetCodeDisplay.value = d.asset_code;
                     if (glAssetNameDisplay) glAssetNameDisplay.value = d.asset_name;
 
-                    // Depreciation P&L (debit GL)
+                    // Depreciation P&L row (debit GL account)
                     if (glDepCodeDisplay) glDepCodeDisplay.value = d.depreciation_code;
                     if (glDepNameDisplay) glDepNameDisplay.value = d.depreciation_description;
+
+                    // Feed actual_months into the end date auto-compute
+                    if (typeof window.__setActualMonths === 'function') {
+                        window.__setActualMonths(d.actual_months);
+                    }
                 })
-                .catch(err => {
+                .catch(function (err) {
                     console.error('GL fetch error:', err);
-                    clearGlFields();
                 });
         });
     }
 
     // ==========================================
-    // 4. FORM SUBMISSION INTERCEPT
+    // 4. END DATE AUTO-COMPUTE
+    // ==========================================
+
+    const dateReceivedInput   = document.getElementById('date_received');
+    const startDateInput      = document.getElementById('depreciation_start_date');
+    const endDateInput        = document.getElementById('depreciation_end_date');
+    const endDateAutoBadge    = document.getElementById('end_date_auto_badge');
+
+    // Tracks whether the user has manually overridden the end date
+    let endDateManuallySet = false;
+
+    // actual_months comes from the GL group fetch — stored here
+    let currentActualMonths = 0;
+
+    /**
+     * Computes the last day of the month that is (months - 1) after startDate.
+     * e.g. start=2022-09-30, months=24 → 2024-08-31
+     */
+    function computeEndDate(startDateStr, months) {
+        if (!startDateStr || !months || months < 1) return '';
+
+        const start = new Date(startDateStr + 'T00:00:00');
+        if (isNaN(start)) return '';
+
+        // Move forward (months) months then go to last day of that month
+        const end = new Date(start.getFullYear(), start.getMonth() + months, 0);
+        // Format as YYYY-MM-DD
+        const y = end.getFullYear();
+        const m = String(end.getMonth() + 1).padStart(2, '0');
+        const d = String(end.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    /** Tries to fill the end date if conditions are met and user hasn't overridden. */
+    function tryAutoFillEndDate() {
+        if (endDateManuallySet) return;
+        if (!currentActualMonths) return;
+
+        const startVal = startDateInput ? startDateInput.value : '';
+        if (!startVal) return;
+
+        const computed = computeEndDate(startVal, currentActualMonths);
+        if (computed && endDateInput) {
+            endDateInput.value = computed;
+            endDateInput.classList.add('bg-slate-50');
+            endDateInput.classList.remove('bg-white');
+            if (endDateAutoBadge) endDateAutoBadge.classList.remove('hidden');
+        }
+    }
+
+    // When user manually edits end date — stop auto-computing
+    if (endDateInput) {
+        endDateInput.addEventListener('input', function () {
+            endDateManuallySet = true;
+            endDateInput.classList.remove('bg-slate-50');
+            endDateInput.classList.add('bg-white');
+            if (endDateAutoBadge) endDateAutoBadge.classList.add('hidden');
+        });
+    }
+
+    // Date Received → default Start Date if start is empty
+    if (dateReceivedInput) {
+        dateReceivedInput.addEventListener('change', function () {
+            if (startDateInput && !startDateInput.value) {
+                startDateInput.value = this.value;
+            }
+            tryAutoFillEndDate();
+        });
+    }
+
+    // Start Date changed → recompute end date
+    if (startDateInput) {
+        startDateInput.addEventListener('change', function () {
+            tryAutoFillEndDate();
+        });
+    }
+
+    // Expose a hook so the GL group fetch can update actual_months and trigger recompute
+    window.__setActualMonths = function (months) {
+        currentActualMonths = parseInt(months) || 0;
+        endDateManuallySet  = false; // reset override when group changes
+        if (endDateAutoBadge) endDateAutoBadge.classList.remove('hidden');
+        tryAutoFillEndDate();
+    };
     // ==========================================
     const form = document.getElementById('addAssetForm');
     if (form) {
@@ -285,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
 
             // Extra guard: ensure a group was actually selected
-            if (!glGroupCodeValue || !glGroupCodeValue.value) {
+            if (!glGroupSelect || !glGroupSelect.value) {
                 alert('Please select an Asset Group before saving.');
                 glGroupSelect && glGroupSelect.focus();
                 return;
@@ -320,10 +392,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (m.attributeName === 'class' && modalEl.classList.contains('hidden')) {
                     if (form) form.reset();
                     clearGlFields();
-                    // Re-init group dropdown in case it was wiped by reset()
-                    if (glGroupSelect) {
-                        glGroupSelect.value = '';
-                    }
+                    // Restore placeholder after reset() clears the select
+                    if (glGroupSelect) glGroupSelect.value = '';
+                    // Reset end date auto-compute state
+                    endDateManuallySet = false;
+                    currentActualMonths = 0;
+                    if (endDateAutoBadge) endDateAutoBadge.classList.remove('hidden');
                 }
             });
         });
