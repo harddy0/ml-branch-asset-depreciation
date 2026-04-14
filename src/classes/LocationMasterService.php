@@ -83,28 +83,34 @@ class LocationMasterService {
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
-    /**
-     * 4. Fetch Branches / Cost Centers
-     * Table: branch_profile
-     * Returns both cost_center and branch_name together.
+   /**
+     * 4. Fetch Branches / Cost Centers with full Hierarchy
      */
     public function getBranches(?string $regionCode = null): array {
         $this->checkConnection();
         
-        $sql = "SELECT DISTINCT cost_center AS cost_center_code, branch_name 
-                FROM branch_profile 
-                WHERE cost_center IS NOT NULL AND branch_name IS NOT NULL";
+        // ADDED r.region_description to the SELECT statement
+        $sql = "SELECT DISTINCT 
+                    b.cost_center AS cost_center_code, 
+                    b.branch_name,
+                    r.region_code,
+                    r.region_description,  /* NEW FIELD ADDED HERE */
+                    z.zone_code,
+                    m.main_zone_code
+                FROM branch_profile b
+                LEFT JOIN region_masterfile r ON b.region_code = r.region_code
+                LEFT JOIN zone_masterfile z ON r.zone_code = z.zone_code
+                LEFT JOIN main_zone_masterfile m ON z.main_zone_code = m.main_zone_code
+                WHERE b.cost_center IS NOT NULL AND b.branch_name IS NOT NULL";
+        
         $params = [];
 
-        // If branch_profile has a region_code column linking them, you can filter it:
-        /*
         if ($regionCode) {
-            $sql .= " AND region_code = :region_code";
+            $sql .= " AND b.region_code = :region_code";
             $params[':region_code'] = $regionCode;
         }
-        */
 
-        $sql .= " ORDER BY branch_name ASC";
+        $sql .= " ORDER BY b.branch_name ASC";
         
         $stmt = $this->dbMaster->prepare($sql);
         $stmt->execute($params);

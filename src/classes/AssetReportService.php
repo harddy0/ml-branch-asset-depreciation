@@ -16,102 +16,87 @@ class AssetReportService {
     }
 
     /**
-     * Fetch unique Zones from Database 2 (masterdata)
+     * Fetch unique zones from active assets.
      */
     public function getZones(): array {
-        if (!$this->dbMaster) return [];
-        $stmt = $this->dbMaster->query("SELECT DISTINCT zone FROM branch_profile WHERE zone IS NOT NULL AND zone != '' ORDER BY zone");
+        $stmt = $this->db->query("SELECT DISTINCT main_zone_code FROM assets WHERE status = 'ACTIVE' AND main_zone_code IS NOT NULL AND main_zone_code != '' ORDER BY main_zone_code");
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
     /**
-     * Fetch unique Regions based on Zone from Database 2
+     * Fetch unique regions based on selected zone from active assets.
      */
     public function getRegions(?string $zone = null): array {
-        if (!$this->dbMaster) return [];
-        $sql = "SELECT DISTINCT region FROM branch_profile WHERE region IS NOT NULL AND region != ''";
+        $sql = "SELECT DISTINCT region_code FROM assets WHERE status = 'ACTIVE' AND region_code IS NOT NULL AND region_code != ''";
         $params = [];
         if (!empty($zone)) {
-            $sql .= " AND zone = ?";
+            $sql .= " AND main_zone_code = ?";
             $params[] = $zone;
         }
-        $sql .= " ORDER BY region";
-        $stmt = $this->dbMaster->prepare($sql);
+        $sql .= " ORDER BY region_code";
+        $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
     /**
-     * Fetch unique Branch Names based on Zone and Region from Database 2
+     * Fetch unique branch names based on zone and region from active assets.
      */
     public function getBranches(?string $zone = null, ?string $region = null): array {
-        if (!$this->dbMaster) return [];
-        $sql = "SELECT DISTINCT branch_name FROM branch_profile WHERE branch_name IS NOT NULL AND branch_name != ''";
+        $sql = "SELECT DISTINCT branch_name FROM assets WHERE status = 'ACTIVE' AND branch_name IS NOT NULL AND branch_name != ''";
         $params = [];
         if (!empty($zone)) {
-            $sql .= " AND zone = ?";
+            $sql .= " AND main_zone_code = ?";
             $params[] = $zone;
         }
         if (!empty($region)) {
-            $sql .= " AND region = ?";
+            $sql .= " AND region_code = ?";
             $params[] = $region;
         }
         $sql .= " ORDER BY branch_name";
-        $stmt = $this->dbMaster->prepare($sql);
+        $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
-   /**
-     * Fetch filtered asset data and calculate totals strictly by date range
-     */
     /**
-     * Fetch filtered asset data and calculate totals strictly by date range
+     * Fetch running depreciation report data and totals by effective run date.
      */
     public function getFilteredAssets(array $filters): array {
         if (empty($filters['date_from']) || empty($filters['date_to'])) {
             return ['data' => [], 'totals' => ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0]];
         }
 
-        // STRICT INNER JOIN: Added c.category_code to the SELECT statement
         $sql = "
             SELECT 
                 a.id as asset_id,
                 a.system_asset_code, 
                 a.reference_no,
-                a.zone,
-                a.region,
+                a.main_zone_code as zone,
+                a.region_code as region,
                 a.cost_center_code as cost_center,
                 a.branch_name, 
-                c.category_code,       -- <=== ADDED THIS BACK IN
-                c.category_name, 
-                c.asset_life_months,
+                a.group_code,
+                a.group_code as category_code,
+                a.group_code as category_name,
+                COALESCE(ag.actual_months, rd.periods_elapsed + rd.periods_remaining, 0) as asset_life_months,
                 a.description, 
                 a.date_received,
                 a.depreciation_start_date,
                 a.retirement_date,
                 a.acquisition_cost, 
-                
-                -- Calculated dynamically: Cost / Asset Lives
-                (a.acquisition_cost / c.asset_life_months) as period_depreciation_expense, 
-                
+                a.monthly_depreciation as period_depreciation_expense,
                 rd.accumulated_depreciation, 
-                
-                -- Subtract elapsed months from the total category life using ROUND()
-                CASE 
-                    WHEN a.acquisition_cost > 0 AND c.asset_life_months > 0 
-                    THEN c.asset_life_months - ROUND(rd.accumulated_depreciation / (a.acquisition_cost / c.asset_life_months), 0)
-                    ELSE 0 
-                END as remaining_life,
-                
+                rd.periods_remaining as remaining_life,
                 rd.book_value, 
-                rd.period_date
+                COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) as period_date,
+                a.monthly_depreciation
             FROM assets a
-            JOIN asset_categories c ON a.category_code = c.category_code
             JOIN running_depreciation rd ON a.id = rd.asset_id
+            LEFT JOIN asset_groups ag ON a.group_code = ag.group_code
             WHERE a.status = 'ACTIVE'
-              AND rd.period_date >= :date_from 
-              AND rd.period_date <= :date_to
+              AND COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) >= :date_from 
+              AND COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) <= :date_to
         ";
 
         $params = [
@@ -120,12 +105,12 @@ class AssetReportService {
         ];
 
         if (!empty($filters['zone'])) {
-            $sql .= " AND a.zone = :zone";
+            $sql .= " AND a.main_zone_code = :zone";
             $params[':zone'] = $filters['zone'];
         }
 
         if (!empty($filters['region'])) {
-            $sql .= " AND a.region = :region";
+            $sql .= " AND a.region_code = :region";
             $params[':region'] = $filters['region'];
         }
 
@@ -134,7 +119,7 @@ class AssetReportService {
             $params[':branch_name'] = $filters['branch_name'];
         }
 
-        $sql .= " ORDER BY rd.period_date DESC, a.branch_name ASC";
+        $sql .= " ORDER BY period_date DESC, a.branch_name ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -153,7 +138,7 @@ class AssetReportService {
     }
 
     /**
-     * Generate Excel File strictly from filtered data
+     * Generate Excel file from running depreciation report data.
      */
     public function exportToExcel(array $filters): void {
         $report = $this->getFilteredAssets($filters);
@@ -170,7 +155,7 @@ class AssetReportService {
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Active Assets');
+        $sheet->setTitle('Running Depreciation');
 
         // 1. Header block (use export image header)
         $headerImagePath = dirname(__DIR__, 2) . '/public/assets/img/excel_header.png';
@@ -187,7 +172,7 @@ class AssetReportService {
         // 2. Set table headers
         $headerRow = 3;
         $headers = [
-            'Codes', 'Branches', 'Asset Category', 'Description', 
+            'Codes', 'Branches', 'Group Code', 'Description', 
             'Cost', 'Depreciation', 'Accu. Dep.', 'Asset Lives', 
             'Book Value', 'Date Gen.'
         ];
@@ -205,7 +190,7 @@ class AssetReportService {
         foreach ($data as $row) {
             $sheet->setCellValue('A' . $rowNum, $row['system_asset_code']);
             $sheet->setCellValue('B' . $rowNum, $row['branch_name']);
-            $sheet->setCellValue('C' . $rowNum, $row['category_name']);
+            $sheet->setCellValue('C' . $rowNum, $row['group_code']);
             $sheet->setCellValue('D' . $rowNum, $row['description']);
             $sheet->setCellValue('E' . $rowNum, $row['acquisition_cost']);
             $sheet->setCellValue('F' . $rowNum, $row['period_depreciation_expense']);
@@ -263,7 +248,7 @@ class AssetReportService {
 
         // 8. Output stream to trigger browser download
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Active_Assets_Report_' . date('Ymd_His') . '.xlsx"');
+        header('Content-Disposition: attachment;filename="Running_Depreciation_Report_' . date('Ymd_His') . '.xlsx"');
         header('Cache-Control: max-age=0');
 
         $writer = new Xlsx($spreadsheet);

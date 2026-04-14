@@ -261,7 +261,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 html += `<tr class="asset-row cursor-pointer hover:bg-red-50/40 transition-colors" data-asset='${payload}'>
                     <td class="py-2 pl-5 pr-3 font-mono text-xs text-slate-900">${r.system_asset_code}</td>
                     <td class="py-2 px-3 font-mono text-xs">${r.branch_name}</td>
-                    <td class="py-2 px-3 font-mono text-xs">${r.category_name}</td>
+                    <td class="py-2 px-3 font-mono text-xs">${r.group_code || ''}</td>
                     <td class="py-2 px-3 truncate font-mono text-xs max-w-[200px]" title="${r.description}">${r.description}</td>
                     <td class="py-2 px-3 text-right font-mono text-xs">${currency.format(r.acquisition_cost)}</td>
                     <td class="py-2 px-3 text-right font-mono text-xs text-slate-900">${currency.format(r.period_depreciation_expense)}</td>
@@ -298,6 +298,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 .replace(/&gt;/g, '>');
             let parsed = JSON.parse(decoded);
 
+            parsed.category_name = parsed.category_name || parsed.group_code || '';
+            parsed.category_code = parsed.category_code || parsed.group_code || '';
             parsed.depreciation_start   = parsed.depreciation_start_date || parsed.depreciation_start;
             parsed.monthly_depreciation = parsed.period_depreciation_expense || parsed.monthly_depreciation;
 
