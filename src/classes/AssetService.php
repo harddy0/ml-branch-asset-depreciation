@@ -15,6 +15,8 @@ class AssetService {
      */
     public function createAsset(array $data, int $userId): array {
         try {
+            $this->db->beginTransaction();
+
             $sql = "
                 INSERT INTO assets (
                     system_asset_code, reference_no, 
@@ -66,9 +68,23 @@ class AssetService {
                 ':created_by'              => $userId
             ]);
 
-            return ['success' => true, 'asset_id' => $this->db->lastInsertId()];
+            $assetId = (int)$this->db->lastInsertId();
+
+            $runningDepService = new RunningDepreciationService($this->db);
+            $runningDepService->initializeForAsset(
+                $assetId,
+                (float)$data['acquisition_cost'],
+                (string)$data['group_code']
+            );
+
+            $this->db->commit();
+
+            return ['success' => true, 'asset_id' => $assetId];
 
         } catch (\Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
