@@ -266,57 +266,84 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ==========================================
-    // 4. END DATE AUTO-COMPUTE
+    // 4. END DATE AUTO-COMPUTE (UPDATED LOGIC)
     // ==========================================
 
     const dateReceivedInput   = document.getElementById('date_received');
-    const startDateInput      = document.getElementById('depreciation_start_date');
+    const startDateInput      = document.getElementById('depreciation_start_date'); // Now a hidden field
     const endDateInput        = document.getElementById('depreciation_end_date');
     const endDateAutoBadge    = document.getElementById('end_date_auto_badge');
+    
+    // Schedule Setting Selectors
+    const depOnSelect         = document.getElementById('depreciation_on');
+    const depDayInput         = document.getElementById('depreciation_day');
 
-    // Tracks whether the user has manually overridden the end date
     let endDateManuallySet = false;
-
-    // actual_months comes from the GL group fetch — stored here
     let currentActualMonths = 0;
 
-    /**
-     * Computes the last day of the month that is (months - 1) after startDate.
-     * e.g. start=2022-09-30, months=24 → 2024-08-31
-     */
-    function computeEndDate(startDateStr, months) {
-        if (!startDateStr || !months || months < 1) return '';
+    function computeDates() {
+        if (!dateReceivedInput || !dateReceivedInput.value) return;
 
-        const start = new Date(startDateStr + 'T00:00:00');
-        if (isNaN(start)) return '';
+        const recvDate = new Date(dateReceivedInput.value + 'T00:00:00');
+        if (isNaN(recvDate)) return;
 
-        // Move forward (months) months then go to last day of that month
-        const end = new Date(start.getFullYear(), start.getMonth() + months, 0);
-        // Format as YYYY-MM-DD
-        const y = end.getFullYear();
-        const m = String(end.getMonth() + 1).padStart(2, '0');
-        const d = String(end.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    }
+        const depOn = depOnSelect ? depOnSelect.value : 'LAST_DAY';
+        let specificDay = (depDayInput && !depDayInput.disabled && depDayInput.value) ? parseInt(depDayInput.value) : 1;
 
-    /** Tries to fill the end date if conditions are met and user hasn't overridden. */
-    function tryAutoFillEndDate() {
-        if (endDateManuallySet) return;
-        if (!currentActualMonths) return;
+        let startYear = recvDate.getFullYear();
+        let startMonth = recvDate.getMonth();
+        let startDateObj;
 
-        const startVal = startDateInput ? startDateInput.value : '';
-        if (!startVal) return;
+        // 1. Determine exact Start Date dynamically based on rules
+        if (depOn === 'LAST_DAY') {
+            startDateObj = new Date(startYear, startMonth + 1, 0); 
+        } else if (depOn === 'FIRST_DAY') {
+            startDateObj = new Date(startYear, startMonth, 1); 
+        } else {
+            // SPECIFIC_DATE: clamp to the end of the month if they pick 31st on a 30-day month
+            let lastDayOfMonth = new Date(startYear, startMonth + 1, 0).getDate();
+            let clampedDay = Math.min(specificDay, lastDayOfMonth);
+            startDateObj = new Date(startYear, startMonth, clampedDay);
+        }
 
-        const computed = computeEndDate(startVal, currentActualMonths);
-        if (computed && endDateInput) {
-            endDateInput.value = computed;
-            endDateInput.classList.add('bg-slate-50');
-            endDateInput.classList.remove('bg-white');
-            if (endDateAutoBadge) endDateAutoBadge.classList.remove('hidden');
+        // Set the hidden field so it reaches the database properly
+        if (startDateInput) {
+            startDateInput.value = formatDate(startDateObj);
+        }
+
+        // 2. Compute End Date if group months are loaded
+        if (!endDateManuallySet && currentActualMonths > 0) {
+            let endYear = startDateObj.getFullYear();
+            let endMonth = startDateObj.getMonth() + currentActualMonths;
+            let endDateObj;
+
+            if (depOn === 'LAST_DAY') {
+                endDateObj = new Date(endYear, endMonth + 1, 0);
+            } else if (depOn === 'FIRST_DAY') {
+                endDateObj = new Date(endYear, endMonth, 1);
+            } else {
+                let lastDayOfEndMonth = new Date(endYear, endMonth + 1, 0).getDate();
+                let endClampedDay = Math.min(specificDay, lastDayOfEndMonth);
+                endDateObj = new Date(endYear, endMonth, endClampedDay);
+            }
+
+            if (endDateInput) {
+                endDateInput.value = formatDate(endDateObj);
+                endDateInput.classList.add('bg-slate-50');
+                endDateInput.classList.remove('bg-white');
+                if (endDateAutoBadge) endDateAutoBadge.classList.remove('hidden');
+            }
         }
     }
 
-    // When user manually edits end date — stop auto-computing
+    function formatDate(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    // Stop auto-computing if user manually overrides end date
     if (endDateInput) {
         endDateInput.addEventListener('input', function () {
             endDateManuallySet = true;
@@ -326,60 +353,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Date Received → default Start Date if start is empty
-    if (dateReceivedInput) {
-        dateReceivedInput.addEventListener('change', function () {
-            if (startDateInput && !startDateInput.value) {
-                startDateInput.value = this.value;
-            }
-            tryAutoFillEndDate();
-        });
-    }
+    // Trigger dates calculation on any schedule input change
+    if (dateReceivedInput) dateReceivedInput.addEventListener('change', computeDates);
+    if (depOnSelect) depOnSelect.addEventListener('change', computeDates);
+    if (depDayInput) depDayInput.addEventListener('input', computeDates);
 
-    // Start Date changed → recompute end date
-    if (startDateInput) {
-        startDateInput.addEventListener('change', function () {
-            tryAutoFillEndDate();
-        });
-    }
-
-    // Expose a hook so the GL group fetch can update actual_months and trigger recompute
+    // Recompute when Asset Group is selected (injects months lifespan)
     window.__setActualMonths = function (months) {
         currentActualMonths = parseInt(months) || 0;
-        endDateManuallySet  = false; // reset override when group changes
+        endDateManuallySet  = false; // reset override allowance when group changes
         if (endDateAutoBadge) endDateAutoBadge.classList.remove('hidden');
-        tryAutoFillEndDate();
+        computeDates();
     };
-    // ==========================================
-    const form = document.getElementById('addAssetForm');
-    if (form) {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-
-            // Extra guard: ensure a group was actually selected
-            if (!glGroupSelect || !glGroupSelect.value) {
-                alert('Please select an Asset Group before saving.');
-                glGroupSelect && glGroupSelect.focus();
-                return;
-            }
-
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-            }
-
-            console.log("Form validated successfully. Ready for server submit.");
-
-            // TODO: replace this with actual fetch/POST or form.submit()
-            // when the asset_store.php action is wired up.
-            if (typeof window.closeModal === 'function') {
-                window.closeModal('modal-add-asset');
-            } else {
-                document.getElementById('modal-add-asset').classList.add('hidden');
-            }
-            alert('Form submitted successfully!');
-        });
-    }
 
     // ==========================================
     // 5. RESET FORM when modal is closed
