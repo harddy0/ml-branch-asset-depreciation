@@ -3,8 +3,13 @@ $pageTitle   = 'Depreciation List';
 $currentPage = 'depreciation-list';
 require_once __DIR__ . '/../../src/includes/init.php';
 
-// Simple placeholder content — the main layout (header + sidebar) is provided by init.php/layout
+require_once __DIR__ . '/../../src/classes/AssetClassificationService.php';
+
+$classService  = new \App\AssetClassificationService($pdo);
+$assetGroups   = $classService->getDropdownOptions();
+// getDropdownOptions() returns: [['group_code' => '...', 'group_name' => '...'], ...]
 ?>
+
 <!-- Page Header -->
 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
     <div>
@@ -26,6 +31,10 @@ require_once __DIR__ . '/../../src/includes/init.php';
 
 <script src="<?= ASSET_URL ?>js/main.js"></script>
 <script src="<?= ASSET_URL ?>js/depreciation-list.js"></script>
+<script>
+    // Injected by depreciation-list/index.php — consumed by depreciation-list.js
+    window.__assetGroups = <?= json_encode($assetGroups, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+</script>
 
 <!-- Asset Table -->
 <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
