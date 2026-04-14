@@ -65,7 +65,6 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(err => console.error('Location fetch error:', err));
 
     // --- Location Helper Functions ---
-
     function getUniqueValues(array, key) {
         return [...new Set(array.map(i => i[key]).filter(Boolean))].sort();
     }
@@ -186,7 +185,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /**
      * Populate the Group <select> from window.__assetGroups injected by PHP.
-     * Format: [{ group_code: 'OE24MOS', group_name: 'Office Equipment (24mos)' }, ...]
      */
     function initGroupDropdown() {
         if (!glGroupSelect) return;
@@ -210,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Run immediately — window.__assetGroups must be set before this script loads
+    // Run immediately
     initGroupDropdown();
 
     /** On group change: show code on right, fetch chain, fill Asset + Dep rows. */
@@ -236,21 +234,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!res.success || !res.data) {
                         console.error('GL auto-fill failed:', res.error);
                         clearGlFields();
-                        // Still keep the group code display since user did pick something
                         if (glGroupCodeDisplay) glGroupCodeDisplay.value = selectedCode;
                         return;
                     }
 
                     const d = res.data;
 
-                    // Right-side code box (confirms what was selected)
                     if (glGroupCodeDisplay) glGroupCodeDisplay.value = d.group_code;
-
-                    // Asset row (credit GL account)
                     if (glAssetCodeDisplay) glAssetCodeDisplay.value = d.asset_code;
                     if (glAssetNameDisplay) glAssetNameDisplay.value = d.asset_name;
-
-                    // Depreciation P&L row (debit GL account)
                     if (glDepCodeDisplay) glDepCodeDisplay.value = d.depreciation_code;
                     if (glDepNameDisplay) glDepNameDisplay.value = d.depreciation_description;
 
@@ -266,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ==========================================
-    // 4. END DATE AUTO-COMPUTE (UPDATED LOGIC)
+    // 4. END DATE AUTO-COMPUTE 
     // ==========================================
 
     const dateReceivedInput   = document.getElementById('date_received');
@@ -300,7 +292,6 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (depOn === 'FIRST_DAY') {
             startDateObj = new Date(startYear, startMonth, 1); 
         } else {
-            // SPECIFIC_DATE: clamp to the end of the month if they pick 31st on a 30-day month
             let lastDayOfMonth = new Date(startYear, startMonth + 1, 0).getDate();
             let clampedDay = Math.min(specificDay, lastDayOfMonth);
             startDateObj = new Date(startYear, startMonth, clampedDay);
@@ -358,17 +349,11 @@ document.addEventListener('DOMContentLoaded', function () {
     if (depOnSelect) depOnSelect.addEventListener('change', computeDates);
     if (depDayInput) depDayInput.addEventListener('input', computeDates);
 
-    // Recompute when Asset Group is selected (injects months lifespan)
-    window.__setActualMonths = function (months) {
-        currentActualMonths = parseInt(months) || 0;
-        endDateManuallySet  = false; // reset override allowance when group changes
-        if (endDateAutoBadge) endDateAutoBadge.classList.remove('hidden');
-        computeDates();
-    };
 
     // ==========================================
     // 5. RESET FORM when modal is closed
     // ==========================================
+    const form = document.getElementById('addAssetForm');
     const modalEl = document.getElementById('modal-add-asset');
     if (modalEl) {
         // Watch for when the modal becomes hidden (close button / cancel)
@@ -377,9 +362,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (m.attributeName === 'class' && modalEl.classList.contains('hidden')) {
                     if (form) form.reset();
                     clearGlFields();
-                    // Restore placeholder after reset() clears the select
                     if (glGroupSelect) glGroupSelect.value = '';
-                    // Reset end date auto-compute state
                     endDateManuallySet = false;
                     currentActualMonths = 0;
                     if (endDateAutoBadge) endDateAutoBadge.classList.remove('hidden');
@@ -388,4 +371,132 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         observer.observe(modalEl, { attributes: true });
     }
+
+    // ==========================================
+    // 6. MONTHLY DEPRECIATION AUTO-COMPUTE
+    // ==========================================
+    const acqCostInput = document.getElementById('asset_acquisition_cost');
+    const monthlyDepInput = document.getElementById('monthly_depreciation');
+
+    function computeMonthlyDepreciation() {
+        if (!acqCostInput || !monthlyDepInput) return;
+        
+        const cost = parseFloat(acqCostInput.value) || 0;
+        
+        if (currentActualMonths > 0 && cost > 0) {
+            const monthly = (cost / currentActualMonths).toFixed(2);
+            monthlyDepInput.value = monthly;
+        } else {
+            monthlyDepInput.value = '0.00';
+        }
+    }
+
+    if (acqCostInput) acqCostInput.addEventListener('input', computeMonthlyDepreciation);
+
+    // Recompute dates AND costs when Asset Group is selected 
+    window.__setActualMonths = function (months) {
+        currentActualMonths = parseInt(months) || 0;
+        endDateManuallySet  = false; 
+        if (endDateAutoBadge) endDateAutoBadge.classList.remove('hidden');
+        
+        computeDates();
+        computeMonthlyDepreciation();
+    };
+
+    // ==========================================
+    // 7. FORM SUBMISSION (AJAX FETCH)
+    // ==========================================
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            if (!glGroupSelect || !glGroupSelect.value) {
+                alert('Please select an Asset Group before saving.');
+                glGroupSelect.focus();
+                return;
+            }
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const submitBtn =
+                form.querySelector('button[type="submit"], input[type="submit"]') ||
+                document.querySelector('button[type="submit"][form="' + form.id + '"], input[type="submit"][form="' + form.id + '"]');
+
+            const isInputSubmit = submitBtn && submitBtn.tagName === 'INPUT';
+            const originalText = submitBtn
+                ? (isInputSubmit ? submitBtn.value : submitBtn.innerHTML)
+                : '';
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                if (isInputSubmit) {
+                    submitBtn.value = 'Saving Asset...';
+                } else {
+                    submitBtn.innerHTML = 'Saving Asset...';
+                }
+            }
+
+            const formData = new FormData(form);
+
+            fetch(baseUrlClean + 'actions/asset_store.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => {
+                if (!r.ok) throw new Error("HTTP " + r.status);
+                return r.text();
+            })
+            .then(text => {
+                const cleaned = text.replace(/^\uFEFF/, '').trim();
+                if (!cleaned) {
+                    throw new Error('Empty response from server.');
+                }
+
+                try {
+                    return JSON.parse(cleaned);
+                } catch (parseErr) {
+                    console.error('Invalid JSON response:', text);
+                    throw parseErr;
+                }
+            })
+            .then(res => {
+                if (res.success) {
+                    alert('Asset successfully added!');
+                    
+                    if (typeof window.closeModal === 'function') {
+                        window.closeModal('modal-add-asset');
+                    } else {
+                        document.getElementById('modal-add-asset').classList.add('hidden');
+                    }
+                    
+                    form.reset();
+                    clearGlFields();
+                    if (glGroupSelect) glGroupSelect.value = '';
+
+                    // Reload page to show new asset
+                    window.location.reload(); 
+                } else {
+                    alert('Failed to save asset: ' + res.error);
+                }
+            })
+            .catch(err => {
+                console.error('Submit Error:', err);
+                alert('Failed to save asset: ' + (err.message || 'Unknown error'));
+            })
+            .finally(() => {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    if (isInputSubmit) {
+                        submitBtn.value = originalText;
+                    } else {
+                        submitBtn.innerHTML = originalText;
+                    }
+                }
+            });
+        });
+    }
+
 });

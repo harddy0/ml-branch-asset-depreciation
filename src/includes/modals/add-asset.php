@@ -201,6 +201,8 @@
                         </div>
                     </div>
 
+                    <input type="hidden" name="monthly_depreciation" id="monthly_depreciation" value="0.00">
+
                     <!-- ─── General Ledger Accounts ────────────────────── -->
                     <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
 

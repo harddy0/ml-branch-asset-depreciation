@@ -22,21 +22,25 @@ class AssetService {
                     group_code, asset_code, depreciation_code, 
                     description, serial_number, quantity, property_type,
                     date_received, depreciation_start_date, depreciation_end_date,
-                    acquisition_cost, monthly_depreciation, created_by
+                    depreciation_on, depreciation_day,
+                    acquisition_cost, cost_unit, item_code, monthly_depreciation, status,
+                    created_by
                 ) VALUES (
                     :system_asset_code, :reference_no, 
                     :main_zone_code, :zone_code, :region_code, :cost_center_code, :branch_name,
                     :group_code, :asset_code, :depreciation_code, 
                     :description, :serial_number, :quantity, :property_type,
                     :date_received, :depreciation_start_date, :depreciation_end_date,
-                    :acquisition_cost, :monthly_depreciation, :created_by
+                    :depreciation_on, :depreciation_day, 
+                    :acquisition_cost, :cost_unit, :item_code, :monthly_depreciation, :status,
+                    :created_by
                 )
             ";
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':system_asset_code'       => $data['system_asset_code'],
-                ':reference_no'            => $data['reference_no'] ?? null,
+                ':reference_no'            => $data['reference_no'],
                 ':main_zone_code'          => $data['main_zone_code'],
                 ':zone_code'               => $data['zone_code'],
                 ':region_code'             => $data['region_code'],
@@ -46,14 +50,19 @@ class AssetService {
                 ':asset_code'              => $data['asset_code'],
                 ':depreciation_code'       => $data['depreciation_code'],
                 ':description'             => $data['description'],
-                ':serial_number'           => $data['serial_number'] ?? null,
-                ':quantity'                => $data['quantity'] ?? 1,
-                ':property_type'           => $data['property_type'] ?? 'PURCHASED',
+                ':serial_number'           => $data['serial_number'],
+                ':quantity'                => $data['quantity'],
+                ':property_type'           => $data['property_type'],
                 ':date_received'           => $data['date_received'],
                 ':depreciation_start_date' => $data['depreciation_start_date'],
                 ':depreciation_end_date'   => $data['depreciation_end_date'],
+                ':depreciation_on'         => $data['depreciation_on'],
+                ':depreciation_day'        => $data['depreciation_day'],
                 ':acquisition_cost'        => $data['acquisition_cost'],
+                ':cost_unit'               => $data['cost_unit'],
+                ':item_code'               => $data['item_code'],
                 ':monthly_depreciation'    => $data['monthly_depreciation'],
+                ':status'                  => $data['status'],
                 ':created_by'              => $userId
             ]);
 
