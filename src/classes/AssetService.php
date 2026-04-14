@@ -149,6 +149,163 @@ class AssetService {
 
     /**
      * ==========================================
+     * READ (Depreciation List / Active Only)
+     * ==========================================
+     */
+    public function getDepreciationList(array $options = []): array {
+        $page = max(1, (int)($options['page'] ?? 1));
+        $perPage = max(1, min(100, (int)($options['per_page'] ?? 50)));
+
+        $search = trim((string)($options['search'] ?? ''));
+        $groupCode = trim((string)($options['group_code'] ?? ''));
+        $branchName = trim((string)($options['branch_name'] ?? ''));
+        $sortBy = (string)($options['sort_by'] ?? 'created_at');
+        $sortDir = strtoupper((string)($options['sort_dir'] ?? 'DESC'));
+
+        $sortMap = [
+            'serial_number' => 'a.serial_number',
+            'description' => 'a.description',
+            'item_code' => 'a.item_code',
+            'group_code' => 'a.group_code',
+            'branch_name' => 'a.branch_name',
+            'acquisition_cost' => 'a.acquisition_cost',
+            'monthly_depreciation' => 'a.monthly_depreciation',
+            'status' => 'a.status',
+            'depreciation_end_date' => 'a.depreciation_end_date',
+            'created_at' => 'a.created_at',
+            'uploaded_by' => 'u.username',
+        ];
+
+        $safeSortColumn = $sortMap[$sortBy] ?? $sortMap['created_at'];
+        $safeSortDir = ($sortDir === 'ASC') ? 'ASC' : 'DESC';
+
+        $where = ["a.status = 'ACTIVE'"];
+        $params = [];
+
+        if ($groupCode !== '') {
+            $where[] = 'a.group_code = :group_code';
+            $params[':group_code'] = $groupCode;
+        }
+
+        if ($branchName !== '') {
+            $where[] = 'a.branch_name = :branch_name';
+            $params[':branch_name'] = $branchName;
+        }
+
+        if ($search !== '') {
+            $where[] = '(
+                a.serial_number LIKE :search
+                OR a.description LIKE :search
+                OR a.item_code LIKE :search
+                OR a.group_code LIKE :search
+                OR a.branch_name LIKE :search
+                OR u.username LIKE :search
+            )';
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        $countSql = "
+            SELECT COUNT(*)
+            FROM assets a
+            LEFT JOIN users u ON u.id = a.created_by
+            WHERE {$whereSql}
+        ";
+
+        $countStmt = $this->db->prepare($countSql);
+        foreach ($params as $key => $value) {
+            $countStmt->bindValue($key, $value);
+        }
+        $countStmt->execute();
+        $total = (int)$countStmt->fetchColumn();
+        $totalPages = max(1, (int)ceil($total / $perPage));
+
+        if ($page > $totalPages) {
+            $page = $totalPages;
+        }
+
+        $offset = ($page - 1) * $perPage;
+
+        $dataSql = "
+            SELECT
+                a.id,
+                a.system_asset_code,
+                a.serial_number,
+                a.description,
+                a.item_code,
+                a.group_code,
+                a.branch_name,
+                a.acquisition_cost,
+                a.monthly_depreciation,
+                a.status,
+                a.depreciation_end_date,
+                a.created_at,
+                u.username AS uploaded_by
+            FROM assets a
+            LEFT JOIN users u ON u.id = a.created_by
+            WHERE {$whereSql}
+            ORDER BY {$safeSortColumn} {$safeSortDir}, a.id DESC
+            LIMIT :limit OFFSET :offset
+        ";
+
+        $dataStmt = $this->db->prepare($dataSql);
+        foreach ($params as $key => $value) {
+            $dataStmt->bindValue($key, $value);
+        }
+        $dataStmt->bindValue(':limit', $perPage, \PDO::PARAM_INT);
+        $dataStmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $dataStmt->execute();
+
+        $rows = $dataStmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $branchWhere = ["a.status = 'ACTIVE'", "a.branch_name IS NOT NULL", "a.branch_name <> ''"];
+        $branchParams = [];
+
+        if ($groupCode !== '') {
+            $branchWhere[] = 'a.group_code = :group_code';
+            $branchParams[':group_code'] = $groupCode;
+        }
+
+        $branchSql = '
+            SELECT DISTINCT a.branch_name
+            FROM assets a
+            WHERE ' . implode(' AND ', $branchWhere) . '
+            ORDER BY a.branch_name ASC
+        ';
+
+        $branchStmt = $this->db->prepare($branchSql);
+        foreach ($branchParams as $key => $value) {
+            $branchStmt->bindValue($key, $value);
+        }
+        $branchStmt->execute();
+        $branches = $branchStmt->fetchAll(\PDO::FETCH_COLUMN);
+
+        return [
+            'data' => $rows,
+            'branches' => $branches,
+            'pagination' => [
+                'page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'total_pages' => $totalPages,
+                'has_prev' => $page > 1,
+                'has_next' => $page < $totalPages,
+            ],
+            'sort' => [
+                'sort_by' => array_key_exists($sortBy, $sortMap) ? $sortBy : 'created_at',
+                'sort_dir' => $safeSortDir,
+            ],
+            'filters' => [
+                'search' => $search,
+                'group_code' => $groupCode,
+                'branch_name' => $branchName,
+            ],
+        ];
+    }
+
+    /**
+     * ==========================================
      * UPDATE (Edit Asset Info)
      * ==========================================
      */

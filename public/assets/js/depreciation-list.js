@@ -499,4 +499,838 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ==========================================
+    // 8. DEPRECIATION LIST (ACTIVE / PAGINATED)
+    // ==========================================
+    const listConfigEl = document.getElementById('depr-list-config');
+    const listApiUrl = (listConfigEl && listConfigEl.dataset.apiUrl)
+        ? listConfigEl.dataset.apiUrl
+        : (baseUrlClean + 'api/get_depreciation_list.php');
+
+    const listPerPage = (listConfigEl && parseInt(listConfigEl.dataset.perPage, 10))
+        ? parseInt(listConfigEl.dataset.perPage, 10)
+        : 50;
+
+    const tableBody = document.getElementById('depr-table-body');
+    const metaEl = document.getElementById('depr-page-meta');
+    const prevBtn = document.getElementById('depr-prev-page');
+    const nextBtn = document.getElementById('depr-next-page');
+    const pageNumbersEl = document.getElementById('depr-page-numbers');
+    const searchInput = document.getElementById('depr-search');
+    const groupFilter = document.getElementById('depr-group-filter');
+    const branchFilter = document.getElementById('depr-branch-filter');
+    const resetBtn = document.getElementById('depr-filter-reset');
+    const sortButtons = Array.from(document.querySelectorAll('.depr-sort'));
+
+    const listState = {
+        page: 1,
+        perPage: listPerPage,
+        search: '',
+        group_code: '',
+        branch_name: '',
+        sort_by: 'created_at',
+        sort_dir: 'DESC',
+    };
+
+    const currency = new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function formatDateDisplay(value) {
+        if (!value) return '-';
+        const safe = new Date(String(value) + 'T00:00:00');
+        if (isNaN(safe)) return '-';
+        return new Intl.DateTimeFormat('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        }).format(safe);
+    }
+
+    function renderListRows(rows) {
+        if (!tableBody) return;
+
+        if (!rows || rows.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">
+                        No active assets found.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        const html = rows.map(function (row) {
+            const payload = encodeURIComponent(JSON.stringify({
+                id: row.id,
+                system_asset_code: row.system_asset_code || '',
+                serial_number: row.serial_number || '',
+                description: row.description || '',
+                group_code: row.group_code || '',
+                branch_name: row.branch_name || '',
+                uploaded_by: row.uploaded_by || ''
+            }));
+
+            const serialNo = row.serial_number || row.system_asset_code || '-';
+            const description = row.description || '-';
+            const itemCode = row.item_code || '-';
+            const groupCode = row.group_code || '-';
+            const branch = row.branch_name || '-';
+            const uploadedBy = row.uploaded_by || 'Unknown';
+            const acquisitionCost = currency.format(parseFloat(row.acquisition_cost || 0));
+            const monthlyDep = currency.format(parseFloat(row.monthly_depreciation || 0));
+            const status = row.status || 'ACTIVE';
+            const endDate = formatDateDisplay(row.depreciation_end_date);
+
+            return `
+                <tr class="depr-asset-row border-b border-slate-100 hover:bg-slate-50 cursor-pointer" data-asset="${payload}">
+                    <td class="px-6 py-3 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(serialNo)}</td>
+                    <td class="px-6 py-3 text-left text-xs font-semibold text-slate-700">${escapeHtml(description)}</td>
+                    <td class="px-6 py-3 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(itemCode)}</td>
+                    <td class="px-6 py-3 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(groupCode)}</td>
+                    <td class="px-6 py-3 text-left text-xs text-slate-700">
+                        <div class="font-semibold">${escapeHtml(branch)}</div>
+                        <div class="text-[11px] text-slate-500">Uploaded by: ${escapeHtml(uploadedBy)}</div>
+                    </td>
+                    <td class="px-6 py-3 text-right text-xs text-slate-700 whitespace-nowrap">
+                        <div class="font-mono font-semibold">Acq: ${acquisitionCost}</div>
+                        <div class="font-mono text-[11px] text-slate-500">Monthly: ${monthlyDep}</div>
+                    </td>
+                    <td class="px-6 py-3 text-center text-xs whitespace-nowrap">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">
+                            ${escapeHtml(status)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(endDate)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        tableBody.innerHTML = html;
+    }
+
+    function updateSortIndicators() {
+        sortButtons.forEach(function (btn) {
+            const indicator = btn.querySelector('.depr-sort-indicator');
+            if (!indicator) return;
+
+            if (btn.dataset.sort === listState.sort_by) {
+                indicator.textContent = (listState.sort_dir === 'ASC') ? '↑' : '↓';
+                indicator.classList.remove('opacity-70');
+            } else {
+                indicator.textContent = '↕';
+                indicator.classList.add('opacity-70');
+            }
+        });
+    }
+
+    function buildVisiblePages(currentPage, totalPages) {
+        const maxButtons = 7;
+        const pages = [];
+
+        if (totalPages <= maxButtons) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+            return pages;
+        }
+
+        let start = Math.max(1, currentPage - 3);
+        let end = Math.min(totalPages, start + maxButtons - 1);
+
+        if ((end - start + 1) < maxButtons) {
+            start = Math.max(1, end - maxButtons + 1);
+        }
+
+        for (let i = start; i <= end; i++) pages.push(i);
+        return pages;
+    }
+
+    function renderPageNumberButtons(currentPage, totalPages) {
+        if (!pageNumbersEl) return;
+
+        const pages = buildVisiblePages(currentPage, totalPages);
+        let html = '';
+
+        if (pages.length > 0 && pages[0] > 1) {
+            html += `<button type="button" class="depr-page-btn px-2 py-1 text-xs font-semibold border border-slate-300 rounded text-slate-700 hover:bg-slate-100" data-page="1">1</button>`;
+            if (pages[0] > 2) {
+                html += `<span class="px-1 text-xs font-semibold text-slate-400">...</span>`;
+            }
+        }
+
+        pages.forEach(function (pageNum) {
+            const activeClass = pageNum === currentPage
+                ? 'bg-[#ce2216] border-[#ce2216] text-white'
+                : 'text-slate-700 hover:bg-slate-100 border-slate-300';
+
+            html += `<button type="button" class="depr-page-btn px-2 py-1 text-xs font-semibold border rounded ${activeClass}" data-page="${pageNum}">${pageNum}</button>`;
+        });
+
+        if (pages.length > 0 && pages[pages.length - 1] < totalPages) {
+            if (pages[pages.length - 1] < totalPages - 1) {
+                html += `<span class="px-1 text-xs font-semibold text-slate-400">...</span>`;
+            }
+            html += `<button type="button" class="depr-page-btn px-2 py-1 text-xs font-semibold border border-slate-300 rounded text-slate-700 hover:bg-slate-100" data-page="${totalPages}">${totalPages}</button>`;
+        }
+
+        pageNumbersEl.innerHTML = html;
+        const pageButtons = pageNumbersEl.querySelectorAll('.depr-page-btn');
+        pageButtons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const nextPage = parseInt(btn.dataset.page, 10);
+                if (!nextPage || nextPage === listState.page) return;
+                listState.page = nextPage;
+                fetchDepreciationList();
+            });
+        });
+    }
+
+    function updatePaginationUi(pagination) {
+        if (!metaEl || !prevBtn || !nextBtn || !pagination) return;
+
+        const total = parseInt(pagination.total || 0, 10);
+        const page = parseInt(pagination.page || 1, 10);
+        const totalPages = parseInt(pagination.total_pages || 1, 10);
+
+        metaEl.textContent = `Page ${page} of ${totalPages} • ${total.toLocaleString()} records`;
+        prevBtn.disabled = !pagination.has_prev;
+        nextBtn.disabled = !pagination.has_next;
+
+        renderPageNumberButtons(page, totalPages);
+    }
+
+    function setTableLoading() {
+        if (!tableBody) return;
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">Loading assets...</td>
+            </tr>
+        `;
+    }
+
+    function buildListQuery() {
+        const params = new URLSearchParams();
+        params.set('page', String(listState.page));
+        params.set('per_page', String(listState.perPage));
+        params.set('sort_by', listState.sort_by);
+        params.set('sort_dir', listState.sort_dir);
+
+        if (listState.search) params.set('search', listState.search);
+        if (listState.group_code) params.set('group_code', listState.group_code);
+        if (listState.branch_name) params.set('branch_name', listState.branch_name);
+
+        return params.toString();
+    }
+
+    function fetchDepreciationList() {
+        if (!tableBody) return;
+
+        setTableLoading();
+        updateSortIndicators();
+
+        fetch(`${listApiUrl}?${buildListQuery()}`)
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            })
+            .then(function (text) {
+                return JSON.parse(text.replace(/^\uFEFF/, '').trim());
+            })
+            .then(function (res) {
+                if (!res.success) {
+                    throw new Error(res.error || 'Failed to fetch depreciation list.');
+                }
+
+                const rows = Array.isArray(res.data) ? res.data : [];
+                const branches = Array.isArray(res.branches) ? res.branches : [];
+                const pagination = res.pagination || null;
+
+                if (res.sort && res.sort.sort_by) {
+                    listState.sort_by = res.sort.sort_by;
+                    listState.sort_dir = res.sort.sort_dir || listState.sort_dir;
+                }
+                if (pagination && pagination.page) {
+                    listState.page = parseInt(pagination.page, 10) || listState.page;
+                }
+
+                populateBranchFilter(branches);
+                renderListRows(rows);
+                updatePaginationUi(pagination);
+                updateSortIndicators();
+            })
+            .catch(function (err) {
+                console.error('Depreciation list fetch error:', err);
+                if (tableBody) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="px-6 py-8 text-center text-sm font-semibold text-red-600">
+                                Unable to load depreciation list: ${escapeHtml(err.message || 'Unknown error')}
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+    }
+
+    function populateListGroupFilter() {
+        if (!groupFilter) return;
+
+        const groups = Array.isArray(window.__assetGroups) ? window.__assetGroups : [];
+        groups.forEach(function (group) {
+            const opt = document.createElement('option');
+            opt.value = group.group_code;
+            opt.textContent = `${group.group_code} - ${group.group_name}`;
+            groupFilter.appendChild(opt);
+        });
+    }
+
+    function populateBranchFilter(branches) {
+        if (!branchFilter) return;
+
+        const selectedValue = listState.branch_name;
+        branchFilter.innerHTML = '<option value="">All Branches</option>';
+
+        branches.forEach(function (branch) {
+            const opt = document.createElement('option');
+            opt.value = branch;
+            opt.textContent = branch;
+            branchFilter.appendChild(opt);
+        });
+
+        if (selectedValue && branches.includes(selectedValue)) {
+            branchFilter.value = selectedValue;
+        } else {
+            branchFilter.value = '';
+            if (selectedValue) {
+                listState.branch_name = '';
+            }
+        }
+    }
+
+    // ==========================================
+    // 9. LEDGER MODAL (LEDGER + FINANCIAL VIEW)
+    // ==========================================
+    const ledgerConfigEl = document.getElementById('depr-ledger-config');
+    const ledgerApiUrl = (ledgerConfigEl && ledgerConfigEl.dataset.apiUrl)
+        ? ledgerConfigEl.dataset.apiUrl
+        : (baseUrlClean + 'api/get_asset_ledger.php');
+
+    const ledgerModalEl = document.getElementById('modal-asset-ledger');
+    const ledgerSubtitleEl = document.getElementById('ledger-subtitle');
+    const ledgerAssetMetaEl = document.getElementById('ledger-asset-meta');
+    const ledgerLoadingEl = document.getElementById('ledger-loading');
+    const ledgerErrorEl = document.getElementById('ledger-error');
+    const ledgerTableWrapEl = document.getElementById('ledger-table-wrap');
+    const ledgerTableBodyEl = document.getElementById('ledger-table-body');
+    const fsTableWrapEl = document.getElementById('fs-table-wrap');
+    const fsTableBodyEl = document.getElementById('fs-table-body');
+    const ledgerFooterSummaryEl = document.getElementById('ledger-footer-summary');
+    const ledgerTotalDebitEl = document.getElementById('ledger-total-debit');
+    const ledgerTotalCreditEl = document.getElementById('ledger-total-credit');
+    const ledgerLatestAccumEl = document.getElementById('ledger-latest-accum');
+    const ledgerLatestBookEl = document.getElementById('ledger-latest-book');
+
+    const ledgerDateFromEl = document.getElementById('ledger-date-from');
+    const ledgerDateToEl = document.getElementById('ledger-date-to');
+    const ledgerEntrySideEl = document.getElementById('ledger-entry-side');
+    const ledgerPeriodYearEl = document.getElementById('ledger-period-year');
+    const ledgerPeriodMonthEl = document.getElementById('ledger-period-month');
+    const ledgerResetFilterBtn = document.getElementById('ledger-reset-filter');
+    const ledgerTabLedgerBtn = document.getElementById('ledger-tab-ledger');
+    const ledgerTabFsBtn = document.getElementById('ledger-tab-fs');
+    const ledgerPrintBtn = document.getElementById('ledger-print-btn');
+
+    const ledgerState = {
+        asset: null,
+        filters: {
+            date_from: '',
+            date_to: '',
+            entry_side: 'ALL',
+            period_year: '',
+            period_month: '',
+        },
+        activeTab: 'LEDGER',
+    };
+
+    function monthName(monthNum) {
+        const map = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const idx = parseInt(monthNum, 10) - 1;
+        return (idx >= 0 && idx < 12) ? map[idx] : String(monthNum || '');
+    }
+
+    function setLedgerTab(tab) {
+        ledgerState.activeTab = tab;
+
+        if (!ledgerTabLedgerBtn || !ledgerTabFsBtn || !ledgerTableWrapEl || !fsTableWrapEl) return;
+
+        if (tab === 'LEDGER') {
+            ledgerTabLedgerBtn.classList.add('bg-[#ce1126]', 'text-white');
+            ledgerTabLedgerBtn.classList.remove('bg-white', 'text-slate-700');
+            ledgerTabFsBtn.classList.add('bg-white', 'text-slate-700');
+            ledgerTabFsBtn.classList.remove('bg-[#ce1126]', 'text-white');
+
+            ledgerTableWrapEl.classList.remove('hidden');
+            fsTableWrapEl.classList.add('hidden');
+        } else {
+            ledgerTabFsBtn.classList.add('bg-[#ce1126]', 'text-white');
+            ledgerTabFsBtn.classList.remove('bg-white', 'text-slate-700');
+            ledgerTabLedgerBtn.classList.add('bg-white', 'text-slate-700');
+            ledgerTabLedgerBtn.classList.remove('bg-[#ce1126]', 'text-white');
+
+            fsTableWrapEl.classList.remove('hidden');
+            ledgerTableWrapEl.classList.add('hidden');
+        }
+    }
+
+    function setLedgerLoading(on) {
+        if (!ledgerLoadingEl || !ledgerErrorEl) return;
+        ledgerLoadingEl.classList.toggle('hidden', !on);
+        if (on) {
+            ledgerErrorEl.classList.add('hidden');
+        }
+    }
+
+    function setLedgerError(message) {
+        if (!ledgerErrorEl) return;
+        ledgerErrorEl.textContent = message;
+        ledgerErrorEl.classList.remove('hidden');
+    }
+
+    function renderLedgerRows(rows) {
+        if (!ledgerTableBodyEl) return;
+
+        if (!rows || rows.length === 0) {
+            ledgerTableBodyEl.innerHTML = '<tr><td colspan="11" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No ledger rows found for selected filters.</td></tr>';
+            return;
+        }
+
+        const html = rows.map(function (r) {
+            const periodLabel = `${r.period_year || ''}-${String(r.period_month || '').padStart(2, '0')}`;
+            const debitAccount = (r.gl_debit_code || '')
+                ? `${r.gl_debit_code}${r.debit_account_name ? ' - ' + r.debit_account_name : ''}`
+                : '';
+            const creditAccount = (r.gl_credit_code || '')
+                ? `${r.gl_credit_code}${r.credit_account_name ? ' - ' + r.credit_account_name : ''}`
+                : '';
+
+            return `
+                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                    <td class="px-3 py-2 text-slate-700">${escapeHtml(formatDateDisplay(r.period_date))}</td>
+                    <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(periodLabel)}</td>
+                    <td class="px-3 py-2 text-slate-700">${escapeHtml(r.description || '')}</td>
+                    <td class="px-3 py-2 text-slate-700">${escapeHtml(debitAccount)}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_debit_amount || 0))}</td>
+                    <td class="px-3 py-2 text-slate-700">${escapeHtml(creditAccount)}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_credit_amount || 0))}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.period_depreciation_expense || 0))}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.accumulated_depreciation || 0))}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.book_value || 0))}</td>
+                    <td class="px-3 py-2 text-slate-700">${escapeHtml(r.created_at || '')}</td>
+                </tr>
+            `;
+        }).join('');
+
+        ledgerTableBodyEl.innerHTML = html;
+    }
+
+    function renderFsRows(ledgerRows) {
+        if (!fsTableBodyEl) return;
+
+        if (!ledgerRows || ledgerRows.length === 0) {
+            fsTableBodyEl.innerHTML = '<tr><td colspan="11" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No financial statement rows found for selected filters.</td></tr>';
+            return;
+        }
+
+        const html = ledgerRows.map(function (r) {
+            const periodLabel = `${r.period_year || ''}-${String(r.period_month || '').padStart(2, '0')}`;
+            const periodAmount = currency.format(parseFloat(r.period_depreciation_expense || 0));
+            const accumulated = currency.format(parseFloat(r.accumulated_depreciation || 0));
+            const bookValue = currency.format(parseFloat(r.book_value || 0));
+
+            let lines = '';
+
+            if (r.gl_debit_code) {
+                lines += `
+                    <tr class="border-b border-slate-100 bg-emerald-50/40">
+                        <td class="px-3 py-2 text-slate-700">${escapeHtml(formatDateDisplay(r.period_date))}</td>
+                        <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(periodLabel)}</td>
+                        <td class="px-3 py-2"><span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">DEBIT</span></td>
+                        <td class="px-3 py-2 text-slate-700">${escapeHtml((r.gl_debit_code || '') + (r.debit_account_name ? ' - ' + r.debit_account_name : ''))}</td>
+                        <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_debit_amount || 0))}</td>
+                        <td class="px-3 py-2 text-right font-mono text-slate-700">0.00</td>
+                        <td class="px-3 py-2 text-right font-mono text-slate-700">${periodAmount}</td>
+                        <td class="px-3 py-2 text-right font-mono text-slate-700">${accumulated}</td>
+                        <td class="px-3 py-2 text-right font-mono text-slate-700">${bookValue}</td>
+                        <td class="px-3 py-2 text-slate-700">${escapeHtml(r.description || '')}</td>
+                        <td class="px-3 py-2 text-slate-700">${escapeHtml(r.created_at || '')}</td>
+                    </tr>
+                `;
+            }
+
+            if (r.gl_credit_code) {
+                lines += `
+                    <tr class="border-b border-slate-100 bg-amber-50/40">
+                        <td class="px-3 py-2 text-slate-700">${escapeHtml(formatDateDisplay(r.period_date))}</td>
+                        <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(periodLabel)}</td>
+                        <td class="px-3 py-2"><span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-100 text-amber-700">CREDIT</span></td>
+                        <td class="px-3 py-2 text-slate-700">${escapeHtml((r.gl_credit_code || '') + (r.credit_account_name ? ' - ' + r.credit_account_name : ''))}</td>
+                        <td class="px-3 py-2 text-right font-mono text-slate-700">0.00</td>
+                        <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_credit_amount || 0))}</td>
+                        <td class="px-3 py-2 text-right font-mono text-slate-700">${periodAmount}</td>
+                        <td class="px-3 py-2 text-right font-mono text-slate-700">${accumulated}</td>
+                        <td class="px-3 py-2 text-right font-mono text-slate-700">${bookValue}</td>
+                        <td class="px-3 py-2 text-slate-700">${escapeHtml(r.description || '')}</td>
+                        <td class="px-3 py-2 text-slate-700">${escapeHtml(r.created_at || '')}</td>
+                    </tr>
+                `;
+            }
+
+            return `
+                <tr class="bg-slate-100 border-y border-slate-300">
+                    <td class="px-3 py-2 text-slate-800 font-semibold">${escapeHtml(formatDateDisplay(r.period_date))}</td>
+                    <td class="px-3 py-2 font-mono text-slate-800 font-semibold">${escapeHtml(periodLabel)}</td>
+                    <td class="px-3 py-2 text-slate-700 text-[11px]" colspan="2">Grouped Entry (${escapeHtml(monthName(r.period_month))} ${escapeHtml(r.period_year)})</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_debit_amount || 0))}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_credit_amount || 0))}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-800 font-semibold">${periodAmount}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-800">${accumulated}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-800">${bookValue}</td>
+                    <td class="px-3 py-2 text-slate-700">${escapeHtml(r.description || '')}</td>
+                    <td class="px-3 py-2 text-slate-700">${escapeHtml(r.created_at || '')}</td>
+                </tr>
+                ${lines}
+            `;
+        }).join('');
+
+        fsTableBodyEl.innerHTML = html;
+    }
+
+    function updateLedgerFooter(totals, ledgerRows) {
+        if (!ledgerFooterSummaryEl || !ledgerTotalDebitEl || !ledgerTotalCreditEl || !ledgerLatestAccumEl || !ledgerLatestBookEl) return;
+        const rows = parseInt((totals && totals.row_count) || 0, 10);
+        ledgerFooterSummaryEl.textContent = `Rows: ${rows}`;
+        ledgerTotalDebitEl.textContent = currency.format(parseFloat((totals && totals.ledger_debit) || 0));
+        ledgerTotalCreditEl.textContent = currency.format(parseFloat((totals && totals.ledger_credit) || 0));
+
+        const latestRow = (ledgerRows && ledgerRows.length > 0)
+            ? ledgerRows[ledgerRows.length - 1]
+            : null;
+
+        ledgerLatestAccumEl.textContent = currency.format(parseFloat((latestRow && latestRow.accumulated_depreciation) || 0));
+        ledgerLatestBookEl.textContent = currency.format(parseFloat((latestRow && latestRow.book_value) || 0));
+    }
+
+    function populatePeriodOptions(options, selectedYear, selectedMonth) {
+        if (!ledgerPeriodYearEl || !ledgerPeriodMonthEl) return;
+
+        const years = Array.isArray(options && options.years) ? options.years : [];
+        const months = Array.isArray(options && options.months) ? options.months : [];
+
+        ledgerPeriodYearEl.innerHTML = '<option value="">All Years</option>';
+        years.forEach(function (y) {
+            const opt = document.createElement('option');
+            opt.value = String(y);
+            opt.textContent = String(y);
+            ledgerPeriodYearEl.appendChild(opt);
+        });
+
+        ledgerPeriodMonthEl.innerHTML = '<option value="">All Months</option>';
+        months.forEach(function (m) {
+            const opt = document.createElement('option');
+            opt.value = String(m);
+            opt.textContent = `${String(m).padStart(2, '0')} - ${monthName(m)}`;
+            ledgerPeriodMonthEl.appendChild(opt);
+        });
+
+        ledgerPeriodYearEl.value = selectedYear || '';
+        ledgerPeriodMonthEl.value = selectedMonth || '';
+    }
+
+    function updateLedgerAssetMeta(asset) {
+        if (!ledgerSubtitleEl || !ledgerAssetMetaEl || !asset) return;
+        const serial = asset.serial_number || asset.system_asset_code || '-';
+        ledgerSubtitleEl.textContent = `${asset.system_asset_code || ''} • ${asset.description || ''}`;
+        ledgerAssetMetaEl.textContent = `Serial: ${serial} | Group: ${asset.group_code || '-'} | Branch: ${asset.branch_name || '-'} | Uploaded by: ${asset.uploaded_by || 'Unknown'}`;
+    }
+
+    function buildLedgerQuery() {
+        const params = new URLSearchParams();
+        params.set('asset_id', String(ledgerState.asset.id));
+        if (ledgerState.filters.date_from) params.set('date_from', ledgerState.filters.date_from);
+        if (ledgerState.filters.date_to) params.set('date_to', ledgerState.filters.date_to);
+        if (ledgerState.filters.entry_side) params.set('entry_side', ledgerState.filters.entry_side);
+        if (ledgerState.filters.period_year) params.set('period_year', ledgerState.filters.period_year);
+        if (ledgerState.filters.period_month) params.set('period_month', ledgerState.filters.period_month);
+        return params.toString();
+    }
+
+    function syncLedgerFiltersFromInputs() {
+        ledgerState.filters.date_from = ledgerDateFromEl ? ledgerDateFromEl.value : '';
+        ledgerState.filters.date_to = ledgerDateToEl ? ledgerDateToEl.value : '';
+        ledgerState.filters.entry_side = ledgerEntrySideEl ? ledgerEntrySideEl.value : 'ALL';
+        ledgerState.filters.period_year = ledgerPeriodYearEl ? ledgerPeriodYearEl.value : '';
+        ledgerState.filters.period_month = ledgerPeriodMonthEl ? ledgerPeriodMonthEl.value : '';
+    }
+
+    function fetchAssetLedgerReport() {
+        if (!ledgerState.asset || !ledgerState.asset.id) return;
+
+        setLedgerLoading(true);
+        fetch(`${ledgerApiUrl}?${buildLedgerQuery()}`)
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            })
+            .then(function (text) {
+                return JSON.parse(text.replace(/^\uFEFF/, '').trim());
+            })
+            .then(function (res) {
+                if (!res.success) throw new Error(res.error || 'Failed to fetch ledger report.');
+
+                const ledgerRows = res.ledger_rows || [];
+
+                updateLedgerAssetMeta(res.asset);
+                renderLedgerRows(ledgerRows);
+                renderFsRows(ledgerRows);
+                updateLedgerFooter(res.totals || {}, ledgerRows);
+                populatePeriodOptions(res.options || {}, (res.filters && res.filters.period_year) || '', (res.filters && res.filters.period_month) || '');
+
+                if (ledgerDateFromEl) ledgerDateFromEl.value = (res.filters && res.filters.date_from) || ledgerState.filters.date_from;
+                if (ledgerDateToEl) ledgerDateToEl.value = (res.filters && res.filters.date_to) || ledgerState.filters.date_to;
+                if (ledgerEntrySideEl) ledgerEntrySideEl.value = (res.filters && res.filters.entry_side) || ledgerState.filters.entry_side;
+                ledgerState.filters.period_year = (res.filters && res.filters.period_year) || ledgerState.filters.period_year;
+                ledgerState.filters.period_month = (res.filters && res.filters.period_month) || ledgerState.filters.period_month;
+            })
+            .catch(function (err) {
+                setLedgerError(`Unable to load ledger report: ${err.message || 'Unknown error'}`);
+            })
+            .finally(function () {
+                setLedgerLoading(false);
+            });
+    }
+
+    function openAssetLedgerModal(assetPayload) {
+        if (!assetPayload || !assetPayload.id || !ledgerModalEl) return;
+
+        ledgerState.asset = assetPayload;
+        ledgerState.filters = {
+            date_from: '',
+            date_to: '',
+            entry_side: 'ALL',
+            period_year: '',
+            period_month: '',
+        };
+
+        if (ledgerDateFromEl) ledgerDateFromEl.value = '';
+        if (ledgerDateToEl) ledgerDateToEl.value = '';
+        if (ledgerEntrySideEl) ledgerEntrySideEl.value = 'ALL';
+        if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = '';
+        if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = '';
+
+        setLedgerTab('LEDGER');
+        openModal('modal-asset-ledger');
+        fetchAssetLedgerReport();
+    }
+
+    function printActiveLedgerTable() {
+        if (!ledgerState.asset) return;
+
+        const activeWrap = (ledgerState.activeTab === 'LEDGER') ? ledgerTableWrapEl : fsTableWrapEl;
+        if (!activeWrap) return;
+
+        const tableEl = activeWrap.querySelector('table');
+        if (!tableEl) return;
+
+        const printWin = window.open('', '_blank');
+        if (!printWin) return;
+
+        const title = (ledgerState.activeTab === 'LEDGER') ? 'Asset Ledger' : 'Financial Statement';
+        const generatedBy = (ledgerConfigEl && ledgerConfigEl.dataset.generatedBy)
+            ? ledgerConfigEl.dataset.generatedBy
+            : 'User';
+
+        const generatedAt = new Intl.DateTimeFormat('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+        }).format(new Date());
+
+        const filterLine = `Date: ${ledgerState.filters.date_from || '-'} to ${ledgerState.filters.date_to || '-'} | Side: ${ledgerState.filters.entry_side || 'ALL'} | Year: ${ledgerState.filters.period_year || 'All'} | Month: ${ledgerState.filters.period_month || 'All'}`;
+        const style = `
+            <style>
+                body { font-family: Arial, Helvetica, sans-serif; padding: 12px; color: #1e293b; }
+                h1 { margin: 0 0 4px; font-size: 16px; }
+                .meta { margin: 0 0 12px; font-size: 11px; color: #475569; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 6px 8px; font-size: 11px; }
+                th { background: #ce2216; color: #fff; font-weight: 700; }
+                .num { text-align: right; font-family: Consolas, monospace; }
+            </style>
+        `;
+
+        printWin.document.open();
+        printWin.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>${style}</head><body><h1>${title}</h1><p class="meta">Asset: ${escapeHtml(ledgerState.asset.system_asset_code || '')} | Serial: ${escapeHtml(ledgerState.asset.serial_number || '')} | Group: ${escapeHtml(ledgerState.asset.group_code || '')} | Branch: ${escapeHtml(ledgerState.asset.branch_name || '')}<br>${escapeHtml(filterLine)}<br>Generated by: ${escapeHtml(generatedBy)} | Generated at: ${escapeHtml(generatedAt)}</p>${tableEl.outerHTML}</body></html>`);
+        printWin.document.close();
+        printWin.focus();
+        setTimeout(function () {
+            try { printWin.print(); } catch (e) { console.error(e); }
+        }, 300);
+    }
+
+    if (tableBody) {
+        tableBody.addEventListener('click', function (e) {
+            const row = e.target.closest('tr.depr-asset-row');
+            if (!row || !row.dataset.asset) return;
+
+            try {
+                const assetPayload = JSON.parse(decodeURIComponent(row.dataset.asset));
+                openAssetLedgerModal(assetPayload);
+            } catch (err) {
+                console.error('Failed to parse selected asset payload:', err);
+            }
+        });
+
+        populateListGroupFilter();
+
+        let searchDebounce = null;
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                clearTimeout(searchDebounce);
+                searchDebounce = setTimeout(function () {
+                    listState.search = searchInput.value.trim();
+                    listState.page = 1;
+                    fetchDepreciationList();
+                }, 300);
+            });
+        }
+
+        if (groupFilter) {
+            groupFilter.addEventListener('change', function () {
+                listState.group_code = groupFilter.value;
+                listState.branch_name = '';
+                if (branchFilter) branchFilter.value = '';
+                listState.page = 1;
+                fetchDepreciationList();
+            });
+        }
+
+        if (branchFilter) {
+            branchFilter.addEventListener('change', function () {
+                listState.branch_name = branchFilter.value;
+                listState.page = 1;
+                fetchDepreciationList();
+            });
+        }
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function () {
+                if (searchInput) searchInput.value = '';
+                if (groupFilter) groupFilter.value = '';
+                if (branchFilter) branchFilter.value = '';
+
+                listState.page = 1;
+                listState.search = '';
+                listState.group_code = '';
+                listState.branch_name = '';
+                listState.sort_by = 'created_at';
+                listState.sort_dir = 'DESC';
+
+                fetchDepreciationList();
+            });
+        }
+
+        sortButtons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const sortField = btn.dataset.sort;
+                if (!sortField) return;
+
+                if (listState.sort_by === sortField) {
+                    listState.sort_dir = (listState.sort_dir === 'ASC') ? 'DESC' : 'ASC';
+                } else {
+                    listState.sort_by = sortField;
+                    listState.sort_dir = 'ASC';
+                }
+
+                listState.page = 1;
+                fetchDepreciationList();
+            });
+        });
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function () {
+                if (listState.page <= 1) return;
+                listState.page -= 1;
+                fetchDepreciationList();
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', function () {
+                listState.page += 1;
+                fetchDepreciationList();
+            });
+        }
+
+        fetchDepreciationList();
+    }
+
+    [ledgerDateFromEl, ledgerDateToEl, ledgerEntrySideEl, ledgerPeriodYearEl, ledgerPeriodMonthEl]
+        .filter(Boolean)
+        .forEach(function (el) {
+            el.addEventListener('change', function () {
+                if (!ledgerState.asset || !ledgerState.asset.id) return;
+                syncLedgerFiltersFromInputs();
+                fetchAssetLedgerReport();
+            });
+        });
+
+    if (ledgerResetFilterBtn) {
+        ledgerResetFilterBtn.addEventListener('click', function () {
+            if (ledgerDateFromEl) ledgerDateFromEl.value = '';
+            if (ledgerDateToEl) ledgerDateToEl.value = '';
+            if (ledgerEntrySideEl) ledgerEntrySideEl.value = 'ALL';
+            if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = '';
+            if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = '';
+
+            ledgerState.filters = {
+                date_from: '',
+                date_to: '',
+                entry_side: 'ALL',
+                period_year: '',
+                period_month: '',
+            };
+            fetchAssetLedgerReport();
+        });
+    }
+
+    if (ledgerTabLedgerBtn) {
+        ledgerTabLedgerBtn.addEventListener('click', function () {
+            setLedgerTab('LEDGER');
+        });
+    }
+
+    if (ledgerTabFsBtn) {
+        ledgerTabFsBtn.addEventListener('click', function () {
+            setLedgerTab('FS');
+        });
+    }
+
+    if (ledgerPrintBtn) {
+        ledgerPrintBtn.addEventListener('click', function () {
+            printActiveLedgerTable();
+        });
+    }
+
 });

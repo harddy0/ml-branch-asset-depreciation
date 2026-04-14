@@ -115,7 +115,7 @@ if ($hasFiltersApplied) {
 
 <div class="mb-2 flex justify-between items-end">
     <div>
-        <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Asset Depreciation Records</h1>
+        <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Running Depreciation Report</h1>
     </div>
     
     <div class="relative inline-block text-left">
@@ -142,7 +142,7 @@ if ($hasFiltersApplied) {
 </div>
 
 <div class="mb-1 mr-6 text-right">
-    <p class="text-[11px] font-mono text-slate-500">Filtered by date imported into the system</p>
+    <p class="text-[11px] font-mono text-slate-500">Filtered by running depreciation date</p>
 </div>
 
 <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
@@ -204,7 +204,7 @@ if ($hasFiltersApplied) {
                     <tr class="border-b-2 border-slate-200 bg-[#ce2216]">
                         <th class="py-2.5 pl-5 pr-3 font-bold text-white uppercase tracking-wider text-xs">Codes</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs">Branches</th>
-                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs">Category</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs">Group Code</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs w-full">Description</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-right">Cost</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-right">Depreciation</th>
@@ -220,7 +220,7 @@ if ($hasFiltersApplied) {
                         <tr class="asset-row cursor-pointer" data-asset='<?= $payload ?>'>
                             <td class="py-0 pl-5 pr-3 text-xs text-slate-900"><?= htmlspecialchars($row['system_asset_code']) ?></td>
                             <td class="py-0 px-3 text-xs"><?= htmlspecialchars($row['branch_name']) ?></td>
-                            <td class="py-0 px-3 text-xs"><?= htmlspecialchars($row['category_name']) ?></td>
+                            <td class="py-0 px-3 text-xs"><?= htmlspecialchars($row['group_code'] ?? '') ?></td>
                             <td class="py-0 px-3 truncate max-w-[200px] text-xs" title="<?= htmlspecialchars($row['description']) ?>"><?= htmlspecialchars($row['description']) ?></td>
                             <td class="py-0 px-3 text-right font-mono text-xs"><?= number_format($row['acquisition_cost'], 2) ?></td>
                             <td class="py-0 px-3 text-right font-mono text-slate-900"><?= number_format($row['period_depreciation_expense'], 2) ?></td>

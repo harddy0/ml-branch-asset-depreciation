@@ -28,6 +28,7 @@ $assetGroups   = $classService->getDropdownOptions();
 </div>
 
 <?php require_once __DIR__ . '/../../src/includes/modals/add-asset.php'; ?>
+<?php require_once __DIR__ . '/../../src/includes/modals/asset-ledger.php'; ?>
 
 <script src="<?= ASSET_URL ?>js/main.js"></script>
 <script src="<?= ASSET_URL ?>js/depreciation-list.js"></script>
@@ -38,6 +39,45 @@ $assetGroups   = $classService->getDropdownOptions();
 
 <!-- Asset Table -->
 <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+    <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+                <input
+                    type="text"
+                    id="depr-search"
+                    placeholder="Search serial, description, item, group, branch, uploader..."
+                    class="w-full sm:w-80 border border-slate-300 rounded-md px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+
+                <select
+                    id="depr-group-filter"
+                    class="w-full sm:w-56 border border-slate-300 rounded-md px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                    <option value="">All Group Codes</option>
+                </select>
+
+                <select
+                    id="depr-branch-filter"
+                    class="w-full sm:w-64 border border-slate-300 rounded-md px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                    <option value="">All Branches</option>
+                </select>
+
+                <button
+                    type="button"
+                    id="depr-filter-reset"
+                    class="inline-flex items-center justify-center px-3 py-2 text-xs font-bold uppercase tracking-wide border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100"
+                >
+                    Reset
+                </button>
+            </div>
+
+            <div class="text-xs font-semibold text-slate-500">
+                Showing ACTIVE assets only • 50 per page
+            </div>
+        </div>
+    </div>
+
     <div class="overflow-x-auto">
         <table id="depr-table" class="w-full text-sm">
             <colgroup id="depr-colgroup">
@@ -52,22 +92,74 @@ $assetGroups   = $classService->getDropdownOptions();
             </colgroup>
             <thead>
                 <tr class="bg-[#ce2216] border-b border-slate-200">
-                    <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2 whitespace-nowrap">Serial number</th>
-                    <th class="text-left text-xs font-black text-white tracking-widest px-6 py-2 whitespace-nowrap">Description</th>
-                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">Item</th>
-                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">Group code</th>
-                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">Resource</th>
-                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">Amount</th>
-                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">Status</th>
-                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">End date</th>
+                    <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2 whitespace-nowrap">
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="serial_number">Serial number <span class="depr-sort-indicator opacity-70">↕</span></button>
+                    </th>
+                    <th class="text-left text-xs font-black text-white tracking-widest px-6 py-2 whitespace-nowrap">
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="description">Description <span class="depr-sort-indicator opacity-70">↕</span></button>
+                    </th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="item_code">Item <span class="depr-sort-indicator opacity-70">↕</span></button>
+                    </th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="group_code">Group code <span class="depr-sort-indicator opacity-70">↕</span></button>
+                    </th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="branch_name">Resource <span class="depr-sort-indicator opacity-70">↕</span></button>
+                    </th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="acquisition_cost">Amount <span class="depr-sort-indicator opacity-70">↕</span></button>
+                    </th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="status">Status <span class="depr-sort-indicator opacity-70">↕</span></button>
+                    </th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="depreciation_end_date">End date <span class="depr-sort-indicator opacity-70">↕</span></button>
+                    </th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="depr-table-body">
                 <!-- Rows will be populated here (server-side or via JS) -->
             </tbody>
         </table>
     </div>
+
+    <div class="border-t border-slate-200 bg-slate-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div id="depr-page-meta" class="text-xs font-semibold text-slate-500">
+            Page 1 of 1 • 0 records
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button
+                type="button"
+                id="depr-prev-page"
+                class="px-3 py-1.5 text-xs font-bold uppercase tracking-wide border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                Prev
+            </button>
+
+            <div id="depr-page-numbers" class="flex items-center gap-1"></div>
+
+            <button
+                type="button"
+                id="depr-next-page"
+                class="px-3 py-1.5 text-xs font-bold uppercase tracking-wide border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                Next
+            </button>
+        </div>
+    </div>
 </div>
+
+<div id="depr-list-config"
+     data-api-url="<?= BASE_URL ?>/public/api/get_depreciation_list.php"
+     data-per-page="50"
+     class="hidden"></div>
+
+<div id="depr-ledger-config"
+    data-api-url="<?= BASE_URL ?>/public/api/get_asset_ledger.php"
+    data-generated-by="<?= htmlspecialchars($_SESSION['full_name'] ?? 'User') ?>"
+    class="hidden"></div>
 
 
 
