@@ -906,35 +906,74 @@ document.addEventListener('DOMContentLoaded', function () {
         ledgerErrorEl.classList.remove('hidden');
     }
 
+    function getLedgerLineRows(rows) {
+        const lines = [];
+
+        (rows || []).forEach(function (r) {
+            const sourceId = parseInt(r.ledger_id || 0, 10) || 0;
+            const debitAmount = parseFloat(r.gl_debit_amount || 0) || 0;
+            const creditAmount = parseFloat(r.gl_credit_amount || 0) || 0;
+            const shared = {
+                source_id: sourceId,
+                period_date: r.period_date || '',
+                period_year: r.period_year || '',
+                period_month: r.period_month || '',
+                description: r.description || '',
+                period_depreciation_expense: parseFloat(r.period_depreciation_expense || 0) || 0,
+                accumulated_depreciation: parseFloat(r.accumulated_depreciation || 0) || 0,
+                book_value: parseFloat(r.book_value || 0) || 0,
+                created_at: r.created_at || ''
+            };
+
+            if (r.gl_debit_code) {
+                lines.push(Object.assign({}, shared, {
+                    line_type: 'DEBIT',
+                    gl_code: String(r.gl_debit_code),
+                    debit: debitAmount,
+                    credit: 0
+                }));
+            }
+
+            if (r.gl_credit_code) {
+                lines.push(Object.assign({}, shared, {
+                    line_type: 'CREDIT',
+                    gl_code: String(r.gl_credit_code),
+                    debit: 0,
+                    credit: creditAmount
+                }));
+            }
+        });
+
+        return lines;
+    }
+
     function renderLedgerRows(rows) {
         if (!ledgerTableBodyEl) return;
 
-        if (!rows || rows.length === 0) {
-            ledgerTableBodyEl.innerHTML = '<tr><td colspan="11" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No ledger rows found for selected filters.</td></tr>';
+        const lineRows = getLedgerLineRows(rows);
+
+        if (!lineRows || lineRows.length === 0) {
+            ledgerTableBodyEl.innerHTML = '<tr><td colspan="10" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No ledger rows found for selected filters.</td></tr>';
             return;
         }
 
-        const html = rows.map(function (r) {
+        const html = lineRows.map(function (r) {
             const periodLabel = `${r.period_year || ''}-${String(r.period_month || '').padStart(2, '0')}`;
-            const debitAccount = (r.gl_debit_code || '')
-                ? `${r.gl_debit_code}${r.debit_account_name ? ' - ' + r.debit_account_name : ''}`
-                : '';
-            const creditAccount = (r.gl_credit_code || '')
-                ? `${r.gl_credit_code}${r.credit_account_name ? ' - ' + r.credit_account_name : ''}`
-                : '';
+            const rowTone = (r.line_type === 'DEBIT') ? 'bg-emerald-50/40' : 'bg-amber-50/40';
+            const debitValue = r.debit > 0 ? currency.format(r.debit) : '';
+            const creditValue = r.credit > 0 ? currency.format(r.credit) : '';
 
             return `
-                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                <tr class="border-b border-slate-100 ${rowTone}">
                     <td class="px-3 py-2 text-slate-700">${escapeHtml(formatDateDisplay(r.period_date))}</td>
                     <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(periodLabel)}</td>
+                    <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(r.gl_code || '')}</td>
                     <td class="px-3 py-2 text-slate-700">${escapeHtml(r.description || '')}</td>
-                    <td class="px-3 py-2 text-slate-700">${escapeHtml(debitAccount)}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_debit_amount || 0))}</td>
-                    <td class="px-3 py-2 text-slate-700">${escapeHtml(creditAccount)}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_credit_amount || 0))}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.period_depreciation_expense || 0))}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.accumulated_depreciation || 0))}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.book_value || 0))}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${debitValue}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${creditValue}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(r.period_depreciation_expense || 0)}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(r.accumulated_depreciation || 0)}</td>
+                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(r.book_value || 0)}</td>
                     <td class="px-3 py-2 text-slate-700">${escapeHtml(r.created_at || '')}</td>
                 </tr>
             `;
@@ -1017,8 +1056,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateLedgerFooter(totals, ledgerRows) {
         if (!ledgerFooterSummaryEl || !ledgerTotalDebitEl || !ledgerTotalCreditEl || !ledgerLatestAccumEl || !ledgerLatestBookEl) return;
-        const rows = parseInt((totals && totals.row_count) || 0, 10);
-        ledgerFooterSummaryEl.textContent = `Rows: ${rows}`;
+        const sourceRows = parseInt((totals && totals.row_count) || 0, 10);
+        const lineRows = getLedgerLineRows(ledgerRows).length;
+        ledgerFooterSummaryEl.textContent = `Rows: ${lineRows} lines (${sourceRows} entries)`;
         ledgerTotalDebitEl.textContent = currency.format(parseFloat((totals && totals.ledger_debit) || 0));
         ledgerTotalCreditEl.textContent = currency.format(parseFloat((totals && totals.ledger_credit) || 0));
 
