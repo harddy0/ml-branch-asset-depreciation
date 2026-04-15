@@ -67,3 +67,205 @@
     min-width: 2ch; /* reserve space for two digits */
     text-align: right;
 }
+
+/* Finish preview styling */
+#finish-summary { padding: 0.5rem 1rem; }
+#finish-summary .text-xs { color: #6b7280; }
+#finish-summary .text-sm { color: #111827; font-weight: 600; }
+#finish-summary .flex > .text-xs { display: block; }
+#finish-summary .flex > .text-sm { margin-top: 0.25rem; font-weight: 700; }
+
+/* Extra summary appended by JS */
+#finish-summary .__extra_summary { border-top: 1px solid #eef2f6; padding-top: 1rem; margin-top: 1rem; }
+#finish-summary .__extra_summary .text-xs { color: #6b7280; }
+#finish-summary .__extra_summary .text-sm { color: #111827; }
+#finish-summary .__extra_summary .w-40 { color: #6b7280; font-weight:600; }
+
+/* Polished finish preview cards */
+.finish-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 1rem; margin: 0.5rem 0; }
+.finish-card { background: #ffffff; border: 1px solid #e6e9ef; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 2px rgba(16,24,40,0.04); }
+.finish-title { font-size: 0.95rem; color: #111827; font-weight: 700; margin-bottom: 0.5rem; border-bottom: 2px solid #1f2937; padding-bottom: 0.5rem; }
+.finish-grid { display: block; gap: 0.5rem 1rem; align-items: start; }
+.finish-row { display: contents; }
+.finish-label { color: #374151; font-size: 0.875rem; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; text-align: left; }
+.finish-value { color: #0f172a; font-size: 0.875rem; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; text-align: left; background: #e9ebec; padding: 0.45rem 0.6rem; border-radius: 0.175rem; border: 1px solid #d3d6db; box-sizing: border-box; }
+.finish-full { grid-column: 1 / -1; }
+.finish-note { font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem; }
+.finish-grid .finish-label + .finish-value { margin-top: 0.25rem; display: block; }
+
+/* Currency formatting in finish values: peso sign left, amount right */
+.finish-value.currency { display: flex; align-items: center; gap: 0.5rem; }
+.finish-value.currency .currency-symbol { color: #6b7280; font-weight: 600; margin-right: 0.25rem; }
+.finish-value.currency .amount { margin-left: auto; text-align: right; display: inline-block; min-width: 2ch; }
+
+/* Right-align currency form inputs and make room for left peso sign */
+.currency-input { text-align: right; }
+#asset_acquisition_cost, #asset_cost_unit { text-align: right; }
+
+@media (max-width: 640px) {
+    .finish-grid { grid-template-columns: 1fr; }
+}
+
+/* Table-like label row + value row styling */
+.finish-label-row { display: grid; gap: 0.5rem 1rem; align-items: start; }
+.finish-value-row { display: grid; gap: 0.5rem 1rem; align-items: start; }
+.finish-label, .finish-value { padding: 0.25rem 0.5rem; }
+
+/* Remove card borders and background for table-like look */
+.finish-card { background: transparent; border: none; box-shadow: none; padding: 0.35rem 0; }
+
+/* Ensure only inner step/section scrolls — not the whole page/modal */
+#modal-add-asset .flex-1 { overflow: hidden; }
+#modal-add-asset .step { max-height: calc(95vh - 220px); overflow-y: auto; box-sizing: border-box; }
+#modal-add-asset .step::-webkit-scrollbar { width: 8px; }
+#modal-add-asset .step::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+
+/* Finish summary uses parent step scrolling to avoid double scrollbars */
+#finish-summary { max-height: none; overflow-y: visible; padding-right: 0.5rem; box-sizing: border-box; }
+#finish-summary::-webkit-scrollbar { width: 0; height: 0; }
+#finish-summary::-webkit-scrollbar-thumb { background: transparent; }
+
+/* Force equal-width columns for grids marked equal-cols (fixes visual imbalance) */
+@media (min-width: 768px) {
+    .equal-cols.md\:grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+    .equal-cols.md\:grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* Ensure equal-cols children don't shrink and inputs fill their column */
+.equal-cols > div { min-width: 0; }
+.equal-cols .w-full { width: 100%; box-sizing: border-box; }
+
+/* Location section: make first column narrower and right-align labels */
+@media (min-width: 768px) {
+    .location-grid { grid-template-columns: 22% 78% !important; }
+    .location-grid > div:nth-child(odd) { display: flex; align-items: center; justify-content: flex-end; padding-right: 0.25rem; }
+    .location-grid > div:nth-child(odd) label { margin: 0; text-align: right; white-space: nowrap; overflow: visible; }
+}
+
+
+/* Prevent finish summary content from overflowing its parent */
+#finish-summary { max-width: 100%; box-sizing: border-box; overflow-x: auto; }
+.finish-cards, .finish-card, .finish-grid, .finish-pair { min-width: 0; }
+.finish-value { overflow-wrap: anywhere; word-break: break-word; white-space: normal; max-width: 100%; }
+.step { box-sizing: border-box; }
+
+/* Finish tables: boxed cards with borders, shadow, and table rows */
+#finish-summary .finish-layout-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+#finish-summary .finish-card--table {
+    background: #ffffff;
+    border: 1px solid #d8dee8;
+    border-radius: 10px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.07);
+    overflow: hidden;
+    padding: 0;
+}
+
+#finish-summary .finish-card--full {
+    grid-column: 1 / -1;
+}
+
+#finish-summary .finish-card--center {
+    grid-column: 1 / -1;
+    max-width: 760px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#finish-summary .finish-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    background: #ffffff;
+}
+
+#finish-summary .finish-table th,
+#finish-summary .finish-table td {
+    border: 1px solid #e2e8f0;
+    padding: 0.25rem 0.6rem;
+    vertical-align: middle;
+}
+
+#finish-summary .finish-table .finish-title {
+    text-align: left;
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #b91c1c;
+    background: #f8fafc;
+}
+
+#finish-summary .finish-table .finish-label {
+    width: 42%;
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: #f8fafc;
+    white-space: nowrap;
+}
+
+#finish-summary .finish-table .finish-value {
+    color: #0f172a;
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-align: left;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0.25rem 0.6rem;
+}
+
+#finish-summary .finish-table .finish-value.currency {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#finish-summary .finish-table .finish-value.currency .currency-symbol {
+    color: #64748b;
+    font-weight: 700;
+}
+
+#finish-summary .finish-table .finish-value.currency .amount {
+    margin-left: auto;
+    text-align: right;
+}
+
+#finish-summary .finish-table--depreciation .finish-label {
+    width: 30%;
+}
+
+#finish-summary .finish-table--depreciation tr.py-1 td {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+
+@media (max-width: 1024px) {
+    #finish-summary .finish-layout-grid {
+        grid-template-columns: 1fr;
+    }
+    #finish-summary .finish-card--full {
+        grid-column: auto;
+    }
+}
+
+/* Result modal (success / fail) */
+.result-modal-overlay {
+    position: fixed; inset: 0; z-index: 99999; display:flex; align-items:center; justify-content:center;
+    background: rgba(2,6,23,0.45); opacity: 0; transition: opacity 160ms ease;
+}
+.result-modal-overlay.visible { opacity: 1; }
+.result-modal-card { background:#fff; border-radius:10px; padding:1rem 1.25rem; min-width:280px; max-width:520px; box-shadow:0 10px 30px rgba(2,6,23,0.2); display:flex; gap:0.75rem; align-items:center; }
+.result-modal-card.success { border-left: 4px solid #10b981; }
+.result-modal-card.fail { border-left: 4px solid #ef4444; }
+.result-modal-icon svg{ color: #10b981; }
+.result-modal-card.fail .result-modal-icon svg{ color: #ef4444; }
+.result-modal-message{ font-weight:700; color:#0f172a; font-size:1rem; }
+

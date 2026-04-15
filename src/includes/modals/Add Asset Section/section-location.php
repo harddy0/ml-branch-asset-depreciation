@@ -1,0 +1,64 @@
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SECTION 1: Location Data (already working)        -->
+<!-- ══════════════════════════════════════════════════ -->
+<section>
+    <h3 class="text-xs font-black text-[#ce1126] uppercase tracking-widest border-b border-slate-200 pb-2 mb-4">
+        Location Data
+    </h3>
+
+    <div class="space-y-2">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-1" style="grid-template-columns: 22% 78%;">
+            <div class="flex items-center justify-end pr-2">
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-1">Main Zone <span class="text-red-500">*</span></label>
+            </div>
+            <div>
+                <select name="main_zone_code" id="main_zone_code" required class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white disabled:bg-slate-100 disabled:text-slate-400">
+                    <option value="" disabled selected>Loading...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-1" style="grid-template-columns: 22% 78%;">
+            <div class="flex items-center justify-end pr-2">
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-1">Sub-Zone <span class="text-red-500">*</span></label>
+            </div>
+            <div>
+                <select name="zone_code" id="zone_code" required class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white disabled:bg-slate-100 disabled:text-slate-400">
+                    <option value="" disabled selected>Loading...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-1" style="grid-template-columns: 22% 78%;">
+            <div class="flex items-center justify-end pr-2">
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-1">Region <span class="text-red-500">*</span></label>
+            </div>
+            <div>
+                <select name="region_code" id="region_code" required class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white disabled:bg-slate-100 disabled:text-slate-400">
+                    <option value="" disabled selected>Loading...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-1" style="grid-template-columns: 22% 78%;">
+            <div class="flex items-center justify-end pr-2">
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-1">Branch Name <span class="text-red-500">*</span></label>
+            </div>
+            <div>
+                <select name="branch_name" id="branch_name" required class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white disabled:bg-slate-100 disabled:text-slate-400">
+                    <option value="" disabled selected>Loading...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-1" style="grid-template-columns: 22% 78%;">
+            <div class="flex items-center justify-end pr-2">
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-1">Cost Center Code <span class="text-red-500">*</span></label>
+            </div>
+            <div>
+                <input type="text" name="cost_center_code" id="cost_center_code" placeholder="Auto-fills upon branch selection" readonly required class="w-full text-sm font-mono border border-slate-200 rounded-lg px-3 py-2.5 bg-slate-50 text-slate-600 outline-none transition-all">
+            </div>
+        </div>
+    </div>
+    
+</section>
