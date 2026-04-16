@@ -159,6 +159,9 @@ class AssetService {
         $search = trim((string)($options['search'] ?? ''));
         $groupCode = trim((string)($options['group_code'] ?? ''));
         $branchName = trim((string)($options['branch_name'] ?? ''));
+        $dateFrom = trim((string)($options['date_from'] ?? ''));
+        $dateTo = trim((string)($options['date_to'] ?? ''));
+        $status = trim((string)($options['status'] ?? ''));
         $sortBy = (string)($options['sort_by'] ?? 'created_at');
         $sortDir = strtoupper((string)($options['sort_dir'] ?? 'DESC'));
 
@@ -179,8 +182,15 @@ class AssetService {
         $safeSortColumn = $sortMap[$sortBy] ?? $sortMap['created_at'];
         $safeSortDir = ($sortDir === 'ASC') ? 'ASC' : 'DESC';
 
-        $where = ["a.status = 'ACTIVE'"];
+        $where = [];
         $params = [];
+
+        if ($status !== '') {
+            $where[] = 'a.status = :status';
+            $params[':status'] = $status;
+        } else {
+            $where[] = "a.status = 'ACTIVE'";
+        }
 
         if ($groupCode !== '') {
             $where[] = 'a.group_code = :group_code';
@@ -190,6 +200,16 @@ class AssetService {
         if ($branchName !== '') {
             $where[] = 'a.branch_name = :branch_name';
             $params[':branch_name'] = $branchName;
+        }
+
+        if ($dateFrom !== '') {
+            $where[] = 'DATE(a.created_at) >= :date_from';
+            $params[':date_from'] = $dateFrom;
+        }
+
+        if ($dateTo !== '') {
+            $where[] = 'DATE(a.created_at) <= :date_to';
+            $params[':date_to'] = $dateTo;
         }
 
         if ($search !== '') {
@@ -259,12 +279,29 @@ class AssetService {
 
         $rows = $dataStmt->fetchAll(\PDO::FETCH_ASSOC);
 
-        $branchWhere = ["a.status = 'ACTIVE'", "a.branch_name IS NOT NULL", "a.branch_name <> ''"];
+        $branchWhere = ["a.branch_name IS NOT NULL", "a.branch_name <> ''"];
         $branchParams = [];
+
+        if ($status !== '') {
+            $branchWhere[] = 'a.status = :status';
+            $branchParams[':status'] = $status;
+        } else {
+            $branchWhere[] = "a.status = 'ACTIVE'";
+        }
 
         if ($groupCode !== '') {
             $branchWhere[] = 'a.group_code = :group_code';
             $branchParams[':group_code'] = $groupCode;
+        }
+
+        if ($dateFrom !== '') {
+            $branchWhere[] = 'DATE(a.created_at) >= :date_from';
+            $branchParams[':date_from'] = $dateFrom;
+        }
+
+        if ($dateTo !== '') {
+            $branchWhere[] = 'DATE(a.created_at) <= :date_to';
+            $branchParams[':date_to'] = $dateTo;
         }
 
         $branchSql = '
@@ -296,10 +333,13 @@ class AssetService {
                 'sort_by' => array_key_exists($sortBy, $sortMap) ? $sortBy : 'created_at',
                 'sort_dir' => $safeSortDir,
             ],
-            'filters' => [
+                'filters' => [
                 'search' => $search,
                 'group_code' => $groupCode,
                 'branch_name' => $branchName,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'status' => $status,
             ],
         ];
     }

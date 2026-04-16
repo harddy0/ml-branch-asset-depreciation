@@ -522,6 +522,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('depr-search');
     const groupFilter = document.getElementById('depr-group-filter');
     const branchFilter = document.getElementById('depr-branch-filter');
+    const dateFromInput = document.getElementById('depr-date-from');
+    const dateToInput = document.getElementById('depr-date-to');
+    const statusFilter = document.getElementById('depr-status-filter');
     const resetBtn = document.getElementById('depr-filter-reset');
     const sortButtons = Array.from(document.querySelectorAll('.depr-sort'));
 
@@ -531,6 +534,9 @@ document.addEventListener('DOMContentLoaded', function () {
         search: '',
         group_code: '',
         branch_name: '',
+        date_from: '',
+        date_to: '',
+        status: '',
         sort_by: 'created_at',
         sort_dir: 'DESC',
     };
@@ -551,13 +557,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function formatDateDisplay(value) {
         if (!value) return '-';
-        const safe = new Date(String(value) + 'T00:00:00');
-        if (isNaN(safe)) return '-';
+        const s = String(value).trim();
+        // Try direct parse first (handles ISO with time)
+        let dt = new Date(s);
+        if (isNaN(dt)) {
+            // Replace space between date and time with 'T' (common MySQL format)
+            const replaced = s.replace(' ', 'T');
+            dt = new Date(replaced);
+        }
+        if (isNaN(dt)) {
+            // Fallback: take only the date portion YYYY-MM-DD
+            const datePart = s.split(' ')[0].split('T')[0];
+            if (!datePart) return '-';
+            dt = new Date(datePart + 'T00:00:00');
+        }
+        if (isNaN(dt)) return '-';
         return new Intl.DateTimeFormat('en-US', {
             month: 'short',
             day: 'numeric',
             year: 'numeric'
-        }).format(safe);
+        }).format(dt);
     }
 
     function renderListRows(rows) {
@@ -566,7 +585,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!rows || rows.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="10" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">
+                    <td colspan="11" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">
                         No active assets found.
                     </td>
                 </tr>
@@ -574,7 +593,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const html = rows.map(function (row) {
+        const html = rows.map(function (row, idx) {
+            const rowBg = (idx % 2 === 0) ? 'bg-white' : 'bg-slate-200';
             const payload = encodeURIComponent(JSON.stringify({
                 id: row.id,
                 system_asset_code: row.system_asset_code || '',
@@ -582,7 +602,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 description: row.description || '',
                 group_code: row.group_code || '',
                 branch_name: row.branch_name || '',
-                uploaded_by: row.uploaded_by || ''
+                uploaded_by: row.uploaded_by || '',
+                created_at: row.created_at || ''
             }));
 
             const serialNo = row.serial_number || row.system_asset_code || '-';
@@ -595,9 +616,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const monthlyDep = currency.format(parseFloat(row.monthly_depreciation || 0));
             const status = row.status || 'ACTIVE';
             const endDate = formatDateDisplay(row.depreciation_end_date);
+            const dateAdded = formatDateDisplay(row.created_at);
 
             return `
-                <tr class="depr-asset-row border-b border-slate-100 hover:bg-slate-50 cursor-pointer" data-asset="${payload}">
+                <tr class="depr-asset-row border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${rowBg}" data-asset="${payload}">
                     <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(serialNo)}</td>
                     <td class="px-6 py-1 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">${escapeHtml(description)}</td>
                     <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(itemCode)}</td>
@@ -620,6 +642,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         </span>
                     </td>
                     <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(endDate)}</td>
+                    <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(dateAdded)}</td>
                 </tr>
             `;
         }).join('');
@@ -720,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!tableBody) return;
         tableBody.innerHTML = `
             <tr>
-                <td colspan="10" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">Loading assets...</td>
+                <td colspan="11" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">Loading assets...</td>
             </tr>
         `;
     }
@@ -735,6 +758,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (listState.search) params.set('search', listState.search);
         if (listState.group_code) params.set('group_code', listState.group_code);
         if (listState.branch_name) params.set('branch_name', listState.branch_name);
+        if (listState.date_from) params.set('date_from', listState.date_from);
+        if (listState.date_to) params.set('date_to', listState.date_to);
+        if (listState.status) params.set('status', listState.status);
 
         return params.toString();
     }
@@ -771,6 +797,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 populateBranchFilter(branches);
+                // Restore applied filters back to inputs
+                if (dateFromInput) {
+                    const v = (res.filters && res.filters.date_from) ? res.filters.date_from : (listState.date_from || '');
+                    dateFromInput.value = v || '';
+                    listState.date_from = v || '';
+                }
+                if (dateToInput) {
+                    const v2 = (res.filters && res.filters.date_to) ? res.filters.date_to : (listState.date_to || '');
+                    dateToInput.value = v2 || '';
+                    listState.date_to = v2 || '';
+                }
+                if (statusFilter) {
+                    const sv = (res.filters && res.filters.status) ? res.filters.status : (listState.status || '');
+                    statusFilter.value = sv || '';
+                    listState.status = sv || '';
+                }
                 renderListRows(rows);
                 updatePaginationUi(pagination);
                 updateSortIndicators();
@@ -780,7 +822,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (tableBody) {
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="10" class="px-6 py-8 text-center text-sm font-semibold text-red-600">
+                            <td colspan="11" class="px-6 py-8 text-center text-sm font-semibold text-red-600">
                                 Unable to load depreciation list: ${escapeHtml(err.message || 'Unknown error')}
                             </td>
                         </tr>
@@ -960,7 +1002,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const lineRows = getLedgerLineRows(rows);
 
         if (!lineRows || lineRows.length === 0) {
-            ledgerTableBodyEl.innerHTML = '<tr><td colspan="10" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No ledger rows found for selected filters.</td></tr>';
+            ledgerTableBodyEl.innerHTML = '<tr><td colspan="11" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No ledger rows found for selected filters.</td></tr>';
             return;
         }
 
@@ -1263,6 +1305,30 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
+        if (dateFromInput) {
+            dateFromInput.addEventListener('change', function () {
+                listState.date_from = dateFromInput.value || '';
+                listState.page = 1;
+                fetchDepreciationList();
+            });
+        }
+
+        if (dateToInput) {
+            dateToInput.addEventListener('change', function () {
+                listState.date_to = dateToInput.value || '';
+                listState.page = 1;
+                fetchDepreciationList();
+            });
+        }
+
+        if (statusFilter) {
+            statusFilter.addEventListener('change', function () {
+                listState.status = statusFilter.value || '';
+                listState.page = 1;
+                fetchDepreciationList();
+            });
+        }
+
         if (groupFilter) {
             groupFilter.addEventListener('change', function () {
                 listState.group_code = groupFilter.value;
@@ -1286,11 +1352,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (searchInput) searchInput.value = '';
                 if (groupFilter) groupFilter.value = '';
                 if (branchFilter) branchFilter.value = '';
+                if (dateFromInput) dateFromInput.value = '';
+                if (dateToInput) dateToInput.value = '';
+                if (statusFilter) statusFilter.value = '';
 
                 listState.page = 1;
                 listState.search = '';
                 listState.group_code = '';
                 listState.branch_name = '';
+                listState.date_from = '';
+                listState.date_to = '';
+                listState.status = '';
                 listState.sort_by = 'created_at';
                 listState.sort_dir = 'DESC';
 
