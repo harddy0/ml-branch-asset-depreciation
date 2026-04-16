@@ -37,7 +37,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
 
         <!-- Ongoing Assets -->
         <div class="bg-white rounded shadow p-4 flex-1 min-w-0 flex flex-col border-t-2 border-[#ce1126]" style="height: 370px;">
-            <div class="text-xs text-slate-500 uppercase mb-3 font-semibold tracking-wide">Ongoing Assets</div>
+            <div class="text-xs text-slate-500 uppercase mb-3 font-semibold tracking-wide">Active Assets</div>
             <div id="ongoingCount" class="text-2xl font-black text-slate-800 mb-1">—</div>
             <div id="ongoingCost" class="text-xs text-slate-400 font-mono mb-3">—</div>
             <div id="ongoingList" class="space-y-1 overflow-y-auto flex-1 pr-1"></div>
@@ -45,7 +45,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
 
         <!-- Closed Assets -->
         <div class="bg-white rounded shadow p-4 flex-1 min-w-0 flex flex-col border-t-2 border-[#ce1126]" style="height: 370px;">
-            <div class="text-xs text-slate-500 uppercase mb-3 font-semibold tracking-wide">Closed Assets</div>
+            <div class="text-xs text-slate-500 uppercase mb-3 font-semibold tracking-wide">Depreciated</div>
             <div id="closedCount" class="text-2xl font-black text-slate-800 mb-1">—</div>
             <div id="closedCost" class="text-xs text-slate-400 font-mono mb-3">—</div>
             <div id="closedList" class="space-y-1 overflow-y-auto flex-1 pr-1"></div>
