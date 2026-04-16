@@ -15,8 +15,8 @@
 
         <div class="flex flex-1 min-h-0 w-full overflow-hidden">
             <?php include dirname(__DIR__) . '/includes/sidebar.php'; ?>
-            <main class="flex-1 overflow-y-auto p-8 bg-[#fdfdfd] min-h-0">
-                <div class="animate-fadeIn max-w-7xl mx-auto">
+            <main class="flex-1 overflow-y-auto p-8 bg-[#fdfdfd] min-h-0 min-w-0">
+                <div class="animate-fadeIn w-full mx-auto">
                     <?php echo $content; ?>
                 </div>
             </main>
