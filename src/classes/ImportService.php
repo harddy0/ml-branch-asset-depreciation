@@ -303,10 +303,35 @@ class ImportService {
                 $rowErrors[] = "Asset Group '{$groupRaw}' does not exist in the system.";
             }
 
-            // Master data branch validation
+            // Master data branch validation — resolve region description/code before lookup
             $masterData = null;
             if (empty($rowErrors)) {
-                $masterCheck->execute([$zone, $regionCode, $costCenter]);
+                $resolvedRegionCode = $regionCode;
+                if ($this->dbMaster) {
+                    $locSvc = new LocationMasterService($this->dbMaster);
+                    try {
+                        $resolved = $locSvc->findByCodeOrDescription($regionCode);
+                        if ($resolved === null) {
+                            // No match: mark unresolved so we don't write descriptions into code fields
+                            $resolvedRegionCode = null;
+                            $rowErrors[] = "Unresolved Region '{$regionCode}'";
+                        } elseif (is_array($resolved)) {
+                            if (isset($resolved['ambiguous']) && $resolved['ambiguous']) {
+                                $suggests = array_map(function($m){ return ($m['code'] ?? '') . ' (' . ($m['description'] ?? '') . ')'; }, $resolved['matches']);
+                                $rowErrors[] = "Ambiguous Region '{$regionCode}': " . implode(', ', $suggests);
+                                $resolvedRegionCode = null;
+                            } elseif (isset($resolved['code'])) {
+                                $resolvedRegionCode = $resolved['code'];
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        // On error, mark unresolved to be safe
+                        $resolvedRegionCode = null;
+                        $rowErrors[] = "Region resolution error for '{$regionCode}'";
+                    }
+                }
+
+                $masterCheck->execute([$zone, $resolvedRegionCode, $costCenter]);
                 $masterData = $masterCheck->fetch(\PDO::FETCH_ASSOC);
 
                 if (!$masterData && !empty($costCenter)) {
@@ -315,7 +340,7 @@ class ImportService {
                 }
 
                 if (!$masterData) {
-                    $rowErrors[] = "Branch (Zone:{$zone}, Region:{$regionCode}, Cost Center:{$costCenter}) not found in Master Data.";
+                    $rowErrors[] = "Branch (Zone:{$zone}, Region:{$resolvedRegionCode}, Cost Center:{$costCenter}) not found in Master Data.";
                 }
             }
 
@@ -331,7 +356,7 @@ class ImportService {
                 // Location
                 'main_zone_code'           => $masterData['zone']        ?? $zone,
                 'zone_code'                => $zoneCode,
-                'region_code'              => $masterData['region']       ?? $regionCode,
+                'region_code'              => $masterData['region']       ?? ($resolvedRegionCode ?? null),
                 'cost_center_code'         => $masterData['cost_center'] ?? $costCenter,
                 'branch_name'              => $masterData['branch_name'] ?? $excelBranch,
                 'branch_code'              => $masterData['branch_code'] ?? $costCenter,
@@ -649,12 +674,34 @@ class ImportService {
                 $deprDay
             );
 
+            // Ensure region_code is canonical: resolve description -> code if needed
+            $finalRegionCode = '';
+            if (!empty($r['region_code'])) {
+                if ($this->dbMaster) {
+                    try {
+                        $locSvc = new LocationMasterService($this->dbMaster);
+                        $resolved = $locSvc->findByCodeOrDescription($r['region_code']);
+                        if (is_array($resolved) && isset($resolved['code'])) {
+                            $finalRegionCode = $resolved['code'];
+                        } else {
+                            // ambiguous or not found -> leave empty to cause AssetService to validate/fail
+                            $finalRegionCode = '';
+                        }
+                    } catch (\Throwable $e) {
+                        $finalRegionCode = '';
+                    }
+                } else {
+                    // No master DB available; pass through value (risky)
+                    $finalRegionCode = $r['region_code'];
+                }
+            }
+
             $payload = [
                 'system_asset_code'       => $r['system_asset_code'],
                 'reference_no'            => $r['reference_no']     ?? null,
                 'main_zone_code'          => $r['main_zone_code']   ?? '',
                 'zone_code'               => $r['zone_code']        ?? '',
-                'region_code'             => $r['region_code']      ?? '',
+                'region_code'             => $finalRegionCode       ?? '',
                 'cost_center_code'        => $r['cost_center_code'] ?? '',
                 'branch_name'             => $r['branch_name']      ?? '',
                 'group_code'              => $r['group_code']       ?? '',
