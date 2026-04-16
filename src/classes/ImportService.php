@@ -432,8 +432,8 @@ class ImportService {
                 $row['system_asset_code'] = sprintf(
                     "%s-%s-%s-%s",
                     $row['asset_code'],
-                    $row['zone_code'],
-                    $row['branch_code'] ?? '',
+                    $row['zone_code'] ?: ($row['main_zone_code'] ?? ''),
+                    $row['branch_code'] ?: ($row['cost_center_code'] ?? ''),
                     $suffix
                 );
             }
@@ -452,10 +452,22 @@ class ImportService {
             $row['branch_code'] = trim((string)($row['branch_code'] ?? ''));
             $row['group_code'] = trim((string)($row['group_code'] ?? ''));
 
-            if ($row['description'] === '' || $row['zone_code'] === '' || $row['cost_center_code'] === '' || $row['branch_code'] === '') {
+            if ($row['description'] === '' || $row['cost_center_code'] === '') {
                 continue;
             }
             if (!preg_match('/^\d{4}-\d{3}$/', $row['cost_center_code'])) {
+                continue;
+            }
+
+            if ($row['branch_code'] === '') {
+                $row['branch_code'] = $row['cost_center_code'];
+            }
+
+            $zonePart = $row['zone_code'] !== ''
+                ? $row['zone_code']
+                : $row['main_zone_code'];
+
+            if ($zonePart === '') {
                 continue;
             }
 
@@ -525,7 +537,7 @@ class ImportService {
             $row['system_asset_code'] = sprintf(
                 "%s-%s-%s-%s",
                 $row['asset_code'],
-                $row['zone_code'],
+                $zonePart,
                 $row['branch_code'],
                 $suffix
             );

@@ -902,6 +902,45 @@ function closeAssetDepreciationDetails() {
 }
 
 function closeImportReview() {
+    reviewPreviewRows = [];
+    reviewSelectedRowNums = new Set();
+    _availableGroups = {};
+
+    var tbody = document.getElementById('review-tbody');
+    var summOk = document.getElementById('review-summary-ok');
+    var summErr = document.getElementById('review-summary-err');
+    var errNote = document.getElementById('review-error-note');
+    var errTxt = document.getElementById('review-error-note-text');
+    var selectAll = document.getElementById('review-select-all');
+    var btnConf = document.getElementById('btn-confirm-import');
+
+    if (tbody) tbody.innerHTML = '';
+    if (summOk) summOk.textContent = '0 row(s) ready';
+    if (summErr) summErr.textContent = '';
+    if (errTxt) errTxt.textContent = '';
+    if (errNote) errNote.classList.add('hidden');
+    if (selectAll) selectAll.checked = false;
+    if (btnConf) {
+        btnConf.disabled = true;
+        btnConf.textContent = 'Confirm Import';
+    }
+
+    var fileInput = document.getElementById('file-upload');
+    var fileDisplay = document.getElementById('file-display');
+    var fileNameTxt = document.getElementById('file-name');
+    var btnProcess = document.getElementById('btn-process');
+
+    if (fileInput) fileInput.value = '';
+    if (fileNameTxt) fileNameTxt.textContent = '';
+    if (fileDisplay) {
+        fileDisplay.classList.add('hidden');
+        fileDisplay.classList.remove('flex');
+    }
+    if (btnProcess) {
+        btnProcess.disabled = false;
+        btnProcess.textContent = 'Upload';
+    }
+
     closeModal('modal-asset-depr-details');
     closeModal('modal-import-review');
 }
@@ -939,11 +978,26 @@ function confirmImport() {
         body: formData
     })
         .then(function (res) {
-            if (!res.ok) throw new Error('Server error ' + res.status);
-            return res.text();
+            return res.text().then(function (text) {
+                return { ok: res.ok, status: res.status, text: text };
+            });
         })
-        .then(function (text) {
-            return _parseJsonSafe(text);
+        .then(function (resp) {
+            var data;
+            try {
+                data = _parseJsonSafe(resp.text);
+            } catch (e) {
+                if (!resp.ok) {
+                    throw new Error('Server error ' + resp.status);
+                }
+                throw e;
+            }
+
+            if (!resp.ok) {
+                throw new Error((data && data.error) ? data.error : ('Server error ' + resp.status));
+            }
+
+            return data;
         })
         .then(function (data) {
             if (data.success) {
