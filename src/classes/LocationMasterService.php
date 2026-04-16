@@ -153,4 +153,76 @@ class LocationMasterService {
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         }
     }
+
+    /**
+     * Resolve a provided value to a region code and description.
+     * Returns:
+     *  - ['code'=>..., 'description'=>...] on single match
+     *  - ['ambiguous' => true, 'matches' => [ ['code'=>..., 'description'=>...], ... ]] when multiple description matches
+     *  - null when no matches
+     */
+    public function findByCodeOrDescription(string $value): ?array {
+        $this->checkConnection();
+
+        $raw = trim((string)$value);
+        if ($raw === '') {
+            return null;
+        }
+
+        // Try exact code match first
+        try {
+            $stmtCode = $this->dbMaster->prepare(
+                "SELECT region_code, region_description FROM region_masterfile WHERE region_code = :v LIMIT 1"
+            );
+            $stmtCode->execute([':v' => $raw]);
+            $r = $stmtCode->fetch(\PDO::FETCH_ASSOC);
+            if ($r && !empty($r['region_code'])) {
+                return ['code' => $r['region_code'], 'description' => $r['region_description'] ?? ''];
+            }
+
+            // Normalize for description match: collapse whitespace and lowercase
+            $norm = mb_strtolower(preg_replace('/\s+/', ' ', $raw));
+
+            $stmtDesc = $this->dbMaster->prepare(
+                "SELECT region_code, region_description FROM region_masterfile WHERE LOWER(TRIM(region_description)) = :d"
+            );
+            $stmtDesc->execute([':d' => trim($norm)]);
+            $matches = $stmtDesc->fetchAll(\PDO::FETCH_ASSOC);
+
+            if (!$matches) {
+                // Try a looser normalized match using REPLACE of multiple spaces
+                $stmtDesc2 = $this->dbMaster->prepare(
+                    "SELECT region_code, region_description FROM region_masterfile"
+                );
+                $stmtDesc2->execute();
+                $all = $stmtDesc2->fetchAll(\PDO::FETCH_ASSOC);
+                $found = [];
+                foreach ($all as $m) {
+                    $mnorm = mb_strtolower(preg_replace('/\s+/', ' ', trim($m['region_description'] ?? '')));
+                    if ($mnorm === $norm) {
+                        $found[] = $m;
+                    }
+                }
+                $matches = $found;
+            }
+
+            if (!$matches) {
+                return null;
+            }
+
+            if (count($matches) === 1) {
+                $m = $matches[0];
+                return ['code' => $m['region_code'], 'description' => $m['region_description'] ?? ''];
+            }
+
+            // ambiguous
+            $out = ['ambiguous' => true, 'matches' => []];
+            foreach ($matches as $m) {
+                $out['matches'][] = ['code' => $m['region_code'], 'description' => $m['region_description'] ?? ''];
+            }
+            return $out;
+        } catch (\PDOException $e) {
+            return null;
+        }
+    }
 }
