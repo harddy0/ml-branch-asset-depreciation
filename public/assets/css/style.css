@@ -160,7 +160,7 @@
     background: #ffffff;
     border: 1px solid #d8dee8;
     border-radius: 10px;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.07);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
     overflow: hidden;
     padding: 0;
 }
@@ -184,6 +184,14 @@
     background: #ffffff;
 }
 
+#finish-summary .finish-table col.finish-col-label {
+    width: 35% !important;
+}
+
+#finish-summary .finish-table col.finish-col-value {
+    width: 76% !important;
+}
+
 #finish-summary .finish-table th,
 #finish-summary .finish-table td {
     border: 1px solid #e2e8f0;
@@ -201,8 +209,9 @@
     background: #f8fafc;
 }
 
-#finish-summary .finish-table .finish-label {
-    width: 42%;
+#finish-summary .finish-table td.finish-label {
+    width: auto;
+    max-width: none;
     color: #334155;
     font-size: 0.8rem;
     font-weight: 700;
@@ -210,7 +219,9 @@
     white-space: nowrap;
 }
 
-#finish-summary .finish-table .finish-value {
+#finish-summary .finish-table td.finish-value {
+    width: auto;
+    max-width: none;
     color: #0f172a;
     font-size: 0.84rem;
     font-weight: 700;
@@ -220,6 +231,22 @@
     border-radius: 0;
     box-shadow: none;
     padding: 0.25rem 0.6rem;
+    /* Allow wrapping by default, but override per-cell when needed */
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+/* Keep currency cells aligned but allow wrapping for long descriptions */
+#finish-summary .finish-table td.finish-value.currency { white-space: nowrap; }
+
+/* Description should wrap and stack lines instead of truncating */
+#finish-summary .finish-table td.finish-value[data-key="description"] {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 #finish-summary .finish-table .finish-value.currency {
@@ -238,8 +265,14 @@
     text-align: right;
 }
 
-#finish-summary .finish-table--depreciation .finish-label {
-    width: 30%;
+#finish-summary .finish-table td.finish-value[data-key="reference_no"],
+#finish-summary .finish-table td.finish-value[data-key="item_code"] {
+    text-transform: uppercase;
+}
+
+#finish-summary .finish-table--depreciation td.finish-label {
+    width: auto;
+    max-width: none;
 }
 
 #finish-summary .finish-table--depreciation tr.py-1 td {
@@ -262,10 +295,15 @@
     background: rgba(2,6,23,0.45); opacity: 0; transition: opacity 160ms ease;
 }
 .result-modal-overlay.visible { opacity: 1; }
-.result-modal-card { background:#fff; border-radius:10px; padding:1rem 1.25rem; min-width:280px; max-width:520px; box-shadow:0 10px 30px rgba(2,6,23,0.2); display:flex; gap:0.75rem; align-items:center; }
-.result-modal-card.success { border-left: 4px solid #10b981; }
-.result-modal-card.fail { border-left: 4px solid #ef4444; }
-.result-modal-icon svg{ color: #10b981; }
+.result-modal-card { background:#fff; border-radius:10px; padding:1rem 1.25rem; min-width:280px; max-width:520px; box-shadow:0 10px 30px rgba(2,6,23,0.2); display:flex; gap:0.75rem; align-items:center; flex-direction:column; text-align:center; }
+.result-modal-card.success { border-top: 4px solid #74ebc3; }
+.result-modal-card.fail { border-top: 4px solid #f0a9a9; }
+.result-modal-icon { margin: 0.5rem 0; }
+.result-modal-icon svg{ color: #10b981; display:block; }
 .result-modal-card.fail .result-modal-icon svg{ color: #ef4444; }
 .result-modal-message{ font-weight:700; color:#0f172a; font-size:1rem; }
+.result-modal-content{ display:flex; flex-direction:column; gap:0.75rem; min-width:0; align-items:center; }
+.result-modal-actions{ display:flex; justify-content:center; }
+.result-modal-ok{ border:1px solid #cbd5e1; background:#ffffff; color:#0f172a; font-weight:700; font-size:0.95rem; border-radius:8px; padding:0.45rem 1.1rem; min-width:64px; }
+.result-modal-ok:hover{ background:#f8fafc; }
 

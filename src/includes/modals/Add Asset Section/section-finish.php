@@ -3,6 +3,10 @@
 
         <div class="finish-card finish-card--table">
             <table class="finish-table">
+                <colgroup>
+                    <col class="finish-col-label">
+                    <col class="finish-col-value">
+                </colgroup>
                 <thead>
                     <tr><th colspan="2" class="finish-title">Location</th></tr>
                 </thead>
@@ -18,6 +22,10 @@
 
         <div class="finish-card finish-card--table">
             <table class="finish-table">
+                <colgroup>
+                    <col class="finish-col-label">
+                    <col class="finish-col-value">
+                </colgroup>
                 <thead>
                     <tr><th colspan="2" class="finish-title">Asset Details</th></tr>
                 </thead>
@@ -33,8 +41,12 @@
 
         <div class="finish-card finish-card--table">
             <table class="finish-table finish-table--depreciation">
+                <colgroup>
+                    <col class="finish-col-label">
+                    <col class="finish-col-value">
+                </colgroup>
                 <thead>
-                    <tr><th colspan="2" class="finish-title">Depreciation</th></tr>
+                    <tr><th colspan="2" class="finish-title">Dates</th></tr>
                 </thead>
                 <tbody>
                     <tr class="py-1"><td class="finish-label">Date Received</td><td class="finish-value" data-key="date_received">-</td></tr>
@@ -48,6 +60,10 @@
 
         <div class="finish-card finish-card--table">
             <table class="finish-table">
+                <colgroup>
+                    <col class="finish-col-label">
+                    <col class="finish-col-value">
+                </colgroup>
                 <thead>
                     <tr><th colspan="2" class="finish-title">Financial</th></tr>
                 </thead>
@@ -62,8 +78,12 @@
 
         <div class="finish-card finish-card--table finish-card--center">
             <table class="finish-table">
+                <colgroup>
+                    <col class="finish-col-label">
+                    <col class="finish-col-value">
+                </colgroup>
                 <thead>
-                    <tr><th colspan="2" class="finish-title">Classification &amp; GL</th></tr>
+                    <tr><th colspan="2" class="finish-title">General Ledger</th></tr>
                 </thead>
                 <tbody>
                     <tr><td class="finish-label">Group Code</td><td class="finish-value" data-key="group_code">-</td></tr>
