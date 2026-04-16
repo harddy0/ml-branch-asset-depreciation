@@ -307,3 +307,30 @@
 .result-modal-ok{ border:1px solid #cbd5e1; background:#ffffff; color:#0f172a; font-weight:700; font-size:0.95rem; border-radius:8px; padding:0.45rem 1.1rem; min-width:64px; }
 .result-modal-ok:hover{ background:#f8fafc; }
 
+/* Depreciation list: make table wrapper fixed height and scrollable internally */
+#depr-table-wrapper {
+    /* Keep table region within viewport so page scrollbar doesn't appear.
+       Subtract header/filters area from viewport height; adjust 220px if layout changes. */
+    max-height: calc(104vh - 220px);
+    overflow-y: auto;    /* internal vertical scroll for table rows */
+    overflow-x: auto;    /* allow horizontal scroll when table is wider */
+    box-sizing: border-box;
+}
+
+/* Keep table header visible when scrolling the table body */
+#depr-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #ce2216; /* match header background */
+}
+
+/* Ensure horizontal overflow still works */
+#depr-table-wrapper table { width: 100%; }
+
+/* Currency symbol styling used in depreciation list rows */
+.currency-symbol { margin-right: 0.35rem; font-weight: 700; }
+/* Currency cell: place symbol at left and amount at right */
+.currency-cell { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.currency-cell .amount { text-align: right; min-width: 3ch; }
+

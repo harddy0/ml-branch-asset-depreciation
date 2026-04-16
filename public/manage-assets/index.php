@@ -142,7 +142,7 @@ if ($hasFiltersApplied) {
 </div>
 
 <div class="mb-1 mr-6 text-right">
-    <p class="text-[11px] font-mono text-slate-500">Filtered by running depreciation date</p>
+    <p class="text-[11px] font-mono text-slate-500">Filtered by date added</p>
 </div>
 
 <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
