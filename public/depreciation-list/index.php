@@ -167,7 +167,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 <col style="width:8%" />
                 <col style="width:7%" />
                 <col style="width:4%" />
-                <col style="width:6%" />
             </colgroup>
             <thead>
                 <tr class="bg-[#ce2216] border-b border-slate-200">
@@ -201,9 +200,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
                         <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="depreciation_end_date">End date </button>
                     </th>
-                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
-                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="created_at">Date Added </button>
-                    </th>
                 </tr>
             </thead>
             <tbody id="depr-table-body">
@@ -211,31 +207,6 @@ document.addEventListener('DOMContentLoaded', function () {
             </tbody>
         </table>
     </div>
-     <!-- 
-    <div class="border-t border-slate-200 bg-slate-50 px-2 py-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div id="depr-page-meta" class="text-xs font-mono text-slate-500">
-            Page 1 of 1 • 0 records
-        </div>
-
-        <div class="flex items-center gap-2">
-            <button
-                type="button"
-                id="depr-prev-page"
-                class="px-3 py-1 text-xs font-mono tracking-wide border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                Prev
-            </button>
-
-            <button
-                type="button"
-                id="depr-next-page"
-                class="px-3 py-1 text-xs font-mono tracking-wide border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                Next
-            </button>
-        </div>
-    </div>
-     -->
 </div>
 
 <div id="depr-list-config"
