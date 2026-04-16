@@ -24,6 +24,9 @@ try {
         'search' => trim((string)($_GET['search'] ?? '')),
         'group_code' => trim((string)($_GET['group_code'] ?? '')),
         'branch_name' => trim((string)($_GET['branch_name'] ?? '')),
+        'date_from' => trim((string)($_GET['date_from'] ?? '')),
+        'date_to' => trim((string)($_GET['date_to'] ?? '')),
+        'status' => trim((string)($_GET['status'] ?? '')),
         'sort_by' => (string)($_GET['sort_by'] ?? 'created_at'),
         'sort_dir' => (string)($_GET['sort_dir'] ?? 'DESC'),
     ];
