@@ -25,7 +25,7 @@
             </label>
             <input type="text" name="serial_number"
                 placeholder="e.g. 1082018001"
-                class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
+                class="w-full text-sm font-mono uppercase border border-slate-300 rounded-lg px-3 py-2.5
                        focus:ring-2 focus:ring-red-500 outline-none transition-all">
         </div>
     </div>
@@ -70,7 +70,7 @@
             </label>
             <input type="text" name="reference_no"
                 placeholder="e.g. IS#10287545"
-                class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
+                class="w-full uppercase text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
                        focus:ring-2 focus:ring-red-500 outline-none transition-all">
         </div>
     </div>
@@ -105,7 +105,7 @@
             </label>
             <input type="text" name="item_code" id="asset_item_code"
                 placeholder="e.g. ITM-00123"
-                class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
+                class="w-full text-sm font-mono uppercase border border-slate-300 rounded-lg px-3 py-2.5
                        focus:ring-2 focus:ring-red-500 outline-none transition-all">
         </div>
         

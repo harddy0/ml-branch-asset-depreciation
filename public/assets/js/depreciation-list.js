@@ -406,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ==========================================
     // 7. FORM SUBMISSION (AJAX FETCH)
     // ==========================================
-    if (form) {
+    if (form && !form.hasAttribute('data-submit-managed')) {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
 

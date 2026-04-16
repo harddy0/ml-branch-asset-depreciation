@@ -202,23 +202,75 @@
         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    function getAssetListUrl(){
+        const action = form ? form.getAttribute('action') : '';
+        if(action){
+            try {
+                const actionUrl = new URL(action, window.location.href);
+                const publicRoot = actionUrl.pathname.replace(/\/actions\/asset_store\.php$/, '');
+                return actionUrl.origin + publicRoot + '/depreciation-list/';
+            } catch (e) {}
+        }
+        return new URL('../depreciation-list/', window.location.href).toString();
+    }
+
     // result modal helper
     function showResultModal(message, success){
         // remove existing
         const prev = document.getElementById('result-modal-overlay');
         if(prev) prev.remove();
-        const overlay = document.createElement('div');
-        overlay.id = 'result-modal-overlay';
-        overlay.className = 'result-modal-overlay';
-        overlay.innerHTML = `
-            <div class="result-modal-card ${success ? 'success' : 'fail'}">
-                <div class="result-modal-icon">${success ? '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'}</div>
-                <div class="result-modal-message">${escapeHtml(message)}</div>
-            </div>`;
+        const template = document.getElementById('result-modal-template');
+        let overlay = null;
+
+        const handleOk = () => {
+            if(overlay) overlay.remove();
+            window.location.assign(getAssetListUrl());
+        };
+
+        if (template && template.content) {
+            overlay = template.content.firstElementChild.cloneNode(true);
+            const card = overlay.querySelector('.result-modal-card');
+            const successIcon = overlay.querySelector('[data-result-icon="success"]');
+            const failIcon = overlay.querySelector('[data-result-icon="fail"]');
+            const messageEl = overlay.querySelector('[data-result-message]');
+            const okBtn = overlay.querySelector('[data-result-ok]');
+
+            if (card) {
+                card.classList.add(success ? 'success' : 'fail');
+            }
+            if (successIcon) {
+                successIcon.classList.toggle('hidden', !success);
+            }
+            if (failIcon) {
+                failIcon.classList.toggle('hidden', success);
+            }
+            if (messageEl) {
+                messageEl.textContent = message;
+            }
+            if (okBtn) {
+                okBtn.addEventListener('click', handleOk);
+            }
+        } else {
+            overlay = document.createElement('div');
+            overlay.id = 'result-modal-overlay';
+            overlay.className = 'result-modal-overlay';
+            overlay.innerHTML = `
+                <div class="result-modal-card ${success ? 'success' : 'fail'}">
+                    <div class="result-modal-icon">${success ? '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'}</div>
+                    <div class="result-modal-content">
+                        <div class="result-modal-message">${escapeHtml(message)}</div>
+                        <div class="result-modal-actions"><button type="button" class="result-modal-ok" data-result-ok>OK</button></div>
+                    </div>
+                </div>`;
+
+            const okBtn = overlay.querySelector('[data-result-ok]');
+            if (okBtn) {
+                okBtn.addEventListener('click', handleOk);
+            }
+        }
+
         document.body.appendChild(overlay);
-        // auto remove after 2s
         setTimeout(() => { overlay.classList.add('visible'); }, 20);
-        setTimeout(() => { overlay.remove(); }, 2200);
     }
 
     if(form) form.addEventListener('submit', function(e){
@@ -232,7 +284,7 @@
         }
 
         // submit via AJAX to keep UX inside modal and show success/fail result
-        const submitUrl = form.getAttribute('action') || 'actions/asset_store.php';
+        const submitUrl = form.getAttribute('action') || new URL('../actions/asset_store.php', window.location.href).toString();
         const fd = new FormData(form);
 
         // disable buttons while saving
@@ -249,8 +301,6 @@
                 const success = (json && (json.success === true || json.success === 'true')) ? true : (ok && !json ? true : ok && (json && json.success !== false));
                 if(success){
                     showResultModal('New asset added successfully!', true);
-                    // optionally close add modal after short delay
-                    setTimeout(() => { try{ closeModal && closeModal('modal-add-asset'); } catch(e){} }, 900);
                 } else {
                     showResultModal('Asset failed to save. Please try again.', false);
                 }

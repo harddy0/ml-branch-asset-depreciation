@@ -15,7 +15,7 @@
 
         <!-- Modal Body-->
         <div class="flex-1 overflow-hidden p-6 bg-white">
-            <form id="addAssetForm" class="space-y-8">
+            <form id="addAssetForm" class="space-y-8" action="<?= BASE_URL ?>/public/actions/asset_store.php" data-submit-managed="add-asset-js">
 
                 <!-- Step progress (full-width track with positioned circles) -->
                 <div id="step-progress" class="relative mb-6 mr-12 ml-12 px-6 translate-y-5">
@@ -64,7 +64,7 @@
                 </div>
 
                 <!-- Step 4 - Finish/Review -->
-                <div class="step hidden m-[5%] p-[0%] pt-2 text-center border border-slate-200 shadow-md rounded-md" data-step="4">
+                <div class="step hidden m-[5%] p-[0%] pt-2 text-center" data-step="4">
                     <h3 class="text-lg font-bold">Asset Preview</h3>
                     <?php include __DIR__ . '/Add Asset Section/section-finish.php'; ?>
                 </div>
@@ -98,6 +98,7 @@
             $assetPath = realpath(__DIR__ . '/../../../assets/js/add-asset.js');
             $ver = ($assetPath && file_exists($assetPath)) ? '?v=' . filemtime($assetPath) : '';
         ?>
+        <?php include __DIR__ . '/sucess-or-fail-message.php'; ?>
         <script src="<?= ASSET_URL ?>js/add-asset.js<?= $ver ?>"></script>
 
     </div>

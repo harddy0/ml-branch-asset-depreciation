@@ -31,7 +31,11 @@ $assetGroups   = $classService->getDropdownOptions();
 <?php require_once __DIR__ . '/../../src/includes/modals/asset-ledger.php'; ?>
 
 <script src="<?= ASSET_URL ?>js/main.js"></script>
-<script src="<?= ASSET_URL ?>js/depreciation-list.js"></script>
+<?php
+    $deprJsPath = realpath(__DIR__ . '/../assets/js/depreciation-list.js');
+    $deprJsVer = ($deprJsPath && file_exists($deprJsPath)) ? '?v=' . filemtime($deprJsPath) : '';
+?>
+<script src="<?= ASSET_URL ?>js/depreciation-list.js<?= $deprJsVer ?>"></script>
 <script>
     // Injected by depreciation-list/index.php — consumed by depreciation-list.js
     window.__assetGroups = <?= json_encode($assetGroups, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
