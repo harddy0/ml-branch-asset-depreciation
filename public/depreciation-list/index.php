@@ -167,6 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <col style="width:8%" />
                 <col style="width:7%" />
                 <col style="width:4%" />
+                <col style="width:6%" />
             </colgroup>
             <thead>
                 <tr class="bg-[#ce2216] border-b border-slate-200">
@@ -199,6 +200,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     </th>
                     <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
                         <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="depreciation_end_date">End date </button>
+                    </th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="created_at">Date Added </button>
                     </th>
                 </tr>
             </thead>
