@@ -127,7 +127,7 @@
                         2. Asset Classification
                     </h3>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="grid grid-cols-1 gap-4 mb-4">
                         <!-- GL Asset Group -->
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">
@@ -137,21 +137,6 @@
                                 class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5
                                        focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white">
                                 <option value="">— Select group —</option>
-                            </select>
-                        </div>
-
-                        <!-- Property Type -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">
-                                Property Type <span class="text-red-500">*</span>
-                            </label>
-                            <select id="depr-f-property-type" name="property_type"
-                                class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5
-                                       focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white">
-                                <option value="PURCHASED">Purchased</option>
-                                <option value="LEASE">Lease</option>
-                                <option value="LEASEHOLD">Leasehold</option>
-                                <option value="MAINTENANCE">Maintenance</option>
                             </select>
                         </div>
                     </div>
@@ -195,14 +180,7 @@
                             placeholder="e.g. Touch Screen Electronic LM Unit"></textarea>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Reference No.</label>
-                            <input type="text" id="depr-f-refno" name="reference_no"
-                                class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5
-                                       focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                                placeholder="e.g. IS#10287545">
-                        </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">Serial Number</label>
                             <input type="text" id="depr-f-serial" name="serial_number"
@@ -211,11 +189,37 @@
                                 placeholder="e.g. SN-2024-001">
                         </div>
                         <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">
+                                Reference No.
+                                <span class="text-slate-400 font-normal">(Optional)</span>
+                            </label>
+                            <input type="text" id="depr-f-refno" name="reference_no"
+                                class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5
+                                       focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                                placeholder="e.g. IS#10287545">
+                        </div>
+                        <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">Item Code</label>
                             <input type="text" id="depr-f-itemcode" name="item_code"
                                 class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5
                                        focus:ring-2 focus:ring-red-500 outline-none transition-all"
                                 placeholder="e.g. ITM-001">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">
+                                Property Type <span class="text-red-500">*</span>
+                            </label>
+                            <select id="depr-f-property-type" name="property_type"
+                                class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5
+                                       focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white">
+                                <option value="PURCHASED">Purchased</option>
+                                <option value="LEASE">Lease</option>
+                                <option value="LEASEHOLD">Leasehold</option>
+                                <option value="MAINTENANCE">Maintenance</option>
+                            </select>
                         </div>
                     </div>
                 </section>
@@ -287,7 +291,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1">
-                                Acquisition Cost <span class="text-red-500">*</span>
+                                Investment <span class="text-red-500">*</span>
                             </label>
                             <input type="number" id="depr-f-acq-cost" name="acquisition_cost"
                                 min="0.01" step="0.01"
@@ -296,7 +300,10 @@
                                 placeholder="0.00">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1">Cost per Unit</label>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">
+                                Cost per Unit
+                                <span class="text-slate-400 font-normal">(Optional)</span>
+                            </label>
                             <input type="number" id="depr-f-cost-unit" name="cost_unit"
                                 min="0" step="0.01"
                                 class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2.5

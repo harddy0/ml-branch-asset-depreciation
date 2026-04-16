@@ -97,7 +97,10 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch(BASE_URL + '/public/actions/asset_import_process.php', { method: 'POST', body: formData })
             .then(function (res) {
                 if (!res.ok) throw new Error('Server error ' + res.status);
-                return res.json();
+                return res.text();
+            })
+            .then(function (text) {
+                return _parseJsonSafe(text);
             })
             .then(function (data) {
                 btnProcess.disabled    = false;
@@ -199,15 +202,28 @@ function buildReviewModal(data) {
         }
 
         tr.innerHTML = checkCell + badgeCell
-            + cell(row.item_code || row.serial_number || '—')
-            + cell(row.branch_name)
-            + cell(row.description && row.description.length > 40 ? row.description.substring(0, 40) + '…' : (row.description || '—'))
+            + cell(row.serial_number || '—')
+            + cell(row.description || '—')
+            + cell(row.reference_no || '—')
+            + cell(row.quantity || 1)
+            + cell(row.property_type || 'PURCHASED')
             + cell(row.group_name || row.group_code || '—')
-            + cell(formatMoney(row.acquisition_cost));
+            + cell(formatMoney(row.acquisition_cost), 'text-right')
+            + cell(row.date_received || '—')
+            + cell(row.main_zone_code || '—')
+            + cell(row.zone_code || '—')
+            + cell(row.region_code || '—')
+            + cell(row.cost_center_code || '—')
+            + cell(row.branch_name || '—')
+            + cell(row.item_code || '—')
+            + cell(formatMoney(row.cost_unit), 'text-right')
+            + cell(row.depreciation_start_date || '—')
+            + cell(row.depreciation_on || 'LAST_DAY')
+            + cell(row.depreciation_day || 1);
 
         // Click row → open detail modal
         tr.addEventListener('click', function (e) {
-            if (e.target.classList.contains('review-row-check')) return;
+            if (e.target.closest('.review-row-check')) return;
             openAssetDepreciationDetails(rowIndex);
         });
 
@@ -229,18 +245,19 @@ function buildReviewModal(data) {
 
     // Select-all checkbox
     if (selectAll) {
-        selectAll.addEventListener('change', function () {
+        selectAll.onchange = function () {
+            var shouldCheck = this.checked;
             tbody.querySelectorAll('.review-row-check:not(:disabled)').forEach(function (cb) {
-                cb.checked = selectAll.checked;
+                cb.checked = shouldCheck;
                 var rn = String(cb.dataset.rowNum);
-                if (selectAll.checked) {
+                if (shouldCheck) {
                     reviewSelectedRowNums.add(rn);
                 } else {
                     reviewSelectedRowNums.delete(rn);
                 }
             });
             btnConf.disabled = reviewSelectedRowNums.size === 0;
-        });
+        };
     }
 }
 
@@ -392,6 +409,7 @@ function _populateEditForm(row) {
     _selectVal('depr-f-depr-on',       row.depreciation_on || 'LAST_DAY');
     _setVal('depr-f-depr-day',         row.depreciation_day || 1);
     _updateDeprDayLock();
+    _computeDepreciationStartDate();
 
     // GL group (after dropdown is populated)
     if (row.group_code) {
@@ -410,6 +428,7 @@ async function _loadCascadedLocation(row) {
     var elR  = document.getElementById('depr-f-region');
     var elB  = document.getElementById('depr-f-branch');
     var elCC = document.getElementById('depr-f-costcenter');
+    var elBC = document.getElementById('depr-f-branchcode');
 
     // 1. Main zones
     var mzList = await _fetchLocation('main_zones', '');
@@ -433,6 +452,13 @@ async function _loadCascadedLocation(row) {
 
     // 5. Cost center
     if (elCC) elCC.value = row.cost_center_code || '';
+
+    // Keep hidden branch code synced after pre-select.
+    if (elB) {
+        var selected = elB.options[elB.selectedIndex];
+        if (elBC) elBC.value = selected ? (selected.dataset.branchcode || row.branch_code || '') : (row.branch_code || '');
+        if (elCC && !elCC.value && selected) elCC.value = selected.dataset.costcenter || '';
+    }
 }
 
 // =============================================================
@@ -561,21 +587,27 @@ function _wireFormEvents() {
         });
     }
 
-    // Date received → compute depr start (last day of month)
+    // Date received → recompute depreciation start
     var elDR = document.getElementById('depr-f-date-received');
     if (elDR) {
         elDR.addEventListener('change', function () {
-            var ds = document.getElementById('depr-f-depr-start');
-            if (ds && this.value) {
-                ds.value = _lastDayOfMonth(this.value);
-            }
+            _computeDepreciationStartDate();
         });
     }
 
     // Depreciate On → lock/unlock specific day
     var elDO = document.getElementById('depr-f-depr-on');
     if (elDO) {
-        elDO.addEventListener('change', _updateDeprDayLock);
+        elDO.addEventListener('change', function () {
+            _updateDeprDayLock();
+            _computeDepreciationStartDate();
+        });
+    }
+
+    var elDay = document.getElementById('depr-f-depr-day');
+    if (elDay) {
+        elDay.addEventListener('input', _computeDepreciationStartDate);
+        elDay.addEventListener('change', _computeDepreciationStartDate);
     }
 }
 
@@ -590,7 +622,7 @@ function _populateGroupDropdown() {
     Object.values(_availableGroups).forEach(function (g) {
         var opt = document.createElement('option');
         opt.value       = g.group_code;
-        opt.textContent = g.group_name + ' (' + g.actual_months + 'mos)';
+        opt.textContent = g.group_name;
         el.appendChild(opt);
     });
 }
@@ -632,6 +664,43 @@ function _updateDeprDayLock() {
     if (!isSpecific) elDay.value = 1;
 }
 
+function _computeDepreciationStartDate() {
+    var elDate = document.getElementById('depr-f-date-received');
+    var elOn   = document.getElementById('depr-f-depr-on');
+    var elDay  = document.getElementById('depr-f-depr-day');
+    var elOut  = document.getElementById('depr-f-depr-start');
+
+    if (!elDate || !elOn || !elOut || !elDate.value) return;
+
+    var parts = String(elDate.value).split('-');
+    if (parts.length !== 3) return;
+
+    var year  = parseInt(parts[0], 10);
+    var month = parseInt(parts[1], 10);
+    if (!year || !month) return;
+
+    if (elOn.value === 'FIRST_DAY') {
+        elOut.value = _firstDayOfMonth(elDate.value);
+        return;
+    }
+
+    if (elOn.value === 'SPECIFIC_DATE') {
+        var requested = parseInt(elDay?.value || '1', 10);
+        if (!requested || requested < 1) requested = 1;
+
+        var last = new Date(year, month, 0).getDate();
+        var clamped = Math.min(requested, last);
+
+        elOut.value = year
+            + '-' + String(month).padStart(2, '0')
+            + '-' + String(clamped).padStart(2, '0');
+        return;
+    }
+
+    // Default LAST_DAY
+    elOut.value = _lastDayOfMonth(elDate.value);
+}
+
 function _setVal(id, val) {
     var el = document.getElementById(id);
     if (el) el.value = (val === null || val === undefined) ? '' : val;
@@ -655,6 +724,19 @@ function _showModalErrors(msgs) {
     if (!el) return;
     el.innerHTML = msgs.map(function (m) { return '<p>' + escHtml(m) + '</p>'; }).join('');
     el.classList.remove('hidden');
+}
+
+function _parseJsonSafe(text) {
+    var cleaned = String(text || '').replace(/^\uFEFF+/, '').trim();
+    if (!cleaned) {
+        throw new Error('Empty response from server.');
+    }
+
+    try {
+        return JSON.parse(cleaned);
+    } catch (e) {
+        throw new Error('Unexpected server response: ' + cleaned.substring(0, 120));
+    }
 }
 
 // =============================================================
@@ -691,7 +773,7 @@ function saveDeprEdit() {
     // ── Local validation ───────────────────────────────────────
     var errs = [];
     if (!costCenterCode) errs.push('Cost Center is required — please select a Branch.');
-    if (acqCost <= 0)    errs.push('Acquisition Cost must be greater than zero.');
+    if (acqCost <= 0)    errs.push('Investment must be greater than zero.');
     if (!groupCode)      errs.push('GL Asset Group is required.');
     if (!description)    errs.push('Description is required.');
     if (!dateReceived)   errs.push('Date Received is required.');
@@ -719,7 +801,7 @@ function saveDeprEdit() {
         ? refNo.trim()
         : (row.system_asset_code || '').split('-').pop() || Math.random().toString(36).substring(2, 7).toUpperCase();
 
-    var newSystemCode = [groupCode, mainZoneCode, branchCode || costCenterCode, suffix].join('-');
+    var newSystemCode = [assetCode, zoneCode, branchCode || costCenterCode, suffix].join('-');
 
     // ── Merge into state ───────────────────────────────────────
     row.main_zone_code          = mainZoneCode;
@@ -767,43 +849,42 @@ function saveDeprEdit() {
 
 // Re-render a single table row after save
 function _refreshTableRow(rowIndex, row) {
+    var keepSelected = new Set(reviewSelectedRowNums);
+    keepSelected.add(String(row.row_num));
+
+    buildReviewModal({ preview: reviewPreviewRows, groups: _availableGroups });
+
+    reviewSelectedRowNums = new Set();
     var tbody = document.getElementById('review-tbody');
-    if (!tbody) return;
-    var tr = tbody.querySelector('tr[data-row-index="' + rowIndex + '"]');
-    if (!tr) return;
+    var selectAll = document.getElementById('review-select-all');
 
-    // Update badge
-    var badgeTd = tr.cells[1];
-    if (badgeTd) {
-        badgeTd.innerHTML = '<span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded-full">'
-            + '<svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
-            + 'OK ' + escHtml(String(row.row_num)) + '</span>';
+    if (tbody) {
+        var selectable = 0;
+        var selected = 0;
+        tbody.querySelectorAll('.review-row-check').forEach(function (cb) {
+            if (cb.disabled) return;
+            selectable++;
+            var rn = String(cb.dataset.rowNum || '');
+            if (keepSelected.has(rn)) {
+                cb.checked = true;
+                reviewSelectedRowNums.add(rn);
+                selected++;
+            }
+        });
+
+        if (selectAll) {
+            selectAll.checked = selectable > 0 && selected === selectable;
+        }
+
+        var tr = tbody.querySelector('tr[data-row-index="' + rowIndex + '"]');
+        if (tr) {
+            tr.classList.add('bg-green-50');
+            setTimeout(function () { tr.classList.remove('bg-green-50'); }, 1200);
+        }
     }
 
-    // Update data cells: item_code/serial | branch | description | group | cost
-    var cells = tr.cells;
-    if (cells[2]) cells[2].textContent = row.item_code || row.serial_number || '—';
-    if (cells[3]) cells[3].textContent = row.branch_name || '—';
-    if (cells[4]) cells[4].textContent = row.description && row.description.length > 40
-        ? row.description.substring(0, 40) + '…' : (row.description || '—');
-    if (cells[5]) cells[5].textContent = row.group_name || row.group_code || '—';
-    if (cells[6]) cells[6].textContent = formatMoney(row.acquisition_cost);
-
-    // Re-enable checkbox
-    var cb = tr.querySelector('.review-row-check');
-    if (cb) {
-        cb.disabled = false;
-        cb.title    = '';
-        // Auto-check after successful edit fix
-        cb.checked  = true;
-        reviewSelectedRowNums.add(String(row.row_num));
-        var btnConf = document.getElementById('btn-confirm-import');
-        if (btnConf) btnConf.disabled = reviewSelectedRowNums.size === 0;
-    }
-
-    // Brief success flash
-    tr.classList.add('bg-green-50');
-    setTimeout(function () { tr.classList.remove('bg-green-50'); }, 1200);
+    var btnConf = document.getElementById('btn-confirm-import');
+    if (btnConf) btnConf.disabled = reviewSelectedRowNums.size === 0;
 }
 
 // =============================================================
@@ -820,6 +901,11 @@ function closeAssetDepreciationDetails() {
     closeModal('modal-asset-depr-details');
 }
 
+function closeImportReview() {
+    closeModal('modal-asset-depr-details');
+    closeModal('modal-import-review');
+}
+
 // =============================================================
 //  CONFIRM IMPORT  (Phase 5 — bulk commit)
 // =============================================================
@@ -828,6 +914,18 @@ function confirmImport() {
     if (btnConf) { btnConf.disabled = true; btnConf.textContent = 'Importing…'; }
 
     var selectedNums  = Array.from(reviewSelectedRowNums);
+    if (selectedNums.length === 0) {
+        selectedNums = (reviewPreviewRows || [])
+            .filter(function (r) { return !r.has_error && !r.is_duplicate; })
+            .map(function (r) { return String(r.row_num); });
+    }
+
+    if (selectedNums.length === 0) {
+        if (btnConf) { btnConf.disabled = false; btnConf.textContent = 'Confirm Import'; }
+        alert('No valid rows are available for import. Please fix row errors first.');
+        return;
+    }
+
     var editedRows    = reviewPreviewRows.filter(function (r) { return r._edited; });
 
     var formData = new FormData();
@@ -835,14 +933,21 @@ function confirmImport() {
     formData.append('selected_rows', JSON.stringify(selectedNums));
     formData.append('edited_rows',   JSON.stringify(editedRows));
 
-    fetch(BASE_URL + '/public/actions/asset_import_process.php', { method: 'POST', body: formData })
+    fetch(BASE_URL + '/public/actions/asset_import_process.php', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
         .then(function (res) {
             if (!res.ok) throw new Error('Server error ' + res.status);
-            return res.json();
+            return res.text();
+        })
+        .then(function (text) {
+            return _parseJsonSafe(text);
         })
         .then(function (data) {
             if (data.success) {
-                closeModal('modal-import-review');
+                closeImportReview();
                 // Trigger a full page reload to show flash message from session
                 window.location.reload();
             } else {
@@ -871,6 +976,16 @@ function _lastDayOfMonth(isoDate) {
     return last.getFullYear()
         + '-' + String(last.getMonth() + 1).padStart(2, '0')
         + '-' + String(last.getDate()).padStart(2, '0');
+}
+
+function _firstDayOfMonth(isoDate) {
+    if (!isoDate) return '';
+    var parts = String(isoDate).split('-');
+    if (parts.length < 2) return '';
+    var y = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    if (!y || !m) return '';
+    return y + '-' + String(m).padStart(2, '0') + '-01';
 }
 
 function formatMoney(val) {

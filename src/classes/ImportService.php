@@ -2,6 +2,7 @@
 namespace App;
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class ImportService {
     private \PDO  $db;
@@ -12,28 +13,132 @@ class ImportService {
         $this->dbMaster = $dbMaster;
     }
 
+    /**
+     * Normalizes Excel/CSV date inputs into Y-m-d or null.
+     */
+    private function parseDate($value): ?string {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (is_numeric($value)) {
+            try {
+                return ExcelDate::excelToDateTimeObject((float)$value)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                return null;
+            }
+        }
+
+        $text = trim((string)$value);
+        if ($text === '') {
+            return null;
+        }
+
+        $formats = [
+            'Y-m-d', 'Y/m/d',
+            'm/d/Y', 'd/m/Y',
+            'm-d-Y', 'd-m-Y',
+            'Y-m-d H:i:s', 'Y/m/d H:i:s',
+            'm/d/Y H:i:s', 'd/m/Y H:i:s',
+        ];
+
+        foreach ($formats as $format) {
+            $dt = \DateTime::createFromFormat($format, $text);
+            if ($dt instanceof \DateTime) {
+                return $dt->format('Y-m-d');
+            }
+        }
+
+        $ts = strtotime($text);
+        return $ts !== false ? date('Y-m-d', $ts) : null;
+    }
+
+    /**
+     * Computes depreciation start date from date received and schedule setting.
+     */
+    private function computeDepreciationStartDate(?string $dateReceived, string $deprOn, int $deprDay): string {
+        $base = $dateReceived ?: date('Y-m-d');
+        $ts = strtotime($base);
+        if ($ts === false) {
+            $ts = time();
+        }
+
+        if ($deprOn === 'FIRST_DAY') {
+            return date('Y-m-01', $ts);
+        }
+
+        if ($deprOn === 'SPECIFIC_DATE') {
+            $year = (int)date('Y', $ts);
+            $month = (int)date('m', $ts);
+            $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+            $day = max(1, min($deprDay, $lastDay));
+            return sprintf('%04d-%02d-%02d', $year, $month, $day);
+        }
+
+        return date('Y-m-t', $ts);
+    }
+
+    /**
+     * Computes depreciation end date using the same depreciation_on semantics
+     * as manual add (LAST_DAY/FIRST_DAY/SPECIFIC_DATE).
+     */
+    private function computeDepreciationEndDate(?string $startDate, int $actualMonths, string $deprOn, int $deprDay): string {
+        if (empty($startDate) || $actualMonths <= 0) {
+            return '';
+        }
+
+        $startTs = strtotime($startDate);
+        if ($startTs === false) {
+            return '';
+        }
+
+        $targetTs = strtotime(date('Y-m-01', $startTs) . ' +' . ($actualMonths - 1) . ' months');
+        if ($targetTs === false) {
+            return '';
+        }
+
+        $year = (int)date('Y', $targetTs);
+        $month = (int)date('m', $targetTs);
+
+        if ($deprOn === 'FIRST_DAY') {
+            return sprintf('%04d-%02d-01', $year, $month);
+        }
+
+        if ($deprOn === 'SPECIFIC_DATE') {
+            $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+            $day = max(1, min($deprDay, $lastDay));
+            return sprintf('%04d-%02d-%02d', $year, $month, $day);
+        }
+
+        return date('Y-m-t', $targetTs);
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     //  PREVIEW  — parse & validate only, zero DB writes
     //
     //  Expected 18-column Excel layout (Row 1 = header, Row 2+ = data):
-    //   A  Zone
-    //   B  Sub-Zone
-    //   C  Region
-    //   D  Cost Center           (format 0000-000)
-    //   E  Branch                (display-only; authoritative from masterdata)
-    //   F  Reference Number
-    //   G  Serial Number
-    //   H  Item Code
-    //   I  Asset Group           (must match asset_groups.group_name exactly)
-    //   J  Description
-    //   K  Date Received
-    //   L  Acquisition Cost
-    //   M  Cost per Unit
-    //   N  Property Type         (PURCHASED / LEASE / LEASEHOLD / MAINTENANCE)
-    //   O  Depreciate On         (FIRST_DAY / LAST_DAY / SPECIFIC_DATE)
-    //   P  Specific Day          (1-31, only when O = SPECIFIC_DATE)
-    //   Q  Quantity
-    //   R  Status                (ACTIVE / SOLD / DISPOSED / INACTIVE)
+    //   A  Serial Number
+    //   B  Asset Description
+    //   C  Reference Number      (optional)
+    //   D  Quantity
+    //   E  Property Type         (PURCHASED / LEASE / LEASEHOLD / MAINTENANCE)
+    //   F  Asset Group           (must match asset_groups.group_name exactly)
+    //   G  Acquisition Cost
+    //   H  Date Received
+    //   I  Main Zone
+    //   J  Sub-Zone
+    //   K  Region
+    //   L  Cost Center           (format 0000-000)
+    //   M  Branch                (display-only; authoritative from masterdata)
+    //   N  Item Code             (optional)
+    //   O  Cost Unit             (optional)
+    //   P  Depreciation Start Date (optional)
+    //   Q  Depreciation On       (FIRST_DAY / LAST_DAY / SPECIFIC_DATE)
+    //   R  Depreciation Day      (1-31, only when Q = SPECIFIC_DATE)
     // ══════════════════════════════════════════════════════════════════════
     public function previewImport(string $filePath): array {
         if (!$this->dbMaster) {
@@ -96,24 +201,25 @@ class ImportService {
             $rowErrors = [];
 
             // ── Column mapping ───────────────────────────────────────────
-            $zone         = trim((string)($row[0]  ?? ''));
-            $zoneCode     = trim((string)($row[1]  ?? ''));
-            $regionCode   = trim((string)($row[2]  ?? ''));
-            $costCenter   = trim((string)($row[3]  ?? ''));
-            $excelBranch  = strtoupper(trim((string)($row[4]  ?? '')));
-            $referenceNo  = trim((string)($row[5]  ?? ''));
-            $serialNumber = trim((string)($row[6]  ?? ''));
-            $itemCode     = trim((string)($row[7]  ?? ''));
-            $groupName    = trim((string)($row[8]  ?? ''));
-            $description  = trim((string)($row[9]  ?? ''));
-            $dateRecVal   = $row[10] ?? null;
-            $acqCost      = (float)($row[11] ?? 0);
-            $costUnit     = (float)($row[12] ?? 0);
-            $propertyType = strtoupper(trim((string)($row[13] ?? 'PURCHASED')));
-            $deprOn       = strtoupper(trim((string)($row[14] ?? 'LAST_DAY')));
-            $deprDay      = (int)($row[15] ?? 1);
-            $quantity     = (int)($row[16] ?? 1);
-            $status       = strtoupper(trim((string)($row[17] ?? 'ACTIVE')));
+            $serialNumber = trim((string)($row[0]  ?? ''));
+            $description  = trim((string)($row[1]  ?? ''));
+            $referenceNo  = trim((string)($row[2]  ?? ''));
+            $quantity     = (int)($row[3] ?? 1);
+            $propertyType = strtoupper(trim((string)($row[4]  ?? 'PURCHASED')));
+            $groupName    = trim((string)($row[5]  ?? ''));
+            $acqCost      = (float)($row[6] ?? 0);
+            $dateRecVal   = $row[7] ?? null;
+            $zone         = trim((string)($row[8]  ?? ''));  // main zone
+            $zoneCode     = trim((string)($row[9]  ?? ''));  // sub-zone
+            $regionCode   = trim((string)($row[10] ?? ''));
+            $costCenter   = trim((string)($row[11] ?? ''));
+            $excelBranch  = strtoupper(trim((string)($row[12] ?? '')));
+            $itemCode     = trim((string)($row[13] ?? ''));
+            $costUnit     = (float)($row[14] ?? 0);
+            $deprStartVal = $row[15] ?? null;
+            $deprOn       = strtoupper(trim((string)($row[16] ?? 'LAST_DAY')));
+            $deprDay      = (int)($row[17] ?? 1);
+            $status       = 'ACTIVE';
 
             // ── Normalise optionals ──────────────────────────────────────
             $dbReferenceNo  = $referenceNo  !== '' ? $referenceNo  : null;
@@ -127,11 +233,10 @@ class ImportService {
 
             // ── Date parsing ─────────────────────────────────────────────
             $dateReceived = $this->parseDate($dateRecVal);
+            $deprStartFromExcel = $this->parseDate($deprStartVal);
 
-            // Depreciation start = last day of received month
-            $depreciationStartDate = $dateReceived
-                ? date('Y-m-t', strtotime($dateReceived))
-                : date('Y-m-t');
+            $depreciationStartDate = $deprStartFromExcel
+                ?: $this->computeDepreciationStartDate($dateReceived, $deprOn, $deprDay);
 
             // ── Validations ──────────────────────────────────────────────
             if (empty($zone) || empty($costCenter)) {
@@ -215,8 +320,8 @@ class ImportService {
             // ── Build system_asset_code ──────────────────────────────────
             $suffix          = $dbReferenceNo ?? strtoupper(substr(uniqid(), -5));
             $systemAssetCode = sprintf("%s-%s-%s-%s",
-                $groupEntry['group_code'],
-                $masterData['zone'],
+                $groupEntry['asset_code'],
+                $zoneCode,
                 $masterData['branch_code'],
                 $suffix
             );
@@ -272,14 +377,29 @@ class ImportService {
     public function prepareAndCommit(array $previewRows, array $selectedNums, array $editedMap, int $userId): array {
         $rowsToCommit = [];
 
+        $allowedPropertyTypes = ['PURCHASED', 'LEASE', 'LEASEHOLD', 'MAINTENANCE'];
+        $allowedDepreciateOn  = ['FIRST_DAY', 'LAST_DAY', 'SPECIFIC_DATE'];
+        $allowedStatuses      = ['ACTIVE', 'SOLD', 'DISPOSED', 'INACTIVE'];
+
+        // Re-load authoritative group mapping for commit-time hardening.
+        $groupStmt = $this->db->query("\n            SELECT ag.group_code, ag.group_name, ag.actual_months,\n                   al.asset_code, ad.depreciation_code\n            FROM asset_groups ag\n            JOIN assets_lookup al ON ag.asset_code = al.asset_code\n            JOIN amortization_depreciation ad ON al.depreciation_code = ad.depreciation_code\n        ");
+        $groupsByCode = [];
+        while ($g = $groupStmt->fetch(\PDO::FETCH_ASSOC)) {
+            $g['actual_months'] = (int)$g['actual_months'];
+            $groupsByCode[$g['group_code']] = $g;
+        }
+
+        // Pre-load existing codes to prevent crafted requests from bypassing row flags.
+        $existingCodes = [];
+        foreach ($this->db->query("SELECT system_asset_code FROM assets") as $r) {
+            $existingCodes[strtolower((string)$r['system_asset_code'])] = true;
+        }
+        $seenCodes = [];
+
         foreach ($previewRows as $row) {
             $rn = strval($row['row_num'] ?? '');
 
             if (!empty($selectedNums) && !in_array($rn, $selectedNums, true)) {
-                continue;
-            }
-
-            if (!empty($row['has_error'])) {
                 continue;
             }
 
@@ -311,12 +431,110 @@ class ImportService {
 
                 $row['system_asset_code'] = sprintf(
                     "%s-%s-%s-%s",
-                    $row['group_code'],
-                    $row['main_zone_code'],
+                    $row['asset_code'],
+                    $row['zone_code'],
                     $row['branch_code'] ?? '',
                     $suffix
                 );
             }
+
+            // Commit-time hardening: sanitize and fully re-validate on server,
+            // instead of trusting client-provided row flags.
+            $row['reference_no'] = isset($row['reference_no']) ? trim((string)$row['reference_no']) : '';
+            $row['serial_number'] = isset($row['serial_number']) ? trim((string)$row['serial_number']) : '';
+            $row['item_code'] = isset($row['item_code']) ? trim((string)$row['item_code']) : '';
+            $row['description'] = trim((string)($row['description'] ?? ''));
+            $row['main_zone_code'] = trim((string)($row['main_zone_code'] ?? ''));
+            $row['zone_code'] = trim((string)($row['zone_code'] ?? ''));
+            $row['region_code'] = trim((string)($row['region_code'] ?? ''));
+            $row['cost_center_code'] = trim((string)($row['cost_center_code'] ?? ''));
+            $row['branch_name'] = trim((string)($row['branch_name'] ?? ''));
+            $row['branch_code'] = trim((string)($row['branch_code'] ?? ''));
+            $row['group_code'] = trim((string)($row['group_code'] ?? ''));
+
+            if ($row['description'] === '' || $row['zone_code'] === '' || $row['cost_center_code'] === '' || $row['branch_code'] === '') {
+                continue;
+            }
+            if (!preg_match('/^\d{4}-\d{3}$/', $row['cost_center_code'])) {
+                continue;
+            }
+
+            $dateReceived = $this->parseDate($row['date_received'] ?? null) ?: date('Y-m-d');
+            $deprOn = strtoupper(trim((string)($row['depreciation_on'] ?? 'LAST_DAY')));
+            if (!in_array($deprOn, $allowedDepreciateOn, true)) {
+                $deprOn = 'LAST_DAY';
+            }
+            $deprDay = (int)($row['depreciation_day'] ?? 1);
+            if ($deprDay < 1 || $deprDay > 31) {
+                $deprDay = 1;
+            }
+
+            $deprStart = $this->parseDate($row['depreciation_start_date'] ?? null)
+                ?: $this->computeDepreciationStartDate($dateReceived, $deprOn, $deprDay);
+
+            $propertyType = strtoupper(trim((string)($row['property_type'] ?? 'PURCHASED')));
+            if (!in_array($propertyType, $allowedPropertyTypes, true)) {
+                $propertyType = 'PURCHASED';
+            }
+
+            $status = strtoupper(trim((string)($row['status'] ?? 'ACTIVE')));
+            if (!in_array($status, $allowedStatuses, true)) {
+                $status = 'ACTIVE';
+            }
+
+            $quantity = (int)($row['quantity'] ?? 1);
+            if ($quantity < 1) {
+                $quantity = 1;
+            }
+
+            $acqCost = (float)($row['acquisition_cost'] ?? 0);
+            if ($acqCost <= 0) {
+                continue;
+            }
+
+            if ($row['group_code'] === '' || !isset($groupsByCode[$row['group_code']])) {
+                continue;
+            }
+
+            $group = $groupsByCode[$row['group_code']];
+            $actualMonths = (int)$group['actual_months'];
+
+            $row['group_name'] = $group['group_name'];
+            $row['asset_code'] = $group['asset_code'];
+            $row['depreciation_code'] = $group['depreciation_code'];
+            $row['actual_months'] = $actualMonths;
+            $row['date_received'] = $dateReceived;
+            $row['depreciation_start_date'] = $deprStart;
+            $row['depreciation_on'] = $deprOn;
+            $row['depreciation_day'] = $deprDay;
+            $row['property_type'] = $propertyType;
+            $row['status'] = $status;
+            $row['quantity'] = $quantity;
+            $row['acquisition_cost'] = $acqCost;
+
+            $costUnit = (float)($row['cost_unit'] ?? 0);
+            $row['cost_unit'] = $costUnit > 0 ? $costUnit : $acqCost;
+            $row['monthly_depreciation'] = ($actualMonths > 0)
+                ? round($acqCost / $actualMonths, 2)
+                : 0;
+
+            $suffix = $row['reference_no'] !== ''
+                ? $row['reference_no']
+                : strtoupper(substr(uniqid(), -5));
+
+            $row['system_asset_code'] = sprintf(
+                "%s-%s-%s-%s",
+                $row['asset_code'],
+                $row['zone_code'],
+                $row['branch_code'],
+                $suffix
+            );
+
+            $codeKey = strtolower($row['system_asset_code']);
+            if (isset($existingCodes[$codeKey]) || isset($seenCodes[$codeKey])) {
+                continue;
+            }
+            $seenCodes[$codeKey] = true;
 
             $rowsToCommit[] = $row;
         }
@@ -356,16 +574,15 @@ class ImportService {
                 ? round($acqCost / $actualMonths, 2)
                 : (float)($r['monthly_depreciation'] ?? 0);
 
-            // depreciation_end_date = start + actual_months - 1 month
-            $endDate = '';
-            if (!empty($r['depreciation_start_date']) && $actualMonths > 0) {
-                $endDate = date(
-                    'Y-m-d',
-                    strtotime($r['depreciation_start_date'] . ' +' . ($actualMonths - 1) . ' months')
-                );
-                // Snap to last day of that month
-                $endDate = date('Y-m-t', strtotime($endDate));
-            }
+            $deprOn  = strtoupper(trim((string)($r['depreciation_on'] ?? 'LAST_DAY')));
+            $deprDay = (int)($r['depreciation_day'] ?? 1);
+
+            $endDate = $this->computeDepreciationEndDate(
+                $r['depreciation_start_date'] ?? null,
+                $actualMonths,
+                $deprOn,
+                $deprDay
+            );
 
             $payload = [
                 'system_asset_code'       => $r['system_asset_code'],

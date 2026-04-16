@@ -102,8 +102,17 @@ class LocationMasterService {
     public function getBranches(?string $regionCode = null): array {
         $this->checkConnection();
 
-        $sql = "SELECT DISTINCT
+        $params = [];
+        if ($regionCode) {
+            $params[':region_code'] = $regionCode;
+        }
+
+        $whereRegion = $regionCode ? " AND b.region_code = :region_code" : "";
+
+        // Preferred query: include branch code when available.
+        $sqlWithBranchCode = "SELECT DISTINCT
                     b.cost_center AS cost_center_code,
+                    b.code AS branch_code,
                     b.branch_name,
                     r.region_code,
                     r.region_description,
@@ -113,18 +122,35 @@ class LocationMasterService {
                 LEFT JOIN region_masterfile r ON b.region_code = r.region_code
                 LEFT JOIN zone_masterfile z   ON r.zone_code   = z.zone_code
                 LEFT JOIN main_zone_masterfile m ON z.main_zone_code = m.main_zone_code
-                WHERE b.cost_center IS NOT NULL AND b.branch_name IS NOT NULL";
+                WHERE b.cost_center IS NOT NULL AND b.branch_name IS NOT NULL"
+                . $whereRegion .
+                " ORDER BY b.branch_name ASC";
 
-        $params = [];
-        if ($regionCode) {
-            $sql .= " AND b.region_code = :region_code";
-            $params[':region_code'] = $regionCode;
+        // Fallback query for schemas without branch_profile.code.
+        $sqlFallback = "SELECT DISTINCT
+                    b.cost_center AS cost_center_code,
+                    '' AS branch_code,
+                    b.branch_name,
+                    r.region_code,
+                    r.region_description,
+                    z.zone_code,
+                    m.main_zone_code
+                FROM branch_profile b
+                LEFT JOIN region_masterfile r ON b.region_code = r.region_code
+                LEFT JOIN zone_masterfile z   ON r.zone_code   = z.zone_code
+                LEFT JOIN main_zone_masterfile m ON z.main_zone_code = m.main_zone_code
+                WHERE b.cost_center IS NOT NULL AND b.branch_name IS NOT NULL"
+                . $whereRegion .
+                " ORDER BY b.branch_name ASC";
+
+        try {
+            $stmt = $this->dbMaster->prepare($sqlWithBranchCode);
+            $stmt->execute($params);
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            $stmt = $this->dbMaster->prepare($sqlFallback);
+            $stmt->execute($params);
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         }
-
-        $sql .= " ORDER BY b.branch_name ASC";
-
-        $stmt = $this->dbMaster->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

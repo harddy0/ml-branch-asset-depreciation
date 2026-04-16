@@ -49,13 +49,25 @@
                         <th class="text-center text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">
                             <input type="checkbox" id="review-select-all" class="w-3.5 h-3.5 rounded border-slate-300 text-[#ce1126] focus:ring-red-200">
                         </th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">No.</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Zone</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Status</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Serial Number</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Asset Description</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Reference Number (Opt)</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Quantity</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Property Type</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Asset Group</th>
+                        <th class="text-right text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Acquisition Cost</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Date Received</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Main Zone</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Sub-Zone</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Region</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Cost Center</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Branch</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Reference Number</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Category</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Item Code (Opt)</th>
+                        <th class="text-right text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Cost Unit (Opt)</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Depreciation Start Date (Opt)</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Depreciation On</th>
+                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Depreciation Day</th>
                     </tr>
                 </thead>
                 <tbody id="review-tbody">
