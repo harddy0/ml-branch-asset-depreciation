@@ -58,6 +58,18 @@ class ImportService {
     }
 
     /**
+     * Normalize numeric input (remove thousands separators/currency symbols)
+     */
+    private function normalizeNumber($value): float {
+        $s = trim((string)($value ?? ''));
+        if ($s === '') return 0.0;
+        $s = str_replace([',', ' ', '₱', '$'], '', $s);
+        $s = preg_replace('/[^0-9.\-]/', '', $s);
+        if ($s === '' || $s === '.' || $s === '-') return 0.0;
+        return (float)$s;
+    }
+
+    /**
      * Computes depreciation start date from date received and schedule setting.
      */
     private function computeDepreciationStartDate(?string $dateReceived, string $deprOn, int $deprDay): string {
@@ -231,7 +243,7 @@ class ImportService {
             $quantity     = (int)($row[3] ?? 1);
             $propertyType = strtoupper(trim((string)($row[4]  ?? 'PURCHASED')));
             $groupRaw     = trim((string)($row[5]  ?? ''));
-            $acqCost      = (float)($row[6] ?? 0);
+            $acqCost      = $this->normalizeNumber($row[6] ?? 0);
             $dateRecVal   = $row[7] ?? null;
             $zone         = trim((string)($row[8]  ?? ''));  // main zone
             $zoneCode     = trim((string)($row[9]  ?? ''));  // sub-zone
@@ -239,7 +251,7 @@ class ImportService {
             $costCenter   = trim((string)($row[11] ?? ''));
             $excelBranch  = strtoupper(trim((string)($row[12] ?? '')));
             $itemCode     = trim((string)($row[13] ?? ''));
-            $costUnit     = (float)($row[14] ?? 0);
+            $costUnit     = $this->normalizeNumber($row[14] ?? 0);
             $deprStartVal = $row[15] ?? null;
             $deprOn       = strtoupper(trim((string)($row[16] ?? 'LAST_DAY')));
             $deprDay      = (int)($row[17] ?? 1);
@@ -577,7 +589,7 @@ class ImportService {
                 $quantity = 1;
             }
 
-            $acqCost = (float)($row['acquisition_cost'] ?? 0);
+            $acqCost = $this->normalizeNumber($row['acquisition_cost'] ?? 0);
             if ($acqCost <= 0) {
                 continue;
             }
@@ -659,7 +671,7 @@ class ImportService {
 
             // Map preview row → AssetService::createAsset() payload
             $actualMonths = (int)($r['actual_months'] ?? 0);
-            $acqCost      = (float)($r['acquisition_cost'] ?? 0);
+            $acqCost      = $this->normalizeNumber($r['acquisition_cost'] ?? 0);
             $monthlyDep   = ($actualMonths > 0 && $acqCost > 0)
                 ? round($acqCost / $actualMonths, 2)
                 : (float)($r['monthly_depreciation'] ?? 0);
@@ -718,7 +730,7 @@ class ImportService {
                 'depreciation_on'         => $r['depreciation_on']  ?? 'LAST_DAY',
                 'depreciation_day'        => (int)($r['depreciation_day'] ?? 1),
                 'acquisition_cost'        => $acqCost,
-                'cost_unit'               => (float)($r['cost_unit'] ?? $acqCost),
+                'cost_unit'               => $this->normalizeNumber($r['cost_unit'] ?? $acqCost),
                 'monthly_depreciation'    => $monthlyDep,
                 'status'                  => $r['status']           ?? 'ACTIVE',
             ];

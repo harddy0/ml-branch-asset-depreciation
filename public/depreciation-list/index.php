@@ -211,31 +211,6 @@ document.addEventListener('DOMContentLoaded', function () {
             </tbody>
         </table>
     </div>
-     <!-- 
-    <div class="border-t border-slate-200 bg-slate-50 px-2 py-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div id="depr-page-meta" class="text-xs font-mono text-slate-500">
-            Page 1 of 1 • 0 records
-        </div>
-
-        <div class="flex items-center gap-2">
-            <button
-                type="button"
-                id="depr-prev-page"
-                class="px-3 py-1 text-xs font-mono tracking-wide border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                Prev
-            </button>
-
-            <button
-                type="button"
-                id="depr-next-page"
-                class="px-3 py-1 text-xs font-mono tracking-wide border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                Next
-            </button>
-        </div>
-    </div>
-     -->
 </div>
 
 <div id="depr-list-config"

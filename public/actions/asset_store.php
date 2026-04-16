@@ -22,6 +22,18 @@ try {
     global $pdo; 
     $assetService = new \App\AssetService($pdo);
 
+    // Helper: normalize a numeric string to a float-friendly format
+    $normalizeNumber = function ($v) {
+        $s = trim((string)($v ?? ''));
+        if ($s === '') return 0.0;
+        // remove common thousands separators and currency symbols
+        $s = str_replace([',', ' ', '₱', '$'], '', $s);
+        // keep only digits, optional leading -, and decimal dot
+        $s = preg_replace('/[^0-9.\-]/', '', $s);
+        if ($s === '' || $s === '.' || $s === '-' ) return 0.0;
+        return (float)$s;
+    };
+
     // 1. Collect and sanitize input
     $data = [
         'reference_no'            => $_POST['reference_no'] ?? null,
@@ -42,10 +54,10 @@ try {
         'depreciation_end_date'   => $_POST['depreciation_end_date'] ?? '',
         'depreciation_on'         => $_POST['depreciation_on'] ?? 'LAST_DAY',
         'depreciation_day'        => !empty($_POST['depreciation_day']) ? (int)$_POST['depreciation_day'] : null,
-        'acquisition_cost'        => (float)($_POST['acquisition_cost'] ?? 0),
-        'cost_unit'               => (float)($_POST['cost_unit'] ?? 0),
+        'acquisition_cost'        => $normalizeNumber($_POST['acquisition_cost'] ?? 0),
+        'cost_unit'               => $normalizeNumber($_POST['cost_unit'] ?? 0),
         'item_code'               => $_POST['item_code'] ?? null,
-        'monthly_depreciation'    => (float)($_POST['monthly_depreciation'] ?? 0),
+        'monthly_depreciation'    => $normalizeNumber($_POST['monthly_depreciation'] ?? 0),
         'status'                  => $_POST['status'] ?? 'ACTIVE'
     ];
 

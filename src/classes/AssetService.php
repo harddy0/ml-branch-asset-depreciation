@@ -39,6 +39,21 @@ class AssetService {
                 )
             ";
 
+            // Recompute monthly_depreciation on the server to ensure correctness
+            $acq = (float)($data['acquisition_cost'] ?? 0);
+            $providedMonthly = isset($data['monthly_depreciation']) ? (float)$data['monthly_depreciation'] : 0.0;
+            $monthlyToUse = $providedMonthly;
+            if (!empty($data['group_code']) && $acq > 0) {
+                $gStmt = $this->db->prepare('SELECT actual_months FROM asset_groups WHERE group_code = :group_code LIMIT 1');
+                $gStmt->execute([':group_code' => $data['group_code']]);
+                $actualMonths = (int)($gStmt->fetchColumn() ?: 0);
+                if ($actualMonths > 0) {
+                    $monthlyToUse = round($acq / $actualMonths, 2);
+                }
+            }
+            // ensure the data array carries the canonical monthly value
+            $data['monthly_depreciation'] = $monthlyToUse;
+
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':system_asset_code'       => $data['system_asset_code'],

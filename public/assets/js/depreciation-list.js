@@ -383,9 +383,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function computeMonthlyDepreciation() {
         if (!acqCostInput || !monthlyDepInput) return;
-        
-        const cost = parseFloat(acqCostInput.value) || 0;
-        
+        const raw = String(acqCostInput.value || '');
+        // Normalize input: remove currency symbols, spaces, commas — keep digits, dot and minus
+        const normalized = raw.replace(/[^\d.\-]/g, '');
+        const cost = parseFloat(normalized) || 0;
+
         if (currentActualMonths > 0 && cost > 0) {
             const monthly = (cost / currentActualMonths).toFixed(2);
             monthlyDepInput.value = monthly;
@@ -436,9 +438,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (submitBtn) {
                 submitBtn.disabled = true;
                 if (isInputSubmit) {
-                    submitBtn.value = 'Saving Asset...';
+                    submitBtn.value = 'Saving...';
                 } else {
-                    submitBtn.innerHTML = 'Saving Asset...';
+                    submitBtn.innerHTML = 'Saving...';
                 }
             }
 
