@@ -117,6 +117,15 @@ class ImportService {
         return date('Y-m-t', $targetTs);
     }
 
+    /**
+     * Normalizes group keys so parser matching tolerates case and spacing variance.
+     */
+    private function normalizeGroupKey(string $value): string {
+        $text = str_replace("\xC2\xA0", ' ', $value);
+        $text = preg_replace('/\s+/', ' ', trim($text));
+        return strtolower((string)$text);
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     //  PREVIEW  — parse & validate only, zero DB writes
     //
@@ -126,7 +135,7 @@ class ImportService {
     //   C  Reference Number      (optional)
     //   D  Quantity
     //   E  Property Type         (PURCHASED / LEASE / LEASEHOLD / MAINTENANCE)
-    //   F  Asset Group           (must match asset_groups.group_name exactly)
+    //   F  Asset Group           (group_name or group_code)
     //   G  Acquisition Cost
     //   H  Date Received
     //   I  Main Zone
@@ -168,10 +177,19 @@ class ImportService {
             JOIN assets_lookup al ON ag.asset_code = al.asset_code
             JOIN amortization_depreciation ad ON al.depreciation_code = ad.depreciation_code
         ");
-        $groups = [];
+        $groupsByName = [];
+        $groupsByCode = [];
         while ($g = $groupStmt->fetch(\PDO::FETCH_ASSOC)) {
             $g['actual_months'] = (int)$g['actual_months'];
-            $groups[strtolower(trim($g['group_name']))] = $g;
+            $nameKey = $this->normalizeGroupKey((string)$g['group_name']);
+            $codeKey = strtoupper(trim((string)$g['group_code']));
+
+            if ($nameKey !== '') {
+                $groupsByName[$nameKey] = $g;
+            }
+            if ($codeKey !== '') {
+                $groupsByCode[$codeKey] = $g;
+            }
         }
 
         // ── masterdata lookup ────────────────────────────────────────────
@@ -179,6 +197,12 @@ class ImportService {
             "SELECT zone, region, branch_name, code AS branch_code, cost_center
                FROM branch_profile
               WHERE zone = ? AND region = ? AND cost_center = ?
+              LIMIT 1"
+        );
+        $masterCheckByCostCenter = $this->dbMaster->prepare(
+            "SELECT zone, region, branch_name, code AS branch_code, cost_center
+               FROM branch_profile
+              WHERE cost_center = ?
               LIMIT 1"
         );
 
@@ -206,7 +230,7 @@ class ImportService {
             $referenceNo  = trim((string)($row[2]  ?? ''));
             $quantity     = (int)($row[3] ?? 1);
             $propertyType = strtoupper(trim((string)($row[4]  ?? 'PURCHASED')));
-            $groupName    = trim((string)($row[5]  ?? ''));
+            $groupRaw     = trim((string)($row[5]  ?? ''));
             $acqCost      = (float)($row[6] ?? 0);
             $dateRecVal   = $row[7] ?? null;
             $zone         = trim((string)($row[8]  ?? ''));  // main zone
@@ -239,8 +263,8 @@ class ImportService {
                 ?: $this->computeDepreciationStartDate($dateReceived, $deprOn, $deprDay);
 
             // ── Validations ──────────────────────────────────────────────
-            if (empty($zone) || empty($costCenter)) {
-                $rowErrors[] = "Missing required fields: Zone and Cost Center are required.";
+            if (empty($costCenter)) {
+                $rowErrors[] = "Missing required field: Cost Center is required.";
             }
 
             if (!empty($costCenter) && !preg_match('/^\d{4}-\d{3}$/', $costCenter)) {
@@ -256,9 +280,27 @@ class ImportService {
             }
 
             // Group lookup
-            $groupEntry = $groups[strtolower($groupName)] ?? null;
+            $groupEntry = null;
+            $groupNameKey = $this->normalizeGroupKey($groupRaw);
+            $groupCodeKey = strtoupper($groupRaw);
+
+            if ($groupCodeKey !== '' && isset($groupsByCode[$groupCodeKey])) {
+                $groupEntry = $groupsByCode[$groupCodeKey];
+            }
+
+            if (!$groupEntry && $groupNameKey !== '' && isset($groupsByName[$groupNameKey])) {
+                $groupEntry = $groupsByName[$groupNameKey];
+            }
+
+            if (!$groupEntry && preg_match('/^([A-Za-z0-9_\-\/]+)\s*[-:]\s*/', $groupRaw, $m)) {
+                $prefixCode = strtoupper(trim($m[1]));
+                if (isset($groupsByCode[$prefixCode])) {
+                    $groupEntry = $groupsByCode[$prefixCode];
+                }
+            }
+
             if (!$groupEntry) {
-                $rowErrors[] = "Asset Group '{$groupName}' does not exist in the system.";
+                $rowErrors[] = "Asset Group '{$groupRaw}' does not exist in the system.";
             }
 
             // Master data branch validation
@@ -266,10 +308,21 @@ class ImportService {
             if (empty($rowErrors)) {
                 $masterCheck->execute([$zone, $regionCode, $costCenter]);
                 $masterData = $masterCheck->fetch(\PDO::FETCH_ASSOC);
+
+                if (!$masterData && !empty($costCenter)) {
+                    $masterCheckByCostCenter->execute([$costCenter]);
+                    $masterData = $masterCheckByCostCenter->fetch(\PDO::FETCH_ASSOC);
+                }
+
                 if (!$masterData) {
                     $rowErrors[] = "Branch (Zone:{$zone}, Region:{$regionCode}, Cost Center:{$costCenter}) not found in Master Data.";
                 }
             }
+
+            $zonePart = $zoneCode !== ''
+                ? $zoneCode
+                : ($masterData['zone'] ?? $zone);
+            $branchPart = $masterData['branch_code'] ?? $costCenter;
 
             // ── Build base row ───────────────────────────────────────────
             $baseRow = [
@@ -281,12 +334,12 @@ class ImportService {
                 'region_code'              => $masterData['region']       ?? $regionCode,
                 'cost_center_code'         => $masterData['cost_center'] ?? $costCenter,
                 'branch_name'              => $masterData['branch_name'] ?? $excelBranch,
-                'branch_code'              => $masterData['branch_code'] ?? '',
+                'branch_code'              => $masterData['branch_code'] ?? $costCenter,
                 // Asset identity
                 'reference_no'             => $dbReferenceNo,
                 'serial_number'            => $dbSerialNumber,
                 'item_code'                => $dbItemCode,
-                'group_name'               => $groupEntry['group_name']  ?? $groupName,
+                'group_name'               => $groupEntry['group_name']  ?? $groupRaw,
                 'group_code'               => $groupEntry['group_code']  ?? '',
                 'asset_code'               => $groupEntry['asset_code']  ?? '',
                 'depreciation_code'        => $groupEntry['depreciation_code'] ?? '',
@@ -321,8 +374,8 @@ class ImportService {
             $suffix          = $dbReferenceNo ?? strtoupper(substr(uniqid(), -5));
             $systemAssetCode = sprintf("%s-%s-%s-%s",
                 $groupEntry['asset_code'],
-                $zoneCode,
-                $masterData['branch_code'],
+                $zonePart,
+                $branchPart,
                 $suffix
             );
 
@@ -358,7 +411,7 @@ class ImportService {
 
         // ── Build groups map for JS (key: group_code) ────────────────────
         $groupsForJs = [];
-        foreach ($groups as $entry) {
+        foreach ($groupsByCode as $entry) {
             $groupsForJs[$entry['group_code']] = $entry;
         }
 

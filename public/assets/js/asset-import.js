@@ -770,6 +770,15 @@ function saveDeprEdit() {
     var deprOn            = document.getElementById('depr-f-depr-on')?.value        || 'LAST_DAY';
     var deprDay           = parseInt(document.getElementById('depr-f-depr-day')?.value || 1, 10);
 
+    // Preserve existing values when async cascades have not populated selects yet.
+    if (!mainZoneCode)   mainZoneCode = row.main_zone_code || '';
+    if (!zoneCode)       zoneCode = row.zone_code || '';
+    if (!regionCode)     regionCode = row.region_code || '';
+    if (!branchName)     branchName = row.branch_name || '';
+    if (!costCenterCode) costCenterCode = row.cost_center_code || '';
+    if (!branchCode)     branchCode = row.branch_code || costCenterCode || '';
+    if (!groupCode)      groupCode = row.group_code || '';
+
     // ── Local validation ───────────────────────────────────────
     var errs = [];
     if (!costCenterCode) errs.push('Cost Center is required — please select a Branch.');
