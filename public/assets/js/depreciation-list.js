@@ -38,13 +38,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let allBranches = [];
 
-    let baseUrlClean = '/';
+    let appBase = '';
     if (typeof BASE_URL !== 'undefined' && BASE_URL !== '') {
-        baseUrlClean = BASE_URL.endsWith('/') ? BASE_URL : BASE_URL + '/';
+        appBase = BASE_URL.replace(/\/+$/, '');
     }
+    const publicBase = appBase === ''
+        ? '/public'
+        : (appBase.endsWith('/public') ? appBase : appBase + '/public');
 
-    const locationsApiUrl   = baseUrlClean + 'api/get_locations.php';
-    const groupDetailsApiUrl = baseUrlClean + 'api/get_group_details.php';
+    const locationsApiUrl    = publicBase + '/api/get_locations.php';
+    const groupDetailsApiUrl = publicBase + '/api/get_group_details.php';
 
     fetch(locationsApiUrl)
         .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
@@ -441,7 +444,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const formData = new FormData(form);
 
-            fetch(baseUrlClean + 'actions/asset_store.php', {
+            fetch(publicBase + '/actions/asset_store.php', {
                 method: 'POST',
                 body: formData
             })
@@ -505,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const listConfigEl = document.getElementById('depr-list-config');
     const listApiUrl = (listConfigEl && listConfigEl.dataset.apiUrl)
         ? listConfigEl.dataset.apiUrl
-        : (baseUrlClean + 'api/get_depreciation_list.php');
+        : (publicBase + '/api/get_depreciation_list.php');
 
     const listPerPage = (listConfigEl && parseInt(listConfigEl.dataset.perPage, 10))
         ? parseInt(listConfigEl.dataset.perPage, 10)
@@ -823,7 +826,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const ledgerConfigEl = document.getElementById('depr-ledger-config');
     const ledgerApiUrl = (ledgerConfigEl && ledgerConfigEl.dataset.apiUrl)
         ? ledgerConfigEl.dataset.apiUrl
-        : (baseUrlClean + 'api/get_asset_ledger.php');
+        : (publicBase + '/api/get_asset_ledger.php');
 
     const ledgerModalEl = document.getElementById('modal-asset-ledger');
     const ledgerSubtitleEl = document.getElementById('ledger-subtitle');

@@ -4,116 +4,153 @@ namespace App;
 class LocationMasterService {
     private ?\PDO $dbMaster;
 
-    /**
-     * Inject the secondary database connection (DB2 / Master Data)
-     */
     public function __construct(?\PDO $dbMaster) {
         $this->dbMaster = $dbMaster;
     }
 
-    /**
-     * Helper to check if DB2 is connected
-     */
     private function checkConnection(): void {
         if (!$this->dbMaster) {
             throw new \Exception("Master Data database connection is not configured or unavailable.");
         }
     }
 
-    /**
-     * 1. Fetch Main Zones
-     * Table: main_zone_masterfile
-     */
+    // ── 1. Main Zones ─────────────────────────────────────────────────────
+
     public function getMainZones(): array {
         $this->checkConnection();
-        $sql = "SELECT DISTINCT main_zone_code FROM main_zone_masterfile WHERE main_zone_code IS NOT NULL ORDER BY main_zone_code ASC";
-        $stmt = $this->dbMaster->query($sql);
+        $stmt = $this->dbMaster->query(
+            "SELECT DISTINCT main_zone_code FROM main_zone_masterfile WHERE main_zone_code IS NOT NULL ORDER BY main_zone_code ASC"
+        );
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
-    /**
-     * 2. Fetch Sub-Zones
-     * Table: zone_masterfile
-     * Note: Added an optional $mainZoneCode parameter. If your DB2 links these tables, 
-     * you can filter Zones by the Main Zone selected by the user.
-     */
+    // ── 2. Sub-Zones (all, or filtered by main_zone_code) ─────────────────
+
     public function getZones(?string $mainZoneCode = null): array {
         $this->checkConnection();
-        
-        $sql = "SELECT DISTINCT zone_code FROM zone_masterfile WHERE zone_code IS NOT NULL";
+        $sql    = "SELECT DISTINCT zone_code FROM zone_masterfile WHERE zone_code IS NOT NULL";
         $params = [];
-
-        // If zone_masterfile has a main_zone_code column to link them, uncomment this logic:
-        /*
-        if ($mainZoneCode) {
-            $sql .= " AND main_zone_code = :main_zone_code";
-            $params[':main_zone_code'] = $mainZoneCode;
-        }
-        */
-
-        $sql .= " ORDER BY zone_code ASC";
-        
-        $stmt = $this->dbMaster->prepare($sql);
+        $sql   .= " ORDER BY zone_code ASC";
+        $stmt   = $this->dbMaster->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
-     * 3. Fetch Regions
-     * Table: region_masterfile
+     * Cascaded: sub-zones for a given main_zone_code.
+     * Falls back to all zones if the join column doesn't exist in the schema.
      */
+    public function getZonesByMainZone(string $mainZoneCode): array {
+        $this->checkConnection();
+        if (trim($mainZoneCode) === '') {
+            return $this->getZones();
+        }
+        try {
+            $stmt = $this->dbMaster->prepare(
+                "SELECT DISTINCT zone_code
+                 FROM zone_masterfile
+                 WHERE main_zone_code = :mz AND zone_code IS NOT NULL
+                 ORDER BY zone_code ASC"
+            );
+            $stmt->execute([':mz' => $mainZoneCode]);
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            // If the column doesn't exist or returns nothing, fall back
+            return $rows ?: $this->getZones();
+        } catch (\PDOException $e) {
+            // Column might not exist — safe fallback
+            return $this->getZones();
+        }
+    }
+
+    // ── 3. Regions (all, or filtered by zone_code) ────────────────────────
+
     public function getRegions(?string $zoneCode = null): array {
         $this->checkConnection();
-        
-        $sql = "SELECT DISTINCT region_code FROM region_masterfile WHERE region_code IS NOT NULL";
+        $sql    = "SELECT DISTINCT region_code FROM region_masterfile WHERE region_code IS NOT NULL";
         $params = [];
-
-        // If region_masterfile has a zone_code column linking them, you can filter it:
-        /*
-        if ($zoneCode) {
-            $sql .= " AND zone_code = :zone_code";
-            $params[':zone_code'] = $zoneCode;
-        }
-        */
-
-        $sql .= " ORDER BY region_code ASC";
-        
-        $stmt = $this->dbMaster->prepare($sql);
+        $sql   .= " ORDER BY region_code ASC";
+        $stmt   = $this->dbMaster->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
-   /**
-     * 4. Fetch Branches / Cost Centers with full Hierarchy
+    /**
+     * Cascaded: regions for a given zone_code.
      */
+    public function getRegionsByZone(string $zoneCode): array {
+        $this->checkConnection();
+        if (trim($zoneCode) === '') {
+            return $this->getRegions();
+        }
+        try {
+            $stmt = $this->dbMaster->prepare(
+                "SELECT DISTINCT r.region_code, r.region_description
+                 FROM region_masterfile r
+                 WHERE r.zone_code = :zc AND r.region_code IS NOT NULL
+                 ORDER BY r.region_code ASC"
+            );
+            $stmt->execute([':zc' => $zoneCode]);
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            return $rows ?: $this->getRegions();
+        } catch (\PDOException $e) {
+            return $this->getRegions();
+        }
+    }
+
+    // ── 4. Branches (all, or filtered by region_code) ─────────────────────
+
     public function getBranches(?string $regionCode = null): array {
         $this->checkConnection();
-        
-        // ADDED r.region_description to the SELECT statement
-        $sql = "SELECT DISTINCT 
-                    b.cost_center AS cost_center_code, 
+
+        $params = [];
+        if ($regionCode) {
+            $params[':region_code'] = $regionCode;
+        }
+
+        $whereRegion = $regionCode ? " AND b.region_code = :region_code" : "";
+
+        // Preferred query: include branch code when available.
+        $sqlWithBranchCode = "SELECT DISTINCT
+                    b.cost_center AS cost_center_code,
+                    b.code AS branch_code,
                     b.branch_name,
                     r.region_code,
-                    r.region_description,  /* NEW FIELD ADDED HERE */
+                    r.region_description,
                     z.zone_code,
                     m.main_zone_code
                 FROM branch_profile b
                 LEFT JOIN region_masterfile r ON b.region_code = r.region_code
-                LEFT JOIN zone_masterfile z ON r.zone_code = z.zone_code
+                LEFT JOIN zone_masterfile z   ON r.zone_code   = z.zone_code
                 LEFT JOIN main_zone_masterfile m ON z.main_zone_code = m.main_zone_code
-                WHERE b.cost_center IS NOT NULL AND b.branch_name IS NOT NULL";
-        
-        $params = [];
+                WHERE b.cost_center IS NOT NULL AND b.branch_name IS NOT NULL"
+                . $whereRegion .
+                " ORDER BY b.branch_name ASC";
 
-        if ($regionCode) {
-            $sql .= " AND b.region_code = :region_code";
-            $params[':region_code'] = $regionCode;
+        // Fallback query for schemas without branch_profile.code.
+        $sqlFallback = "SELECT DISTINCT
+                    b.cost_center AS cost_center_code,
+                    '' AS branch_code,
+                    b.branch_name,
+                    r.region_code,
+                    r.region_description,
+                    z.zone_code,
+                    m.main_zone_code
+                FROM branch_profile b
+                LEFT JOIN region_masterfile r ON b.region_code = r.region_code
+                LEFT JOIN zone_masterfile z   ON r.zone_code   = z.zone_code
+                LEFT JOIN main_zone_masterfile m ON z.main_zone_code = m.main_zone_code
+                WHERE b.cost_center IS NOT NULL AND b.branch_name IS NOT NULL"
+                . $whereRegion .
+                " ORDER BY b.branch_name ASC";
+
+        try {
+            $stmt = $this->dbMaster->prepare($sqlWithBranchCode);
+            $stmt->execute($params);
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            $stmt = $this->dbMaster->prepare($sqlFallback);
+            $stmt->execute($params);
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         }
-
-        $sql .= " ORDER BY b.branch_name ASC";
-        
-        $stmt = $this->dbMaster->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

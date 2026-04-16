@@ -2,9 +2,10 @@
 namespace App;
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class ImportService {
-    private \PDO $db;
+    private \PDO  $db;
     private ?\PDO $dbMaster;
 
     public function __construct(\PDO $db, ?\PDO $dbMaster) {
@@ -12,9 +13,142 @@ class ImportService {
         $this->dbMaster = $dbMaster;
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    //  PREVIEW: Parse & validate only — returns preview rows, no DB writes
-    // ══════════════════════════════════════════════════════════════════
+    /**
+     * Normalizes Excel/CSV date inputs into Y-m-d or null.
+     */
+    private function parseDate($value): ?string {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (is_numeric($value)) {
+            try {
+                return ExcelDate::excelToDateTimeObject((float)$value)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                return null;
+            }
+        }
+
+        $text = trim((string)$value);
+        if ($text === '') {
+            return null;
+        }
+
+        $formats = [
+            'Y-m-d', 'Y/m/d',
+            'm/d/Y', 'd/m/Y',
+            'm-d-Y', 'd-m-Y',
+            'Y-m-d H:i:s', 'Y/m/d H:i:s',
+            'm/d/Y H:i:s', 'd/m/Y H:i:s',
+        ];
+
+        foreach ($formats as $format) {
+            $dt = \DateTime::createFromFormat($format, $text);
+            if ($dt instanceof \DateTime) {
+                return $dt->format('Y-m-d');
+            }
+        }
+
+        $ts = strtotime($text);
+        return $ts !== false ? date('Y-m-d', $ts) : null;
+    }
+
+    /**
+     * Computes depreciation start date from date received and schedule setting.
+     */
+    private function computeDepreciationStartDate(?string $dateReceived, string $deprOn, int $deprDay): string {
+        $base = $dateReceived ?: date('Y-m-d');
+        $ts = strtotime($base);
+        if ($ts === false) {
+            $ts = time();
+        }
+
+        if ($deprOn === 'FIRST_DAY') {
+            return date('Y-m-01', $ts);
+        }
+
+        if ($deprOn === 'SPECIFIC_DATE') {
+            $year = (int)date('Y', $ts);
+            $month = (int)date('m', $ts);
+            $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+            $day = max(1, min($deprDay, $lastDay));
+            return sprintf('%04d-%02d-%02d', $year, $month, $day);
+        }
+
+        return date('Y-m-t', $ts);
+    }
+
+    /**
+     * Computes depreciation end date using the same depreciation_on semantics
+     * as manual add (LAST_DAY/FIRST_DAY/SPECIFIC_DATE).
+     */
+    private function computeDepreciationEndDate(?string $startDate, int $actualMonths, string $deprOn, int $deprDay): string {
+        if (empty($startDate) || $actualMonths <= 0) {
+            return '';
+        }
+
+        $startTs = strtotime($startDate);
+        if ($startTs === false) {
+            return '';
+        }
+
+        $targetTs = strtotime(date('Y-m-01', $startTs) . ' +' . ($actualMonths - 1) . ' months');
+        if ($targetTs === false) {
+            return '';
+        }
+
+        $year = (int)date('Y', $targetTs);
+        $month = (int)date('m', $targetTs);
+
+        if ($deprOn === 'FIRST_DAY') {
+            return sprintf('%04d-%02d-01', $year, $month);
+        }
+
+        if ($deprOn === 'SPECIFIC_DATE') {
+            $lastDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+            $day = max(1, min($deprDay, $lastDay));
+            return sprintf('%04d-%02d-%02d', $year, $month, $day);
+        }
+
+        return date('Y-m-t', $targetTs);
+    }
+
+    /**
+     * Normalizes group keys so parser matching tolerates case and spacing variance.
+     */
+    private function normalizeGroupKey(string $value): string {
+        $text = str_replace("\xC2\xA0", ' ', $value);
+        $text = preg_replace('/\s+/', ' ', trim($text));
+        return strtolower((string)$text);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  PREVIEW  — parse & validate only, zero DB writes
+    //
+    //  Expected 18-column Excel layout (Row 1 = header, Row 2+ = data):
+    //   A  Serial Number
+    //   B  Asset Description
+    //   C  Reference Number      (optional)
+    //   D  Quantity
+    //   E  Property Type         (PURCHASED / LEASE / LEASEHOLD / MAINTENANCE)
+    //   F  Asset Group           (group_name or group_code)
+    //   G  Acquisition Cost
+    //   H  Date Received
+    //   I  Main Zone
+    //   J  Sub-Zone
+    //   K  Region
+    //   L  Cost Center           (format 0000-000)
+    //   M  Branch                (display-only; authoritative from masterdata)
+    //   N  Item Code             (optional)
+    //   O  Cost Unit             (optional)
+    //   P  Depreciation Start Date (optional)
+    //   Q  Depreciation On       (FIRST_DAY / LAST_DAY / SPECIFIC_DATE)
+    //   R  Depreciation Day      (1-31, only when Q = SPECIFIC_DATE)
+    // ══════════════════════════════════════════════════════════════════════
     public function previewImport(string $filePath): array {
         if (!$this->dbMaster) {
             return ['success' => false, 'error' => 'Master Data database connection is not configured.'];
@@ -34,36 +168,54 @@ class ImportService {
 
         array_shift($rows); // strip header
 
-        // ── Pre-fetch categories ─────────────────────────────────────
-        // Key: name (lowercase) → [code, life, display_name]
-        // display_name is the original casing from the DB — sent to JS
-        // so the edit dropdown can show proper labels.
-        $catStmt    = $this->db->query("SELECT category_code, category_name, asset_life_months FROM asset_categories");
-        $categories = [];
-        while ($cat = $catStmt->fetch(\PDO::FETCH_ASSOC)) {
-            $categories[strtolower(trim($cat['category_name']))] = [
-                'code'         => $cat['category_code'],
-                'life'         => (int)$cat['asset_life_months'],
-                'display_name' => $cat['category_name'],   // ← original casing for JS dropdown
-            ];
+        // ── Pre-fetch asset groups (key: lower group_name → full row) ────
+        $groupStmt = $this->db->query("
+            SELECT ag.group_code, ag.group_name, ag.actual_months,
+                   al.asset_code, al.asset_name,
+                   ad.depreciation_code, ad.description AS depreciation_description
+            FROM asset_groups ag
+            JOIN assets_lookup al ON ag.asset_code = al.asset_code
+            JOIN amortization_depreciation ad ON al.depreciation_code = ad.depreciation_code
+        ");
+        $groupsByName = [];
+        $groupsByCode = [];
+        while ($g = $groupStmt->fetch(\PDO::FETCH_ASSOC)) {
+            $g['actual_months'] = (int)$g['actual_months'];
+            $nameKey = $this->normalizeGroupKey((string)$g['group_name']);
+            $codeKey = strtoupper(trim((string)$g['group_code']));
+
+            if ($nameKey !== '') {
+                $groupsByName[$nameKey] = $g;
+            }
+            if ($codeKey !== '') {
+                $groupsByCode[$codeKey] = $g;
+            }
         }
 
+        // ── masterdata lookup ────────────────────────────────────────────
         $masterCheck = $this->dbMaster->prepare(
-            "SELECT zone, region, branch_name, code AS branch_code
+            "SELECT zone, region, branch_name, code AS branch_code, cost_center
                FROM branch_profile
               WHERE zone = ? AND region = ? AND cost_center = ?
               LIMIT 1"
         );
+        $masterCheckByCostCenter = $this->dbMaster->prepare(
+            "SELECT zone, region, branch_name, code AS branch_code, cost_center
+               FROM branch_profile
+              WHERE cost_center = ?
+              LIMIT 1"
+        );
 
-        // Pre-load ALL existing system_asset_codes for O(1) duplicate lookup
+        // ── pre-load existing system_asset_codes for O(1) dup check ──────
         $existingCodes = [];
-        $existStmt = $this->db->query("SELECT system_asset_code FROM assets");
-        while ($r = $existStmt->fetch(\PDO::FETCH_ASSOC)) {
+        foreach ($this->db->query("SELECT system_asset_code FROM assets") as $r) {
             $existingCodes[strtolower($r['system_asset_code'])] = true;
         }
-
-        // Track codes seen within THIS file to catch within-batch duplicates
         $seenInFile = [];
+
+        $allowedPropertyTypes  = ['PURCHASED', 'LEASE', 'LEASEHOLD', 'MAINTENANCE'];
+        $allowedDepreciateOn   = ['FIRST_DAY', 'LAST_DAY', 'SPECIFIC_DATE'];
+        $allowedStatuses       = ['ACTIVE', 'SOLD', 'DISPOSED', 'INACTIVE'];
 
         $preview = [];
         $errors  = [];
@@ -72,74 +224,47 @@ class ImportService {
             $rowNum    = $index + 2;
             $rowErrors = [];
 
-            // ── Column mapping (9-column format) ────────────────────
-            // 0: Zone | 1: Region | 2: Cost Center | 3: Branch (display-only)
-            // 4: Reference Number | 5: Asset Category | 6: Date Received
-            // 7: Acquisition Cost | 8: Description
-            $zone        = trim((string)($row[0] ?? ''));
-            $region      = trim((string)($row[1] ?? ''));
-            $costCenter  = trim((string)($row[2] ?? ''));
-            $excelBranch = strtoupper(trim((string)($row[3] ?? '')));
+            // ── Column mapping ───────────────────────────────────────────
+            $serialNumber = trim((string)($row[0]  ?? ''));
+            $description  = trim((string)($row[1]  ?? ''));
+            $referenceNo  = trim((string)($row[2]  ?? ''));
+            $quantity     = (int)($row[3] ?? 1);
+            $propertyType = strtoupper(trim((string)($row[4]  ?? 'PURCHASED')));
+            $groupRaw     = trim((string)($row[5]  ?? ''));
+            $acqCost      = (float)($row[6] ?? 0);
+            $dateRecVal   = $row[7] ?? null;
+            $zone         = trim((string)($row[8]  ?? ''));  // main zone
+            $zoneCode     = trim((string)($row[9]  ?? ''));  // sub-zone
+            $regionCode   = trim((string)($row[10] ?? ''));
+            $costCenter   = trim((string)($row[11] ?? ''));
+            $excelBranch  = strtoupper(trim((string)($row[12] ?? '')));
+            $itemCode     = trim((string)($row[13] ?? ''));
+            $costUnit     = (float)($row[14] ?? 0);
+            $deprStartVal = $row[15] ?? null;
+            $deprOn       = strtoupper(trim((string)($row[16] ?? 'LAST_DAY')));
+            $deprDay      = (int)($row[17] ?? 1);
+            $status       = 'ACTIVE';
 
-            $excelRef      = trim((string)($row[4] ?? ''));
-            $dbReferenceNo = $excelRef === '' ? null : $excelRef;
+            // ── Normalise optionals ──────────────────────────────────────
+            $dbReferenceNo  = $referenceNo  !== '' ? $referenceNo  : null;
+            $dbSerialNumber = $serialNumber !== '' ? $serialNumber : null;
+            $dbItemCode     = $itemCode     !== '' ? $itemCode     : null;
+            if (!in_array($propertyType, $allowedPropertyTypes, true)) $propertyType = 'PURCHASED';
+            if (!in_array($deprOn,       $allowedDepreciateOn,  true)) $deprOn       = 'LAST_DAY';
+            if (!in_array($status,       $allowedStatuses,      true)) $status       = 'ACTIVE';
+            if ($quantity < 1)  $quantity = 1;
+            if ($deprDay  < 1 || $deprDay > 31) $deprDay = 1;
 
-            $catName = strtolower(trim((string)($row[5] ?? '')));
+            // ── Date parsing ─────────────────────────────────────────────
+            $dateReceived = $this->parseDate($dateRecVal);
+            $deprStartFromExcel = $this->parseDate($deprStartVal);
 
-            // ── Robust date parsing ──────────────────────────────────
-            // Accepts: Excel serial, ISO Y-m-d, m/d/Y, M j Y, m-d-Y, etc.
-            $dateRecVal   = $row[6] ?? null;
-            $dateReceived = null;
+            $depreciationStartDate = $deprStartFromExcel
+                ?: $this->computeDepreciationStartDate($dateReceived, $deprOn, $deprDay);
 
-            if (is_numeric($dateRecVal)) {
-                $dateReceived = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float)$dateRecVal)
-                                    ->format('Y-m-d');
-            } elseif (!empty($dateRecVal)) {
-                $raw = trim((string)$dateRecVal);
-
-                $formats = [
-                    'Y-m-d',   // 2026-01-31
-                    'm/d/Y',   // 01/31/2026
-                    'n/j/Y',   // 1/31/2026
-                    'm-d-Y',   // 01-31-2026
-                    'n-j-Y',   // 1-31-2026
-                    'M j, Y',  // Jan 31, 2026
-                    'F j, Y',  // January 31, 2026
-                    'M j Y',   // Jan 31 2026
-                    'F j Y',   // January 31 2026
-                    'm.d.Y',   // 01.31.2026
-                ];
-
-                foreach ($formats as $fmt) {
-                    $dt = \DateTime::createFromFormat($fmt, $raw);
-                    if ($dt !== false) {
-                        $errs = \DateTime::getLastErrors();
-                        if (empty($errs['warning_count']) && empty($errs['error_count'])) {
-                            $dateReceived = $dt->format('Y-m-d');
-                            break;
-                        }
-                    }
-                }
-
-                if ($dateReceived === null && strtotime($raw) !== false) {
-                    $dateReceived = date('Y-m-d', strtotime($raw));
-                }
-            }
-
-            // Absolute fallback — today
-            if ($dateReceived === null) {
-                $dateReceived = date('Y-m-d');
-            }
-
-            // Depreciation start = last day of received month (system rule)
-            $depreciationStartDate = date('Y-m-t', strtotime($dateReceived));
-
-            $acqCost = (float)($row[7] ?? 0);
-            $desc    = trim((string)($row[8] ?? ''));
-
-            // ── Validations ──────────────────────────────────────────
-            if (empty($zone) || empty($costCenter)) {
-                $rowErrors[] = "Missing required branch fields (Zone, Cost Center).";
+            // ── Validations ──────────────────────────────────────────────
+            if (empty($costCenter)) {
+                $rowErrors[] = "Missing required field: Cost Center is required.";
             }
 
             if (!empty($costCenter) && !preg_match('/^\d{4}-\d{3}$/', $costCenter)) {
@@ -150,57 +275,111 @@ class ImportService {
                 $rowErrors[] = "Acquisition Cost must be greater than zero.";
             }
 
-            if (empty($desc)) {
+            if (empty($description)) {
                 $rowErrors[] = "Description is required.";
             }
 
-            // Category lookup — drives both code AND asset life
-            $catEntry = $categories[$catName] ?? null;
-            if (!$catEntry) {
-                $rowErrors[] = "Asset Category '{$row[5]}' does not exist in the system.";
+            // Group lookup
+            $groupEntry = null;
+            $groupNameKey = $this->normalizeGroupKey($groupRaw);
+            $groupCodeKey = strtoupper($groupRaw);
+
+            if ($groupCodeKey !== '' && isset($groupsByCode[$groupCodeKey])) {
+                $groupEntry = $groupsByCode[$groupCodeKey];
+            }
+
+            if (!$groupEntry && $groupNameKey !== '' && isset($groupsByName[$groupNameKey])) {
+                $groupEntry = $groupsByName[$groupNameKey];
+            }
+
+            if (!$groupEntry && preg_match('/^([A-Za-z0-9_\-\/]+)\s*[-:]\s*/', $groupRaw, $m)) {
+                $prefixCode = strtoupper(trim($m[1]));
+                if (isset($groupsByCode[$prefixCode])) {
+                    $groupEntry = $groupsByCode[$prefixCode];
+                }
+            }
+
+            if (!$groupEntry) {
+                $rowErrors[] = "Asset Group '{$groupRaw}' does not exist in the system.";
             }
 
             // Master data branch validation
             $masterData = null;
             if (empty($rowErrors)) {
-                $masterCheck->execute([$zone, $region, $costCenter]);
+                $masterCheck->execute([$zone, $regionCode, $costCenter]);
                 $masterData = $masterCheck->fetch(\PDO::FETCH_ASSOC);
+
+                if (!$masterData && !empty($costCenter)) {
+                    $masterCheckByCostCenter->execute([$costCenter]);
+                    $masterData = $masterCheckByCostCenter->fetch(\PDO::FETCH_ASSOC);
+                }
+
                 if (!$masterData) {
-                    $rowErrors[] = "Branch ({$zone}, {$region}, {$costCenter}) not found in Master Data.";
+                    $rowErrors[] = "Branch (Zone:{$zone}, Region:{$regionCode}, Cost Center:{$costCenter}) not found in Master Data.";
                 }
             }
 
+            $zonePart = $zoneCode !== ''
+                ? $zoneCode
+                : ($masterData['zone'] ?? $zone);
+            $branchPart = $masterData['branch_code'] ?? $costCenter;
+
+            // ── Build base row ───────────────────────────────────────────
+            $baseRow = [
+                'row_num'                  => $rowNum,
+                'has_error'                => !empty($rowErrors),
+                // Location
+                'main_zone_code'           => $masterData['zone']        ?? $zone,
+                'zone_code'                => $zoneCode,
+                'region_code'              => $masterData['region']       ?? $regionCode,
+                'cost_center_code'         => $masterData['cost_center'] ?? $costCenter,
+                'branch_name'              => $masterData['branch_name'] ?? $excelBranch,
+                'branch_code'              => $masterData['branch_code'] ?? $costCenter,
+                // Asset identity
+                'reference_no'             => $dbReferenceNo,
+                'serial_number'            => $dbSerialNumber,
+                'item_code'                => $dbItemCode,
+                'group_name'               => $groupEntry['group_name']  ?? $groupRaw,
+                'group_code'               => $groupEntry['group_code']  ?? '',
+                'asset_code'               => $groupEntry['asset_code']  ?? '',
+                'depreciation_code'        => $groupEntry['depreciation_code'] ?? '',
+                'actual_months'            => $groupEntry['actual_months'] ?? 0,
+                'description'              => $description,
+                // Dates
+                'date_received'            => $dateReceived ?? date('Y-m-d'),
+                'depreciation_start_date'  => $depreciationStartDate,
+                // Financial
+                'acquisition_cost'         => $acqCost,
+                'cost_unit'                => $costUnit > 0 ? $costUnit : $acqCost,
+                'monthly_depreciation'     => ($groupEntry && $groupEntry['actual_months'] > 0)
+                                                ? round($acqCost / $groupEntry['actual_months'], 2)
+                                                : 0,
+                // Settings
+                'property_type'            => $propertyType,
+                'depreciation_on'          => $deprOn,
+                'depreciation_day'         => $deprDay,
+                'quantity'                 => $quantity,
+                'status'                   => $status,
+                // Error tracking
+                'errors'                   => $rowErrors,
+            ];
+
             if (!empty($rowErrors)) {
-                $errors[]  = "<strong>Row {$rowNum}:</strong> " . implode(" ", $rowErrors);
-                $preview[] = [
-                    'row_num'              => $rowNum,
-                    'has_error'            => true,
-                    'zone'                 => $zone,
-                    'region'               => $region,
-                    'cost_center'          => $costCenter,
-                    'branch_name'          => $excelBranch,
-                    'reference_no'         => $dbReferenceNo,
-                    'category_name'        => $row[5] ?? '',
-                    'category_code'        => $catEntry['code']         ?? '—',
-                    'asset_life_months'    => $catEntry['life']         ?? '—',
-                    'date_received'        => $dateReceived,
-                    'depreciation_start'   => $depreciationStartDate,
-                    'acquisition_cost'     => $acqCost,
-                    'monthly_depreciation' => 0,
-                    'description'          => $desc,
-                    'errors'               => $rowErrors,
-                ];
+                $errors[]  = "<strong>Row {$rowNum}:</strong> " . implode(' ', $rowErrors);
+                $preview[] = $baseRow;
                 continue;
             }
 
-            $catCode    = $catEntry['code'];
-            $assetLife  = $catEntry['life'];
-            $monthlyDep = $assetLife > 0 ? round($acqCost / $assetLife, 2) : 0;
+            // ── Build system_asset_code ──────────────────────────────────
+            $suffix          = $dbReferenceNo ?? strtoupper(substr(uniqid(), -5));
+            $systemAssetCode = sprintf("%s-%s-%s-%s",
+                $groupEntry['asset_code'],
+                $zonePart,
+                $branchPart,
+                $suffix
+            );
 
-            $suffix          = $excelRef !== '' ? $excelRef : strtoupper(substr(uniqid(), -5));
-            $systemAssetCode = sprintf("%s-%s-%s-%s", $catCode, $masterData['zone'], $masterData['branch_code'], $suffix);
-
-            // ── Duplicate Detection ──────────────────────────────────
+            // ── Duplicate detection ──────────────────────────────────────
             $codeKey     = strtolower($systemAssetCode);
             $isDuplicate = false;
 
@@ -213,120 +392,214 @@ class ImportService {
             }
 
             if ($isDuplicate) {
-                $errors[]  = "<strong>Row {$rowNum}:</strong> " . implode(" ", $rowErrors);
-                $preview[] = [
-                    'row_num'              => $rowNum,
-                    'has_error'            => true,
-                    'is_duplicate'         => true,
-                    'zone'                 => $masterData['zone'],
-                    'region'               => $masterData['region'],
-                    'cost_center'          => $costCenter,
-                    'branch_name'          => $masterData['branch_name'],
-                    'reference_no'         => $dbReferenceNo,
-                    'category_name'        => $row[5],
-                    'category_code'        => $catCode,
-                    'asset_life_months'    => $assetLife,
-                    'date_received'        => $dateReceived,
-                    'depreciation_start'   => $depreciationStartDate,
-                    'acquisition_cost'     => $acqCost,
-                    'monthly_depreciation' => $monthlyDep,
-                    'description'          => $desc,
-                    'system_asset_code'    => $systemAssetCode,
-                    'errors'               => $rowErrors,
-                ];
+                $errors[]  = "<strong>Row {$rowNum}:</strong> " . implode(' ', $rowErrors);
+                $baseRow['has_error']        = true;
+                $baseRow['is_duplicate']     = true;
+                $baseRow['system_asset_code'] = $systemAssetCode;
+                $baseRow['errors']           = $rowErrors;
+                $preview[] = $baseRow;
                 continue;
             }
 
-            // Register in file-level tracker
             $seenInFile[$codeKey] = $rowNum;
 
-            $preview[] = [
-                'row_num'              => $rowNum,
-                'has_error'            => false,
-                'zone'                 => $masterData['zone'],
-                'region'               => $masterData['region'],
-                'cost_center'          => $costCenter,
-                'branch_name'          => $masterData['branch_name'],
-                'branch_code'          => $masterData['branch_code'],   // ← stored for system_asset_code rebuild
-                'reference_no'         => $dbReferenceNo,
-                'category_name'        => $row[5],
-                'category_code'        => $catCode,
-                'asset_life_months'    => $assetLife,
-                'date_received'        => $dateReceived,
-                'depreciation_start'   => $depreciationStartDate,
-                'acquisition_cost'     => $acqCost,
-                'monthly_depreciation' => $monthlyDep,
-                'description'          => $desc,
-                'system_asset_code'    => $systemAssetCode,
-                'errors'               => [],
-            ];
+            $baseRow['system_asset_code'] = $systemAssetCode;
+            $baseRow['has_error']         = false;
+            $baseRow['errors']            = [];
+            $preview[] = $baseRow;
         }
 
-        // ── Build the categories map for the JS edit dropdown ────────
-        // Keyed by lowercase name so JS can match category_name → entry.
-        $categoriesForJs = [];
-        foreach ($categories as $nameLower => $entry) {
-            $categoriesForJs[$nameLower] = [
-                'display_name' => $entry['display_name'],
-                'code'         => $entry['code'],
-                'life'         => $entry['life'],
-            ];
+        // ── Build groups map for JS (key: group_code) ────────────────────
+        $groupsForJs = [];
+        foreach ($groupsByCode as $entry) {
+            $groupsForJs[$entry['group_code']] = $entry;
         }
 
         return [
-            'success'    => true,
-            'preview'    => $preview,
-            'errors'     => $errors,
-            'hasErrors'  => !empty($errors),
-            'categories' => $categoriesForJs,   // ← consumed by JS edit modal dropdown
+            'success'   => true,
+            'preview'   => $preview,
+            'errors'    => $errors,
+            'hasErrors' => !empty($errors),
+            'groups'    => $groupsForJs,   // consumed by JS edit modal GL dropdown
         ];
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    //  PREPARE FOR COMMIT: Merges user edits and filters selected rows
-    // ══════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════
+    //  PREPARE & COMMIT  — merge user edits, delegate to AssetService
+    // ══════════════════════════════════════════════════════════════════════
     public function prepareAndCommit(array $previewRows, array $selectedNums, array $editedMap, int $userId): array {
         $rowsToCommit = [];
-        
+
+        $allowedPropertyTypes = ['PURCHASED', 'LEASE', 'LEASEHOLD', 'MAINTENANCE'];
+        $allowedDepreciateOn  = ['FIRST_DAY', 'LAST_DAY', 'SPECIFIC_DATE'];
+        $allowedStatuses      = ['ACTIVE', 'SOLD', 'DISPOSED', 'INACTIVE'];
+
+        // Re-load authoritative group mapping for commit-time hardening.
+        $groupStmt = $this->db->query("\n            SELECT ag.group_code, ag.group_name, ag.actual_months,\n                   al.asset_code, ad.depreciation_code\n            FROM asset_groups ag\n            JOIN assets_lookup al ON ag.asset_code = al.asset_code\n            JOIN amortization_depreciation ad ON al.depreciation_code = ad.depreciation_code\n        ");
+        $groupsByCode = [];
+        while ($g = $groupStmt->fetch(\PDO::FETCH_ASSOC)) {
+            $g['actual_months'] = (int)$g['actual_months'];
+            $groupsByCode[$g['group_code']] = $g;
+        }
+
+        // Pre-load existing codes to prevent crafted requests from bypassing row flags.
+        $existingCodes = [];
+        foreach ($this->db->query("SELECT system_asset_code FROM assets") as $r) {
+            $existingCodes[strtolower((string)$r['system_asset_code'])] = true;
+        }
+        $seenCodes = [];
+
         foreach ($previewRows as $row) {
             $rn = strval($row['row_num'] ?? '');
 
-            // Skip if not selected by the user
             if (!empty($selectedNums) && !in_array($rn, $selectedNums, true)) {
                 continue;
             }
 
-            // Skip error/duplicate rows — they can never be imported
-            if (!empty($row['has_error'])) {
-                continue;
-            }
-
-            // Merge in any edits the user made in the browser
+            // Merge user edits
             if (isset($editedMap[$rn])) {
                 $edited = $editedMap[$rn];
 
-                // Overwrite only the user-editable fields
-                foreach (['reference_no', 'description', 'date_received',
-                          'acquisition_cost', 'monthly_depreciation',
-                          'category_name', 'category_code', 'depreciation_start'] as $field) {
+                $editableFields = [
+                    'reference_no', 'serial_number', 'item_code', 'description',
+                    'date_received', 'depreciation_start_date',
+                    'acquisition_cost', 'cost_unit', 'monthly_depreciation',
+                    'group_name', 'group_code', 'asset_code', 'depreciation_code', 'actual_months',
+                    'property_type', 'depreciation_on', 'depreciation_day',
+                    'quantity', 'status',
+                    'main_zone_code', 'zone_code', 'region_code', 'cost_center_code',
+                    'branch_name', 'branch_code',
+                ];
+
+                foreach ($editableFields as $field) {
                     if (array_key_exists($field, $edited)) {
                         $row[$field] = $edited[$field];
                     }
                 }
 
-                // ── Rebuild system_asset_code from the updated parts ──────
+                // Rebuild system_asset_code from updated parts
                 $suffix = !empty($row['reference_no'])
                     ? $row['reference_no']
                     : strtoupper(substr(uniqid(), -5));
-                    
+
                 $row['system_asset_code'] = sprintf(
                     "%s-%s-%s-%s",
-                    $row['category_code'],
-                    $row['zone'],
-                    $row['branch_code'] ?? '',
+                    $row['asset_code'],
+                    $row['zone_code'] ?: ($row['main_zone_code'] ?? ''),
+                    $row['branch_code'] ?: ($row['cost_center_code'] ?? ''),
                     $suffix
                 );
             }
+
+            // Commit-time hardening: sanitize and fully re-validate on server,
+            // instead of trusting client-provided row flags.
+            $row['reference_no'] = isset($row['reference_no']) ? trim((string)$row['reference_no']) : '';
+            $row['serial_number'] = isset($row['serial_number']) ? trim((string)$row['serial_number']) : '';
+            $row['item_code'] = isset($row['item_code']) ? trim((string)$row['item_code']) : '';
+            $row['description'] = trim((string)($row['description'] ?? ''));
+            $row['main_zone_code'] = trim((string)($row['main_zone_code'] ?? ''));
+            $row['zone_code'] = trim((string)($row['zone_code'] ?? ''));
+            $row['region_code'] = trim((string)($row['region_code'] ?? ''));
+            $row['cost_center_code'] = trim((string)($row['cost_center_code'] ?? ''));
+            $row['branch_name'] = trim((string)($row['branch_name'] ?? ''));
+            $row['branch_code'] = trim((string)($row['branch_code'] ?? ''));
+            $row['group_code'] = trim((string)($row['group_code'] ?? ''));
+
+            if ($row['description'] === '' || $row['cost_center_code'] === '') {
+                continue;
+            }
+            if (!preg_match('/^\d{4}-\d{3}$/', $row['cost_center_code'])) {
+                continue;
+            }
+
+            if ($row['branch_code'] === '') {
+                $row['branch_code'] = $row['cost_center_code'];
+            }
+
+            $zonePart = $row['zone_code'] !== ''
+                ? $row['zone_code']
+                : $row['main_zone_code'];
+
+            if ($zonePart === '') {
+                continue;
+            }
+
+            $dateReceived = $this->parseDate($row['date_received'] ?? null) ?: date('Y-m-d');
+            $deprOn = strtoupper(trim((string)($row['depreciation_on'] ?? 'LAST_DAY')));
+            if (!in_array($deprOn, $allowedDepreciateOn, true)) {
+                $deprOn = 'LAST_DAY';
+            }
+            $deprDay = (int)($row['depreciation_day'] ?? 1);
+            if ($deprDay < 1 || $deprDay > 31) {
+                $deprDay = 1;
+            }
+
+            $deprStart = $this->parseDate($row['depreciation_start_date'] ?? null)
+                ?: $this->computeDepreciationStartDate($dateReceived, $deprOn, $deprDay);
+
+            $propertyType = strtoupper(trim((string)($row['property_type'] ?? 'PURCHASED')));
+            if (!in_array($propertyType, $allowedPropertyTypes, true)) {
+                $propertyType = 'PURCHASED';
+            }
+
+            $status = strtoupper(trim((string)($row['status'] ?? 'ACTIVE')));
+            if (!in_array($status, $allowedStatuses, true)) {
+                $status = 'ACTIVE';
+            }
+
+            $quantity = (int)($row['quantity'] ?? 1);
+            if ($quantity < 1) {
+                $quantity = 1;
+            }
+
+            $acqCost = (float)($row['acquisition_cost'] ?? 0);
+            if ($acqCost <= 0) {
+                continue;
+            }
+
+            if ($row['group_code'] === '' || !isset($groupsByCode[$row['group_code']])) {
+                continue;
+            }
+
+            $group = $groupsByCode[$row['group_code']];
+            $actualMonths = (int)$group['actual_months'];
+
+            $row['group_name'] = $group['group_name'];
+            $row['asset_code'] = $group['asset_code'];
+            $row['depreciation_code'] = $group['depreciation_code'];
+            $row['actual_months'] = $actualMonths;
+            $row['date_received'] = $dateReceived;
+            $row['depreciation_start_date'] = $deprStart;
+            $row['depreciation_on'] = $deprOn;
+            $row['depreciation_day'] = $deprDay;
+            $row['property_type'] = $propertyType;
+            $row['status'] = $status;
+            $row['quantity'] = $quantity;
+            $row['acquisition_cost'] = $acqCost;
+
+            $costUnit = (float)($row['cost_unit'] ?? 0);
+            $row['cost_unit'] = $costUnit > 0 ? $costUnit : $acqCost;
+            $row['monthly_depreciation'] = ($actualMonths > 0)
+                ? round($acqCost / $actualMonths, 2)
+                : 0;
+
+            $suffix = $row['reference_no'] !== ''
+                ? $row['reference_no']
+                : strtoupper(substr(uniqid(), -5));
+
+            $row['system_asset_code'] = sprintf(
+                "%s-%s-%s-%s",
+                $row['asset_code'],
+                $zonePart,
+                $row['branch_code'],
+                $suffix
+            );
+
+            $codeKey = strtolower($row['system_asset_code']);
+            if (isset($existingCodes[$codeKey]) || isset($seenCodes[$codeKey])) {
+                continue;
+            }
+            $seenCodes[$codeKey] = true;
 
             $rowsToCommit[] = $row;
         }
@@ -338,95 +611,89 @@ class ImportService {
         return $this->commitImport($rowsToCommit, $userId);
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    //  COMMIT: Accepts already-validated preview payload, writes to DB
-    // ══════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════
+    //  COMMIT  — delegates each row to AssetService::createAsset()
+    //            which handles assets + running_depreciation + ledger
+    // ══════════════════════════════════════════════════════════════════════
     public function commitImport(array $previewRows, int $userId): array {
-        $this->db->beginTransaction();
+        $assetService = new AssetService($this->db);
 
-        try {
-            $insertAsset = $this->db->prepare("
-                INSERT INTO assets (
-                    system_asset_code, reference_no, category_code,
-                    zone, region, cost_center_code, branch_name,
-                    asset_code, description,
-                    date_received, depreciation_start_date,
-                    acquisition_cost, monthly_depreciation, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
+        // Hard-guard: pre-check for duplicates
+        $dupCheck = $this->db->prepare("SELECT COUNT(*) FROM assets WHERE system_asset_code = ?");
 
-            $insertLedger = $this->db->prepare("
-                INSERT INTO running_depreciation (
-                    asset_id, period_date,
-                    period_depreciation_expense, accumulated_depreciation,
-                    book_value, generated_by
-                ) VALUES (?, CURDATE(), 0.00, 0.00, ?, ?)
-            ");
+        $count   = 0;
+        $skipped = 0;
+        $errors  = [];
 
-            // Hard guard: re-check for duplicates at commit time
-            $dupCheck = $this->db->prepare(
-                "SELECT COUNT(*) FROM assets WHERE system_asset_code = ?"
-            );
-
-            $count   = 0;
-            $skipped = 0;
-
-            foreach ($previewRows as $r) {
-                $dupCheck->execute([$r['system_asset_code']]);
-                if ((int)$dupCheck->fetchColumn() > 0) {
-                    $skipped++;
-                    continue;
-                }
-
-                $insertAsset->execute([
-                    $r['system_asset_code'],
-                    $r['reference_no'],
-                    $r['category_code'],
-                    $r['zone'],
-                    $r['region'],
-                    $r['cost_center'],
-                    $r['branch_name'],
-                    $r['category_code'],           // asset_code = category_code shorthand
-                    $r['description'],
-                    $r['date_received'],
-                    $r['depreciation_start'],
-                    $r['acquisition_cost'],
-                    $r['monthly_depreciation'],
-                    $userId,
-                ]);
-
-                $assetId = $this->db->lastInsertId();
-                $insertLedger->execute([$assetId, $r['acquisition_cost'], $userId]);
-                $count++;
+        foreach ($previewRows as $r) {
+            $dupCheck->execute([$r['system_asset_code']]);
+            if ((int)$dupCheck->fetchColumn() > 0) {
+                $skipped++;
+                continue;
             }
 
-            $this->db->commit();
-            return ['success' => true, 'count' => $count, 'skipped' => $skipped];
+            // Map preview row → AssetService::createAsset() payload
+            $actualMonths = (int)($r['actual_months'] ?? 0);
+            $acqCost      = (float)($r['acquisition_cost'] ?? 0);
+            $monthlyDep   = ($actualMonths > 0 && $acqCost > 0)
+                ? round($acqCost / $actualMonths, 2)
+                : (float)($r['monthly_depreciation'] ?? 0);
 
-        } catch (\Exception $e) {
-            $this->db->rollBack();
-            return ['success' => false, 'error' => 'Database transaction failed: ' . $e->getMessage()];
-        }
-    }
+            $deprOn  = strtoupper(trim((string)($r['depreciation_on'] ?? 'LAST_DAY')));
+            $deprDay = (int)($r['depreciation_day'] ?? 1);
 
-    // ══════════════════════════════════════════════════════════════════
-    //  LEGACY ENTRY POINT (kept for backwards compat — now two-phase)
-    // ══════════════════════════════════════════════════════════════════
-    public function processImport(string $filePath, int $userId): array {
-        $parsed = $this->previewImport($filePath);
+            $endDate = $this->computeDepreciationEndDate(
+                $r['depreciation_start_date'] ?? null,
+                $actualMonths,
+                $deprOn,
+                $deprDay
+            );
 
-        if (!$parsed['success']) {
-            return $parsed;
-        }
-
-        if ($parsed['hasErrors']) {
-            return [
-                'success' => false,
-                'error'   => 'Import rejected. Please fix the validation errors below and try again.',
-                'errors'  => $parsed['errors'],
+            $payload = [
+                'system_asset_code'       => $r['system_asset_code'],
+                'reference_no'            => $r['reference_no']     ?? null,
+                'main_zone_code'          => $r['main_zone_code']   ?? '',
+                'zone_code'               => $r['zone_code']        ?? '',
+                'region_code'             => $r['region_code']      ?? '',
+                'cost_center_code'        => $r['cost_center_code'] ?? '',
+                'branch_name'             => $r['branch_name']      ?? '',
+                'group_code'              => $r['group_code']       ?? '',
+                'asset_code'              => $r['asset_code']       ?? '',
+                'depreciation_code'       => $r['depreciation_code'] ?? '',
+                'description'             => $r['description']      ?? '',
+                'serial_number'           => $r['serial_number']    ?? null,
+                'item_code'               => $r['item_code']        ?? null,
+                'quantity'                => (int)($r['quantity']   ?? 1),
+                'property_type'           => $r['property_type']    ?? 'PURCHASED',
+                'date_received'           => $r['date_received']    ?? date('Y-m-d'),
+                'depreciation_start_date' => $r['depreciation_start_date'] ?? date('Y-m-t'),
+                'depreciation_end_date'   => $endDate,
+                'depreciation_on'         => $r['depreciation_on']  ?? 'LAST_DAY',
+                'depreciation_day'        => (int)($r['depreciation_day'] ?? 1),
+                'acquisition_cost'        => $acqCost,
+                'cost_unit'               => (float)($r['cost_unit'] ?? $acqCost),
+                'monthly_depreciation'    => $monthlyDep,
+                'status'                  => $r['status']           ?? 'ACTIVE',
             ];
+
+            $result = $assetService->createAsset($payload, $userId);
+
+            if ($result['success']) {
+                $count++;
+            } else {
+                $errors[] = "Row {$r['row_num']}: " . ($result['error'] ?? 'Unknown error');
+            }
         }
 
-        return $this->commitImport($parsed['preview'], $userId);
+        if ($count === 0 && !empty($errors)) {
+            return ['success' => false, 'error' => implode('; ', $errors)];
+        }
+
+        return [
+            'success' => true,
+            'count'   => $count,
+            'skipped' => $skipped,
+            'errors'  => $errors,
+        ];
     }
 }
