@@ -566,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!rows || rows.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">
+                    <td colspan="10" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">
                         No active assets found.
                     </td>
                 </tr>
@@ -598,24 +598,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
             return `
                 <tr class="depr-asset-row border-b border-slate-100 hover:bg-slate-50 cursor-pointer" data-asset="${payload}">
-                    <td class="px-6 py-3 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(serialNo)}</td>
-                    <td class="px-6 py-3 text-left text-xs font-semibold text-slate-700">${escapeHtml(description)}</td>
-                    <td class="px-6 py-3 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(itemCode)}</td>
-                    <td class="px-6 py-3 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(groupCode)}</td>
-                    <td class="px-6 py-3 text-left text-xs text-slate-700">
+                    <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(serialNo)}</td>
+                    <td class="px-6 py-1 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">${escapeHtml(description)}</td>
+                    <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(itemCode)}</td>
+                    <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(groupCode)}</td>
+                    <td class="px-6 py-1 text-left text-xs text-slate-700 whitespace-nowrap">
                         <div class="font-semibold">${escapeHtml(branch)}</div>
-                        <div class="text-[11px] text-slate-500">Uploaded by: ${escapeHtml(uploadedBy)}</div>
                     </td>
-                    <td class="px-6 py-3 text-right text-xs text-slate-700 whitespace-nowrap">
-                        <div class="font-mono font-semibold">Acq: ${acquisitionCost}</div>
-                        <div class="font-mono text-[11px] text-slate-500">Monthly: ${monthlyDep}</div>
+                    <td class="px-6 py-1 text-left text-xs text-slate-700 whitespace-nowrap">
+                        <div class="text-[11px] text-slate-500">${escapeHtml(uploadedBy)}</div>
                     </td>
-                    <td class="px-6 py-3 text-center text-xs whitespace-nowrap">
+                    <td class="px-6 py-1 text-xs font-mono text-slate-700 whitespace-nowrap">
+                        <div class="font-semibold currency-cell"><span class="currency-symbol">₱</span><span class="amount">${acquisitionCost}</span></div>
+                    </td>
+                    <td class="px-6 py-1 text-xs font-mono text-slate-700 whitespace-nowrap">
+                        <div class="font-semibold currency-cell"><span class="currency-symbol">₱</span><span class="amount">${monthlyDep}</span></div>
+                    </td>
+                    <td class="px-6 py-1 text-center text-xs whitespace-nowrap">
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">
                             ${escapeHtml(status)}
                         </span>
                     </td>
-                    <td class="px-6 py-3 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(endDate)}</td>
+                    <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(endDate)}</td>
                 </tr>
             `;
         }).join('');
@@ -716,7 +720,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!tableBody) return;
         tableBody.innerHTML = `
             <tr>
-                <td colspan="8" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">Loading assets...</td>
+                <td colspan="10" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">Loading assets...</td>
             </tr>
         `;
     }
@@ -776,7 +780,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (tableBody) {
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="8" class="px-6 py-8 text-center text-sm font-semibold text-red-600">
+                            <td colspan="10" class="px-6 py-8 text-center text-sm font-semibold text-red-600">
                                 Unable to load depreciation list: ${escapeHtml(err.message || 'Unknown error')}
                             </td>
                         </tr>
