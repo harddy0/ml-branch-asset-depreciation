@@ -569,21 +569,30 @@ class AssetService {
                 :gl_debit_code, :gl_debit_amount, :gl_credit_code, :gl_credit_amount
             )
         ";
-        
         $insertStmt = $this->db->prepare($sql);
 
         $accumulatedDepreciation = 0.00;
 
-        // 3. Loop through every month and compute the running values
+        $depreciateOn = $data['depreciation_on'] ?? '';
+
         for ($i = 0; $i < $lifespanMonths; $i++) {
-            $currentPeriodDate = clone $startDate;
-            $currentPeriodDate->modify("+{$i} months");
-            
+            if ($depreciateOn === 'LAST_DAY') {
+                // Always start from the first day of the start month, then add $i months, then set to last day
+                $currentPeriodDate = clone $startDate;
+                $currentPeriodDate->modify('first day of this month');
+                $currentPeriodDate->modify("+{$i} months");
+                $currentPeriodDate->modify('last day of this month');
+            } else {
+                // Default: just add months
+                $currentPeriodDate = clone $startDate;
+                $currentPeriodDate->modify("+{$i} months");
+            }
+
             $periodsElapsed = $i + 1;
             $periodsRemaining = $lifespanMonths - $periodsElapsed;
             $accumulatedDepreciation += $monthlyDepreciation;
             $bookValue = $acquisitionCost - $accumulatedDepreciation;
-            
+
             // Adjust final month rounding to ensure book value hits exactly 0.00
             if ($periodsRemaining === 0) {
                 $accumulatedDepreciation = $acquisitionCost;
@@ -595,36 +604,36 @@ class AssetService {
                 ':asset_id'                   => $assetId,
                 ':system_asset_code'          => $data['system_asset_code'],
                 ':description'                => $data['description'],
-                
+
                 // Location Snapshot
                 ':main_zone_code'             => $data['main_zone_code'],
                 ':zone_code'                  => $data['zone_code'],
                 ':region_code'                => $data['region_code'],
                 ':cost_center_code'           => $data['cost_center_code'],
                 ':branch_name'                => $data['branch_name'],
-                
+
                 // Classification Snapshot
                 ':group_code'                 => $data['group_code'],
                 ':asset_code'                 => $data['asset_code'],
                 ':depreciation_code'          => $data['depreciation_code'],
                 ':property_type'              => $data['property_type'],
-                
+
                 // Financial Snapshot
                 ':acquisition_cost'           => $acquisitionCost,
                 ':monthly_depreciation'       => $monthlyDepreciation,
-                
+
                 // Period Info
                 ':period_date'                => $currentPeriodDate->format('Y-m-d'),
                 ':period_month'               => (int)$currentPeriodDate->format('n'),
                 ':period_year'                => (int)$currentPeriodDate->format('Y'),
-                
+
                 // Computed Values at This Period
                 ':periods_elapsed'            => $periodsElapsed,
                 ':periods_remaining'          => $periodsRemaining,
                 ':period_depreciation_expense'=> $monthlyDepreciation,
                 ':accumulated_depreciation'   => round($accumulatedDepreciation, 2),
                 ':book_value'                 => round($bookValue, 2),
-                
+
                 // Journal Entry (GL Posting)
                 ':gl_debit_code'              => $data['depreciation_code'],
                 ':gl_debit_amount'            => $monthlyDepreciation,
