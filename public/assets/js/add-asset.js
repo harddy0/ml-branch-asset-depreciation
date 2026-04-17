@@ -350,6 +350,32 @@
         const branchInput = form.querySelector('#branch_name_input'); // visible searchable field
         const hiddenBranch = form.querySelector('#branch_name'); // hidden actual form value
         const costEl = form.querySelector('#cost_center_code');
+
+        // Normalize typed input to uppercase as the user types (preserve caret)
+        if(branchInput){
+            branchInput.addEventListener('input', function uppercaseInput(e){
+                const el = this;
+                const start = el.selectionStart;
+                const end = el.selectionEnd;
+                const up = String(el.value || '').toUpperCase();
+                if(el.value !== up){
+                    el.value = up;
+                    try{ el.setSelectionRange(start, end); } catch(err){}
+                }
+            });
+        }
+        if(costEl){
+            costEl.addEventListener('input', function uppercaseCost(e){
+                const el = this;
+                const start = el.selectionStart;
+                const end = el.selectionEnd;
+                const up = String(el.value || '').toUpperCase();
+                if(el.value !== up){
+                    el.value = up;
+                    try{ el.setSelectionRange(start, end); } catch(err){}
+                }
+            });
+        }
         const mainZoneEl = form.querySelector('#main_zone_code');
         const zoneEl = form.querySelector('#zone_code');
         const regionEl = form.querySelector('#region_code');
@@ -420,14 +446,32 @@
             // filter datalist options to show relevant suggestions (match tokens anywhere)
             if(branchList && branchesData.length > 0){
                 const tokens = val.toLowerCase().split(/\s+/).filter(Boolean);
-                const matches = branchesData.filter(b => {
-                    const name = String(b.value || b.label || '').toLowerCase();
-                    return tokens.every(t => name.indexOf(t) !== -1);
-                }).slice(0, 200);
+                const scored = branchesData
+                    .map(b => ({ item: b, name: String(b.value || b.label || '').toLowerCase() }))
+                    .filter(o => tokens.every(t => o.name.indexOf(t) !== -1))
+                    .map(o => {
+                        const name = o.name;
+                        const q = val.toLowerCase().trim();
+                        let score = 0;
+                        // exact prefix of full query
+                        if(q && name.indexOf(q) === 0) {
+                            score += 100;
+                        }
+                        // prefer token matches at start of words
+                        const words = name.split(/\s+/);
+                        tokens.forEach(t => {
+                            if(words.some(w => w.indexOf(t) === 0)) score += 5;
+                            else if(name.indexOf(t) === 0) score += 3; // starts at string start for individual token
+                            else if(name.indexOf(t) !== -1) score += 1; // anywhere
+                        });
+                        return { obj: o.item, name: name, score };
+                    })
+                    .sort((a,b) => (b.score - a.score) || a.name.localeCompare(b.name))
+                    .slice(0, 200);
                 branchList.innerHTML = '';
-                matches.forEach(item => {
+                scored.forEach(entry => {
                     const opt = document.createElement('option');
-                    opt.value = item.value || '';
+                    opt.value = entry.obj.value || '';
                     branchList.appendChild(opt);
                 });
             }
@@ -559,6 +603,36 @@
                 positionSuggestions();
             }
 
+            function getRankedBranchMatches(query){
+                const q = String(query || '').toLowerCase().trim();
+                if(!q) return [];
+                const tokens = q.split(/\s+/).filter(Boolean);
+
+                return branchesData
+                    .map(b => ({ item: b, name: String(b.value || b.label || '').toLowerCase() }))
+                    .filter(o => tokens.every(t => o.name.indexOf(t) !== -1))
+                    .map(o => {
+                        const name = o.name;
+                        const words = name.split(/\s+/).filter(Boolean);
+                        let score = 0;
+
+                        // Highest priority: full typed query is at the very beginning (e.g., "ML LA")
+                        if(name.indexOf(q) === 0) score += 1000;
+
+                        // Next priority: token appears at word start (e.g., " B..." or " ML LA...")
+                        tokens.forEach(t => {
+                            if(name.indexOf(t) === 0) score += 80;
+                            else if(words.some(w => w.indexOf(t) === 0)) score += 40;
+                            else score += 1;
+                        });
+
+                        return { obj: o.item, name, score };
+                    })
+                    .sort((a, b) => (b.score - a.score) || a.name.localeCompare(b.name))
+                    .slice(0, 200)
+                    .map(e => e.obj);
+            }
+
             function pickSuggestion(item){
                 branchInput.value = item.value || item.label || '';
                 hiddenBranch.value = item.value || item.label || '';
@@ -606,11 +680,7 @@
             }
 
             function filterAndShow(val){
-                const tokens = val.toLowerCase().split(/\s+/).filter(Boolean);
-                const matches = branchesData.filter(b => {
-                    const name = String(b.value || b.label || '').toLowerCase();
-                    return tokens.every(t => name.indexOf(t) !== -1);
-                }).slice(0, 200);
+                const matches = getRankedBranchMatches(val);
                 highlightedIndex = -1;
                 renderSuggestions(matches);
             }
@@ -621,12 +691,8 @@
                 // update datalist as well for compatibility
                 if(branchList){
                     branchList.innerHTML = '';
-                    const tokens = v.toLowerCase().split(/\s+/).filter(Boolean);
-                    const matches = branchesData.filter(b => {
-                        const name = String(b.value || b.label || '').toLowerCase();
-                        return tokens.every(t => name.indexOf(t) !== -1);
-                    }).slice(0,200);
-                    matches.forEach(item => { const o = document.createElement('option'); o.value = item.value || ''; branchList.appendChild(o); });
+                    const ranked = getRankedBranchMatches(v);
+                    ranked.forEach(item => { const o = document.createElement('option'); o.value = item.value || ''; branchList.appendChild(o); });
                 }
                 filterAndShow(v);
             });
@@ -645,11 +711,8 @@
                 } else if(ev.key === 'Enter'){
                     ev.preventDefault();
                     const idx = highlightedIndex >= 0 ? highlightedIndex : 0;
-                    const match = branchesData.filter(b => {
-                        const name = String(b.value || b.label || '').toLowerCase();
-                        const tokens = (branchInput.value || '').toLowerCase().split(/\s+/).filter(Boolean);
-                        return tokens.every(t => name.indexOf(t) !== -1);
-                    })[idx];
+                    const ranked = getRankedBranchMatches(branchInput.value || '');
+                    const match = ranked[idx];
                     if(match) pickSuggestion(match);
                 } else if(ev.key === 'Escape'){
                     suggestions.style.display = 'none';

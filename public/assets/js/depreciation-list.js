@@ -141,8 +141,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (mainZoneSelect) {
         mainZoneSelect.addEventListener('change', function () {
             let filtered = allBranches.filter(b => b.main_zone_code === this.value);
-            populateDropdown(zoneSelect, getUniqueValues(filtered, 'zone_code'), 'Select Sub-Zone...');
-            populateDropdown(regionSelect, [], 'Waiting for Sub-Zone...');
+            populateDropdown(zoneSelect, getUniqueValues(filtered, 'zone_code'), 'Enter branch name or branch code...');
+            populateDropdown(regionSelect, [], 'Enter branch name or branch code...');
             populateBranchDropdown([]);
             if (costCenterInput) costCenterInput.value = '';
         });
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
             let filtered = allBranches.filter(b =>
                 b.main_zone_code === mainZoneSelect.value && b.zone_code === this.value
             );
-            populateDropdown(regionSelect, getUniqueRegions(filtered), 'Select Region...');
+            populateDropdown(regionSelect, getUniqueRegions(filtered), 'Enter branch name or branch code...');
             populateBranchDropdown([]);
             if (costCenterInput) costCenterInput.value = '';
         });
