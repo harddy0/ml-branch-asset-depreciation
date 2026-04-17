@@ -111,6 +111,9 @@ try {
                 'zone_code'        => (string)($row['zone_code'] ?? ''),
                 'main_zone_code'   => (string)($row['main_zone_code'] ?? ''),
                 'region_code'      => (string)($row['region_code'] ?? ''),
+                // Provide the explicit `region` column only (do NOT fallback to region_code)
+                'region'           => (string)($row['region'] ?? ''),
+                'region_description' => (string)($row['region_description'] ?? ''),
             ];
         }
     } else {
