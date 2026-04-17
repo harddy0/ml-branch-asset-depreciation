@@ -64,8 +64,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     throw new Error('Unexpected response format from server.');
                 }
 
+                // Remove BOM if present
+                const text = rawText.replace(/^\uFEFF/, '');
+
                 try {
-                    return JSON.parse(rawText);
+                    return JSON.parse(text);
                 } catch (parseErr) {
                     // Fallback: some environments prepend warnings before JSON.
                     const jsonStart = rawText.indexOf('{');
@@ -89,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data.success) {
                     form.reset();
                     closeModal();
-                    // Optionally: reload table or fetch new data here
+                    if (window.loadGlCodes) window.loadGlCodes(); // Reload the table after adding a new GL code
                 }
             })
             .catch((err) => {
@@ -123,6 +126,5 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 3500);
     }
 
-    window.openModal = openModal;
-    window.closeModal = closeModal;
+    // Intentionally avoid overriding global openModal/closeModal used by other GL modals.
 });

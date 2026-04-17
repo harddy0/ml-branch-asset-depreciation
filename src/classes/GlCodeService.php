@@ -39,6 +39,40 @@ class GlCodeService {
     }
 
     /**
+     * Fetch paginated GL Codes for tables or dropdowns
+     * @param int $limit
+     * @param int $offset
+     * @param string $search
+     * @return array [ 'data' => [...], 'total' => int ]
+     */
+    public function getPaginatedGlCodes(int $limit = 20, int $offset = 0, string $search = ''): array {
+        $where = '';
+        $params = [];
+        if (!empty($search)) {
+            $where = "WHERE gl_code LIKE :search OR description LIKE :search";
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $stmt = $this->db->prepare("SELECT gl_code, description, account_type FROM gl_codes {$where} ORDER BY gl_code ASC LIMIT :limit OFFSET :offset");
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+        $data = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM gl_codes {$where}");
+        foreach ($params as $key => $value) {
+            $totalStmt->bindValue($key, $value);
+        }
+        $totalStmt->execute();
+        $total = (int)$totalStmt->fetchColumn();
+
+        return [ 'data' => $data, 'total' => $total ];
+    }
+
+    /**
      * Fetch a specific GL Code by its code
      */
     public function getGlCode(string $glCode): ?array {
