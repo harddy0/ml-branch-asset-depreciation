@@ -19,19 +19,9 @@ if (!$id) {
 }
 
 try {
-    // Removed branch_profile JOIN because location data is already stored in the assets table (a.*)
-    $sql = "SELECT a.*, c.category_name, c.category_code, c.asset_life_months,
-                   rd.accumulated_depreciation, rd.book_value, rd.period_date
-            FROM assets a
-            LEFT JOIN asset_categories c ON a.category_code = c.category_code
-            LEFT JOIN running_depreciation rd ON a.id = rd.asset_id
-            WHERE a.id = :id
-            ORDER BY rd.period_date DESC
-            LIMIT 1";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':id' => $id]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    global $pdo;
+    $assetService = new \App\AssetService($pdo);
+    $row = $assetService->getAssetDetailsById($id);
 
     if (!$row) {
         echo json_encode(['success' => false, 'error' => 'Asset not found.']);

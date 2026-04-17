@@ -2,6 +2,112 @@
 namespace App;
 
 class AssetService {
+                /**
+                 * Retrieves asset details (with category and depreciation info) by system asset code.
+                 * @param string $code System asset code
+                 * @return array|null Asset details row or null if not found
+                 */
+                public function getAssetDetailsByCode(string $code): ?array {
+                    $sql = "SELECT a.*, c.category_name, c.category_code, c.asset_life_months,
+                                   rd.accumulated_depreciation, rd.book_value, rd.period_date
+                            FROM assets a
+                            LEFT JOIN asset_categories c ON a.category_code = c.category_code
+                            LEFT JOIN running_depreciation rd ON a.id = rd.asset_id
+                            WHERE a.system_asset_code = :code
+                            ORDER BY rd.period_date DESC
+                            LIMIT 1";
+                    $stmt = $this->db->prepare($sql);
+                    $stmt->execute([':code' => $code]);
+                    $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    return $row ?: null;
+                }
+            /**
+             * Retrieves asset details (with category and depreciation info) by asset ID.
+             * @param int $id Asset ID
+             * @return array|null Asset details row or null if not found
+             */
+            public function getAssetDetailsById(int $id): ?array {
+                $sql = "SELECT a.*, c.category_name, c.category_code, c.asset_life_months,
+                               rd.accumulated_depreciation, rd.book_value, rd.period_date
+                        FROM assets a
+                        LEFT JOIN asset_categories c ON a.category_code = c.category_code
+                        LEFT JOIN running_depreciation rd ON a.id = rd.asset_id
+                        WHERE a.id = :id
+                        ORDER BY rd.period_date DESC
+                        LIMIT 1";
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute([':id' => $id]);
+                $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+                return $row ?: null;
+            }
+        /**
+         * Handles asset creation from sanitized POST data.
+         * Moves all business logic from asset_store.php here.
+         * @param array $postData Sanitized POST data
+         * @param int $userId User ID
+         * @return array Result array (success, error, asset_id, etc.)
+         */
+        public function createAssetFromRequest(array $postData, int $userId): array {
+            try {
+                // Helper: normalize a numeric string to a float-friendly format
+                $normalizeNumber = function ($v) {
+                    $s = trim((string)($v ?? ''));
+                    if ($s === '') return 0.0;
+                    $s = str_replace([',', ' ', '₱', '$'], '', $s);
+                    $s = preg_replace('/[^0-9.\-]/', '', $s);
+                    if ($s === '' || $s === '.' || $s === '-') return 0.0;
+                    return (float)$s;
+                };
+
+                // 1. Collect and sanitize input
+                $data = [
+                    'reference_no'            => $postData['reference_no'] ?? null,
+                    'main_zone_code'          => $postData['main_zone_code'] ?? '',
+                    'zone_code'               => $postData['zone_code'] ?? '',
+                    'region_code'             => $postData['region_code'] ?? '',
+                    'cost_center_code'        => $postData['cost_center_code'] ?? '',
+                    'branch_name'             => $postData['branch_name'] ?? '',
+                    'group_code'              => $postData['group_code'] ?? '',
+                    'asset_code'              => $postData['asset_code'] ?? '',
+                    'depreciation_code'       => $postData['depreciation_code'] ?? '',
+                    'description'             => trim($postData['description'] ?? ''),
+                    'serial_number'           => $postData['serial_number'] ?? null,
+                    'quantity'                => (int)($postData['quantity'] ?? 1),
+                    'property_type'           => $postData['property_type'] ?? 'PURCHASED',
+                    'date_received'           => $postData['date_received'] ?? '',
+                    'depreciation_start_date' => $postData['depreciation_start_date'] ?? '',
+                    'depreciation_end_date'   => $postData['depreciation_end_date'] ?? '',
+                    'depreciation_on'         => $postData['depreciation_on'] ?? 'LAST_DAY',
+                    'depreciation_day'        => !empty($postData['depreciation_day']) ? (int)$postData['depreciation_day'] : null,
+                    'acquisition_cost'        => $normalizeNumber($postData['acquisition_cost'] ?? 0),
+                    'cost_unit'               => $normalizeNumber($postData['cost_unit'] ?? 0),
+                    'item_code'               => $postData['item_code'] ?? null,
+                    'monthly_depreciation'    => $normalizeNumber($postData['monthly_depreciation'] ?? 0),
+                    'status'                  => $postData['status'] ?? 'ACTIVE'
+                ];
+
+                // 2. Auto-generate the System Asset Code
+                $year = date('Y');
+                $rand = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                $data['system_asset_code'] = "LRI-{$data['main_zone_code']}-{$data['zone_code']}-{$year}{$rand}";
+
+                // 2b. Server-side fallback for monthly depreciation if client value is missing/zero
+                if ($data['monthly_depreciation'] <= 0 && $data['acquisition_cost'] > 0 && !empty($data['group_code'])) {
+                    $stmt = $this->db->prepare("SELECT actual_months FROM asset_groups WHERE group_code = :group_code LIMIT 1");
+                    $stmt->execute([':group_code' => $data['group_code']]);
+                    $actualMonths = (int)($stmt->fetchColumn() ?: 0);
+                    if ($actualMonths > 0) {
+                        $data['monthly_depreciation'] = round($data['acquisition_cost'] / $actualMonths, 2);
+                    }
+                }
+
+                // 3. Save to Database (reuse createAsset)
+                $result = $this->createAsset($data, $userId);
+                return $result;
+            } catch (\Exception $e) {
+                return ['success' => false, 'error' => 'Server Error: ' . $e->getMessage()];
+            }
+        }
     private \PDO $db;
 
     public function __construct(\PDO $db) {
