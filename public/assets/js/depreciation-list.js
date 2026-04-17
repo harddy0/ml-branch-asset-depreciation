@@ -55,14 +55,11 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
             if (data.success && data.branches) {
                 allBranches = data.branches;
-                populateDropdown(mainZoneSelect, getUniqueValues(allBranches, 'main_zone_code'), 'Select Main Zone...');
-                populateDropdown(zoneSelect,     [], 'Waiting for Main Zone...');
-                populateDropdown(regionSelect,   [], 'Waiting for Sub-Zone...');
-                populateBranchDropdown([]);
-                if (mainZoneSelect) {
-                    mainZoneSelect.disabled = false;
-                    mainZoneSelect.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400');
-                }
+                populateDropdown(mainZoneSelect,   [], 'Enter branch name or branch code...');
+                populateDropdown(zoneSelect,     [], 'Enter branch name or branch code...');
+                populateDropdown(regionSelect,   [], 'Enter branch name or branch code...');
+                // Allow selecting branch first: populate with all branches immediately
+                populateBranchDropdown(allBranches);
             }
         })
         .catch(err => console.error('Location fetch error:', err));
@@ -108,24 +105,36 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function populateBranchDropdown(branchesArray) {
-        if (!branchSelect) return;
-        branchSelect.innerHTML = `<option value="" disabled selected>${branchesArray.length === 0 ? 'Waiting for Region...' : 'Select Branch...'}</option>`;
-        if (branchesArray.length === 0) {
-            branchSelect.disabled = true;
-            branchSelect.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400');
+        // If visible element is a SELECT
+        if (branchSelect && branchSelect.tagName === 'SELECT') {
+            branchSelect.innerHTML = `<option value="" disabled selected>${branchesArray.length === 0 ? 'Waiting for Region...' : 'Select Branch...'}</option>`;
+            if (branchesArray.length === 0) {
+                branchSelect.disabled = true;
+                branchSelect.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400');
+                return;
+            }
+            branchSelect.disabled = false;
+            branchSelect.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400');
+            branchesArray
+                .sort((a, b) => (a.branch_name || '').localeCompare(b.branch_name || ''))
+                .forEach(b => {
+                    if (!b.branch_name) return;
+                    let opt = document.createElement('option');
+                    opt.value       = b.branch_name;
+                    opt.textContent = b.branch_name;
+                    branchSelect.appendChild(opt);
+                });
             return;
         }
-        branchSelect.disabled = false;
-        branchSelect.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400');
-        branchesArray
-            .sort((a, b) => (a.branch_name || '').localeCompare(b.branch_name || ''))
-            .forEach(b => {
-                if (!b.branch_name) return;
-                let opt = document.createElement('option');
-                opt.value       = b.branch_name;
-                opt.textContent = b.branch_name;
-                branchSelect.appendChild(opt);
-            });
+
+        // If the UI uses an input + datalist (searchable), populate datalist
+        const branchInput = document.getElementById('branch_name_input');
+        const branchList = document.getElementById('branch_list');
+        if (branchInput && branchList) {
+                // Populate only the input placeholder and disable state; do not add native datalist options
+                branchInput.placeholder = branchesArray.length === 0 ? 'Waiting for Region...' : 'Type to search branches...';
+                branchInput.disabled = branchesArray.length === 0;
+        }
     }
 
     // --- Strict top-down cascade ---
@@ -159,10 +168,80 @@ document.addEventListener('DOMContentLoaded', function () {
             if (costCenterInput) costCenterInput.value = '';
         });
     }
-    if (branchSelect) {
+    if (branchSelect && branchSelect.tagName === 'SELECT') {
         branchSelect.addEventListener('change', function () {
             const found = allBranches.find(b => b.branch_name === this.value);
-            if (found && costCenterInput) costCenterInput.value = found.cost_center_code;
+            if (!found) return;
+
+            // Display branch code (prefer explicit branch_code, fallback to cost_center_code)
+            if (found && costCenterInput) costCenterInput.value = found.branch_code || found.cost_center_code || '';
+
+            // Autofill the location selects to reflect the branch's main/sub/region
+            function setSingle(selectEl, val, displayText) {
+                if (!selectEl) return;
+                selectEl.innerHTML = `<option value="" disabled>${displayText || 'N/A'}</option>`;
+                if (val) {
+                    const opt = document.createElement('option');
+                    opt.value = val;
+                    opt.textContent = val;
+                    selectEl.appendChild(opt);
+                    selectEl.value = val;
+                    selectEl.disabled = false;
+                    selectEl.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400');
+                } else {
+                    selectEl.disabled = true;
+                    selectEl.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400');
+                }
+            }
+
+            setSingle(mainZoneSelect, found.main_zone_code, found.main_zone_code || 'N/A');
+            setSingle(zoneSelect,     found.zone_code,      found.zone_code || 'N/A');
+
+            // Use only the `region` column from branch_profile for display
+            const regionCode = found.region || '';
+            const regionLabel = regionCode; // show only branch_profile.region
+            setSingle(regionSelect,   regionCode,    regionLabel || 'N/A');
+        });
+    }
+
+    // If UI uses input + datalist for branch search, wire input -> autofill
+    const branchInputEl = document.getElementById('branch_name_input');
+    const branchListEl = document.getElementById('branch_list');
+    if (branchInputEl && branchListEl) {
+        branchInputEl.addEventListener('input', function () {
+            const val = String(branchInputEl.value || '').trim();
+            const found = allBranches.find(b => b.branch_name === val);
+            if (!found) {
+                if (costCenterInput) costCenterInput.value = '';
+                populateDropdown(mainZoneSelect, [], 'Enter branch name or branch code...');
+                populateDropdown(zoneSelect, [], 'Enter branch name or branch code...');
+                populateDropdown(regionSelect, [], 'Enter branch name or branch code...');
+                return;
+            }
+            if (costCenterInput) costCenterInput.value = found.branch_code || found.cost_center_code || '';
+
+            function setSingle(selectEl, val, displayText) {
+                if (!selectEl) return;
+                selectEl.innerHTML = `<option value="" disabled>${displayText || 'N/A'}</option>`;
+                if (val) {
+                    const opt = document.createElement('option');
+                    opt.value = val;
+                    opt.textContent = val;
+                    selectEl.appendChild(opt);
+                    selectEl.value = val;
+                    selectEl.disabled = false;
+                    selectEl.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400');
+                } else {
+                    selectEl.disabled = true;
+                    selectEl.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400');
+                }
+            }
+
+            setSingle(mainZoneSelect, found.main_zone_code, found.main_zone_code || 'N/A');
+            setSingle(zoneSelect,     found.zone_code,      found.zone_code || 'N/A');
+            const regionCode = found.region || '';
+            const regionLabel = regionCode; // show only branch_profile.region
+            setSingle(regionSelect,   regionCode,    regionLabel || 'N/A');
         });
     }
 

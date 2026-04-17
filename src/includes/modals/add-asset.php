@@ -74,6 +74,11 @@
 
         <!-- Modal Footer -->
         <div class="px-6 py-2 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
+            <button id="btn-step-clear" type="button"
+                class="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
+                Clear
+            </button>
+
             <button type="button" onclick="closeModal('modal-add-asset')"
                 class="px-5 py-2 text-sm font-bold text-slate-600 bg-white border border-slate-300
                        rounded-lg hover:bg-slate-50 transition-colors">
@@ -84,11 +89,11 @@
                 Prev
             </button>
 
-            <button id="btn-step-next" type="button" class="px-4 py-2 text-sm font-bold text-white bg-[#ce1126] rounded-lg hover:bg-red-700 shadow-sm transition-colors uppercase tracking-wide">
+            <button id="btn-step-next" type="button" class="px-4 py-2 text-sm font-bold text-white bg-[#ce1126] rounded-lg hover:bg-red-700 shadow-sm transition-colors tracking-wide">
                 Next
             </button>
 
-            <button id="btn-step-save" type="submit" form="addAssetForm" class="px-4 py-2 text-sm font-bold text-white bg-[#ce1126] rounded-lg hover:bg-red-700 shadow-sm transition-colors uppercase tracking-wide hidden">
+            <button id="btn-step-save" type="submit" form="addAssetForm" class="px-4 py-2 text-sm font-bold text-white bg-[#ce1126] rounded-lg hover:bg-red-700 shadow-sm transition-colors tracking-wide hidden">
                 Save
             </button>
         </div>

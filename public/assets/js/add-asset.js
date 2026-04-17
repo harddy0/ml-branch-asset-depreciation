@@ -6,6 +6,7 @@
     if (!form) return; // nothing to do if modal not present on page
 
     const steps = Array.from(form.querySelectorAll('.step'));
+    const btnClear = document.getElementById('btn-step-clear');
     const btnPrev = document.getElementById('btn-step-prev');
     const btnNext = document.getElementById('btn-step-next');
     const btnSave = document.getElementById('btn-step-save');
@@ -60,6 +61,32 @@
         refreshProgressStates();
     }
 
+    function clearCurrentStep(){
+        const step = steps[current];
+        if(!step) return;
+
+        const controls = step.querySelectorAll('input, select, textarea');
+        controls.forEach((c) => {
+            const t = (c.type || '').toLowerCase();
+            if(t === 'button' || t === 'submit' || t === 'reset') return;
+
+            if(t === 'checkbox' || t === 'radio') {
+                c.checked = false;
+            } else if(c.tagName === 'SELECT') {
+                if(c.options && c.options.length > 0) c.selectedIndex = 0;
+                else c.value = '';
+            } else {
+                c.value = '';
+            }
+
+            // trigger listeners that keep dependent fields in sync
+            c.dispatchEvent(new Event('input', { bubbles: true }));
+            c.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        if(typeof refreshProgressStates === 'function') refreshProgressStates();
+    }
+
     // attach input listeners to enable Next when valid
     steps.forEach((step, idx) => {
         const controls = step.querySelectorAll('input, select, textarea');
@@ -110,6 +137,7 @@
     });
 
     if(btnPrev) btnPrev.addEventListener('click', () => { showStep(Math.max(0, current - 1)); });
+    if(btnClear) btnClear.addEventListener('click', clearCurrentStep);
 
     if(btnNext) btnNext.addEventListener('click', () => {
         // Validate current step; if invalid, show browser validation message and stop
@@ -317,5 +345,324 @@
     });
 
     // init
+    // initialize location-section behaviour: load branches and autofill dependent fields
+    (function initLocationSection(){
+        const branchInput = form.querySelector('#branch_name_input'); // visible searchable field
+        const hiddenBranch = form.querySelector('#branch_name'); // hidden actual form value
+        const costEl = form.querySelector('#cost_center_code');
+        const mainZoneEl = form.querySelector('#main_zone_code');
+        const zoneEl = form.querySelector('#zone_code');
+        const regionEl = form.querySelector('#region_code');
+        // hidden inputs used for form submission (visible selects are display-only)
+        const mainZoneHidden = form.querySelector('#main_zone_code_hidden');
+        const zoneHidden = form.querySelector('#zone_code_hidden');
+        const regionHidden = form.querySelector('#region_code_hidden');
+
+        if(!branchInput || !hiddenBranch) return;
+
+        let branchesData = [];
+
+        function clearSelect(sel, placeholder){
+            if(!sel) return;
+            sel.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.disabled = true;
+            opt.selected = true;
+            opt.textContent = placeholder || 'Select...';
+            sel.appendChild(opt);
+        }
+
+        clearSelect(mainZoneEl, 'Loading...');
+        clearSelect(zoneEl, 'Loading...');
+        clearSelect(regionEl, 'Loading...');
+        if(mainZoneEl) mainZoneEl.disabled = true;
+        if(zoneEl) zoneEl.disabled = true;
+        if(regionEl) regionEl.disabled = true;
+
+        // fetch branches from API and populate datalist + internal cache
+        // compute public base (reuse same logic as other scripts)
+        let appBase = '';
+        if (typeof BASE_URL !== 'undefined' && BASE_URL !== '') {
+            appBase = BASE_URL.replace(/\/+$/, '');
+        }
+        const publicBase = appBase === ''
+            ? '/public'
+            : (appBase.endsWith('/public') ? appBase : appBase + '/public');
+
+            const branchList = null;
+        fetch(publicBase + '/api/get_locations.php?level=branches', { credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(json => {
+                if(!(json && json.success && Array.isArray(json.data))) {
+                    branchInput.placeholder = 'No branches';
+                    return;
+                }
+                branchesData = json.data.slice();
+                    // no native datalist used; rely on custom suggestions
+
+                // if a branch is already present in hidden input prefilled (edit), reflect it
+                if(hiddenBranch.value){
+                    branchInput.value = hiddenBranch.value;
+                    const ev = new Event('input', { bubbles: true });
+                    branchInput.dispatchEvent(ev);
+                }
+            })
+            .catch(err => {
+                console.error('Failed to fetch branches', err);
+                branchInput.placeholder = 'Failed to load';
+            });
+
+        // when user types or selects from datalist, filter suggestions and find matching branch to autofill
+        branchInput.addEventListener('input', function(e){
+            const val = String(branchInput.value || '').trim();
+
+            // filter datalist options to show relevant suggestions (match tokens anywhere)
+            if(branchList && branchesData.length > 0){
+                const tokens = val.toLowerCase().split(/\s+/).filter(Boolean);
+                const matches = branchesData.filter(b => {
+                    const name = String(b.value || b.label || '').toLowerCase();
+                    return tokens.every(t => name.indexOf(t) !== -1);
+                }).slice(0, 200);
+                branchList.innerHTML = '';
+                matches.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.value || '';
+                    branchList.appendChild(opt);
+                });
+            }
+
+            const found = branchesData.find(b => (b.value === val || b.label === val));
+            if(found){
+                hiddenBranch.value = found.value || '';
+                if(costEl) costEl.value = found.branch_code || found.cost_center_code || '';
+
+                function setSingleOption(sel, val, label){
+                    if(!sel) return;
+                    sel.innerHTML = '';
+                    if(val){
+                        const o = document.createElement('option');
+                        o.value = val;
+                        o.textContent = label || val;
+                        sel.appendChild(o);
+                        sel.value = val;
+                        // make select appear enabled (white) but prevent interaction
+                        sel.disabled = false;
+                        sel.style.pointerEvents = 'none';
+                        sel.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400');
+                        sel.style.background = 'white';
+                        sel.style.color = '';
+                    } else {
+                        const ph = document.createElement('option');
+                        ph.value = '';
+                        ph.disabled = true;
+                        ph.selected = true;
+                        ph.textContent = 'N/A';
+                        sel.appendChild(ph);
+                        sel.disabled = true;
+                        sel.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400');
+                        sel.style.pointerEvents = '';
+                    }
+                }
+
+                setSingleOption(mainZoneEl, found.main_zone_code, found.main_zone_code);
+                setSingleOption(zoneEl,     found.zone_code,      found.zone_code);
+                const regionCode = found.region || '';
+                const regionLabel = regionCode; // show only branch_profile.region
+                setSingleOption(regionEl,   regionCode,    regionLabel);
+                // set hidden inputs for submission
+                if(mainZoneHidden) mainZoneHidden.value = found.main_zone_code || '';
+                if(zoneHidden) zoneHidden.value = found.zone_code || '';
+                if(regionHidden) regionHidden.value = found.region || '';
+            } else {
+                // clear values if input doesn't match a branch
+                hiddenBranch.value = '';
+                if(costEl) costEl.value = '';
+                function clearSel(sel, placeholder){ if(!sel) return; sel.innerHTML = `<option value="" disabled selected>${placeholder || 'N/A'}</option>`; sel.disabled = true; sel.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400'); sel.style.pointerEvents = ''; sel.style.background = ''; }
+                clearSel(mainZoneEl, 'Enter branch name or branch code...');
+                clearSel(zoneEl, 'Enter branch name or branch code...');
+                clearSel(regionEl, 'Enter branch name or branch code...');
+                if(mainZoneHidden) mainZoneHidden.value = '';
+                if(zoneHidden) zoneHidden.value = '';
+                if(regionHidden) regionHidden.value = '';
+            }
+        });
+
+        // allow entering branch code manually: match branch by branch_code or cost_center_code
+        if(costEl){
+            costEl.addEventListener('input', function(){
+                const v = String(costEl.value || '').trim();
+                if(v === '') return;
+                const found = branchesData.find(b => String(b.branch_code || b.cost_center_code || '').toLowerCase() === v.toLowerCase());
+                if(!found) return;
+                // reflect branch name and trigger autofill
+                branchInput.value = found.value || found.label || '';
+                hiddenBranch.value = found.value || '';
+                if(mainZoneHidden) mainZoneHidden.value = found.main_zone_code || '';
+                if(zoneHidden) zoneHidden.value = found.zone_code || '';
+                if(regionHidden) regionHidden.value = found.region || '';
+                function setSingleOptionDisplay(sel, val){ if(!sel) return; sel.innerHTML = ''; if(val){ const o = document.createElement('option'); o.value = val; o.textContent = val; sel.appendChild(o); sel.value = val; sel.disabled = false; sel.style.pointerEvents = 'none'; sel.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400'); sel.style.background = 'white'; sel.style.color = ''; } }
+                setSingleOptionDisplay(mainZoneEl, found.main_zone_code);
+                setSingleOptionDisplay(zoneEl, found.zone_code);
+                setSingleOptionDisplay(regionEl, found.region || '');
+            });
+        }
+            // Create a custom suggestions popup that we control and position below the input
+            const suggestions = document.createElement('div');
+            suggestions.className = '__branch_suggestions';
+            suggestions.style.position = 'absolute';
+            suggestions.style.zIndex = '9999';
+            suggestions.style.minWidth = '240px';
+            suggestions.style.maxWidth = '520px';
+            suggestions.style.maxHeight = '300px';
+            suggestions.style.overflow = 'auto';
+            suggestions.style.background = '#111827';
+            suggestions.style.color = '#fff';
+            suggestions.style.borderRadius = '6px';
+            suggestions.style.boxShadow = '0 6px 24px rgba(0,0,0,0.2)';
+            suggestions.style.display = 'none';
+            suggestions.style.padding = '6px 0';
+            document.body.appendChild(suggestions);
+
+            let highlightedIndex = -1;
+
+            function positionSuggestions(){
+                const rect = branchInput.getBoundingClientRect();
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const left = rect.left + window.pageXOffset;
+                const top = rect.bottom + scrollTop + 6;
+                suggestions.style.left = left + 'px';
+                suggestions.style.top = top + 'px';
+                suggestions.style.minWidth = rect.width + 'px';
+            }
+
+            function renderSuggestions(items){
+                suggestions.innerHTML = '';
+                items.forEach((it, idx) => {
+                    const el = document.createElement('div');
+                    el.className = '__branch_suggestion_item';
+                    el.textContent = it.value || it.label || '';
+                    el.style.padding = '8px 12px';
+                    el.style.cursor = 'pointer';
+                    el.style.whiteSpace = 'nowrap';
+                    el.style.overflow = 'hidden';
+                    el.style.textOverflow = 'ellipsis';
+                    if(idx === highlightedIndex) el.style.background = 'rgba(255,255,255,0.08)';
+                    el.addEventListener('mousedown', function(ev){
+                        // use mousedown to pick before blur
+                        ev.preventDefault();
+                        pickSuggestion(it);
+                    });
+                    suggestions.appendChild(el);
+                });
+                suggestions.style.display = items.length > 0 ? 'block' : 'none';
+                positionSuggestions();
+            }
+
+            function pickSuggestion(item){
+                branchInput.value = item.value || item.label || '';
+                hiddenBranch.value = item.value || item.label || '';
+                if(costEl) costEl.value = item.branch_code || item.cost_center_code || '';
+                // fill selects
+                function setSingleOption(sel, val, label){
+                    if(!sel) return;
+                    sel.innerHTML = '';
+                    if(val){
+                        const o = document.createElement('option');
+                        o.value = val;
+                        o.textContent = label || val;
+                        sel.appendChild(o);
+                        sel.value = val;
+                        // make it appear enabled but non-interactive
+                        sel.disabled = false;
+                        sel.style.pointerEvents = 'none';
+                        sel.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400');
+                        sel.style.background = 'white';
+                        sel.style.color = '';
+                    } else {
+                        const ph = document.createElement('option');
+                        ph.value = '';
+                        ph.disabled = true;
+                        ph.selected = true;
+                        ph.textContent = 'N/A';
+                        sel.appendChild(ph);
+                        sel.disabled = true;
+                        sel.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400');
+                        sel.style.pointerEvents = '';
+                    }
+                }
+                const regionCode = item.region || '';
+                const regionLabel = regionCode; // show only branch_profile.region
+                setSingleOption(mainZoneEl, item.main_zone_code, item.main_zone_code);
+                setSingleOption(zoneEl,     item.zone_code,      item.zone_code);
+                setSingleOption(regionEl,   regionCode,          regionLabel);
+                // set hidden inputs for submission as well
+                if(typeof mainZoneHidden !== 'undefined' && mainZoneHidden) mainZoneHidden.value = item.main_zone_code || '';
+                if(typeof zoneHidden !== 'undefined' && zoneHidden) zoneHidden.value = item.zone_code || '';
+                if(typeof regionHidden !== 'undefined' && regionHidden) regionHidden.value = item.region || '';
+                // hide
+                suggestions.style.display = 'none';
+                highlightedIndex = -1;
+            }
+
+            function filterAndShow(val){
+                const tokens = val.toLowerCase().split(/\s+/).filter(Boolean);
+                const matches = branchesData.filter(b => {
+                    const name = String(b.value || b.label || '').toLowerCase();
+                    return tokens.every(t => name.indexOf(t) !== -1);
+                }).slice(0, 200);
+                highlightedIndex = -1;
+                renderSuggestions(matches);
+            }
+
+            branchInput.addEventListener('input', function(){
+                const v = (branchInput.value || '').trim();
+                if(!v){ suggestions.style.display = 'none'; hiddenBranch.value = ''; return; }
+                // update datalist as well for compatibility
+                if(branchList){
+                    branchList.innerHTML = '';
+                    const tokens = v.toLowerCase().split(/\s+/).filter(Boolean);
+                    const matches = branchesData.filter(b => {
+                        const name = String(b.value || b.label || '').toLowerCase();
+                        return tokens.every(t => name.indexOf(t) !== -1);
+                    }).slice(0,200);
+                    matches.forEach(item => { const o = document.createElement('option'); o.value = item.value || ''; branchList.appendChild(o); });
+                }
+                filterAndShow(v);
+            });
+
+            branchInput.addEventListener('keydown', function(ev){
+                if(suggestions.style.display === 'none') return;
+                const items = suggestions.querySelectorAll('.__branch_suggestion_item');
+                if(ev.key === 'ArrowDown'){
+                    ev.preventDefault();
+                    highlightedIndex = Math.min(highlightedIndex + 1, items.length - 1);
+                    items.forEach((it,i)=> it.style.background = i===highlightedIndex ? 'rgba(255,255,255,0.08)' : '');
+                } else if(ev.key === 'ArrowUp'){
+                    ev.preventDefault();
+                    highlightedIndex = Math.max(highlightedIndex - 1, 0);
+                    items.forEach((it,i)=> it.style.background = i===highlightedIndex ? 'rgba(255,255,255,0.08)' : '');
+                } else if(ev.key === 'Enter'){
+                    ev.preventDefault();
+                    const idx = highlightedIndex >= 0 ? highlightedIndex : 0;
+                    const match = branchesData.filter(b => {
+                        const name = String(b.value || b.label || '').toLowerCase();
+                        const tokens = (branchInput.value || '').toLowerCase().split(/\s+/).filter(Boolean);
+                        return tokens.every(t => name.indexOf(t) !== -1);
+                    })[idx];
+                    if(match) pickSuggestion(match);
+                } else if(ev.key === 'Escape'){
+                    suggestions.style.display = 'none';
+                }
+            });
+
+            // hide suggestions when clicking outside
+            document.addEventListener('click', function(e){
+                if(!suggestions.contains(e.target) && e.target !== branchInput){
+                    suggestions.style.display = 'none';
+                }
+            });
+    })();
+
     showStep(0);
 })();

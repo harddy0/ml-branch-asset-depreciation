@@ -110,14 +110,15 @@ class LocationMasterService {
         $whereRegion = $regionCode ? " AND b.region_code = :region_code" : "";
 
         // Preferred query: include branch code when available.
-        $sqlWithBranchCode = "SELECT DISTINCT
-                    b.cost_center AS cost_center_code,
-                    b.code AS branch_code,
-                    b.branch_name,
-                    r.region_code,
-                    r.region_description,
-                    z.zone_code,
-                    m.main_zone_code
+            $sqlWithBranchCode = "SELECT DISTINCT
+                        b.cost_center AS cost_center_code,
+                        b.code AS branch_code,
+                        b.branch_name,
+                        b.region AS region,
+                        r.region_code,
+                        r.region_description,
+                        z.zone_code,
+                        m.main_zone_code
                 FROM branch_profile b
                 LEFT JOIN region_masterfile r ON b.region_code = r.region_code
                 LEFT JOIN zone_masterfile z   ON r.zone_code   = z.zone_code
@@ -127,14 +128,15 @@ class LocationMasterService {
                 " ORDER BY b.branch_name ASC";
 
         // Fallback query for schemas without branch_profile.code.
-        $sqlFallback = "SELECT DISTINCT
-                    b.cost_center AS cost_center_code,
-                    '' AS branch_code,
-                    b.branch_name,
-                    r.region_code,
-                    r.region_description,
-                    z.zone_code,
-                    m.main_zone_code
+            $sqlFallback = "SELECT DISTINCT
+                        b.cost_center AS cost_center_code,
+                        '' AS branch_code,
+                        b.branch_name,
+                        b.region AS region,
+                        r.region_code,
+                        r.region_description,
+                        z.zone_code,
+                        m.main_zone_code
                 FROM branch_profile b
                 LEFT JOIN region_masterfile r ON b.region_code = r.region_code
                 LEFT JOIN zone_masterfile z   ON r.zone_code   = z.zone_code
