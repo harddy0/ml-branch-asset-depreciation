@@ -22,7 +22,7 @@ if (!$id || empty($fn) || empty($ln)) {
 $result = $auth->registerUser($id, $fn, $mn, $ln, $type);
 
 if ($result['success']) {
-    $_SESSION['flash_success'] = "User created. Username: {$result['username']} — Default password: Mlinc1234@";
+    $_SESSION['flash_success'] = "User created. Username: {$result['username']} — Default password: Mlinc1234";
 } else {
     $_SESSION['flash_error'] = $result['error'] ?? 'Failed to create user.';
 }
