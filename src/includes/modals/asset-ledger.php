@@ -16,28 +16,29 @@
         </div>
 
         <div class="px-7 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
-            <div class="grid grid-cols-1 md:grid-cols-6 gap-2">
-                <input id="ledger-date-from" type="date" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs text-slate-700">
-                <input id="ledger-date-to" type="date" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs text-slate-700">
+            <div class="grid grid-rows-1 md:grid-cols-5 gap-2">
+                <div class="flex items-center gap-3 col-span-5 md:col-span-4">
+                    <span class="text-sm font-semibold text-slate-600">As of</span>
 
-                <select id="ledger-entry-side" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs text-slate-700">
-                    <option value="ALL">All Entries</option>
-                    <option value="DEBIT">Debit Only</option>
-                    <option value="CREDIT">Credit Only</option>
-                </select>
+                    <select id="ledger-period-month" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs text-slate-700">
+                        <option value="">All Months</option>
+                    </select>
 
-                <select id="ledger-period-year" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs text-slate-700">
-                    <option value="">All Years</option>
-                </select>
+                    <select id="ledger-period-year" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs text-slate-700">
+                        <option value="">All Years</option>
+                    </select>
 
-                <select id="ledger-period-month" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs text-slate-700">
-                    <option value="">All Months</option>
-                </select>
+                    <select id="ledger-entry-side" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs text-slate-700">
+                        <option value="ALL">All Entries</option>
+                        <option value="DEBIT">Debit Only</option>
+                        <option value="CREDIT">Credit Only</option>
+                    </select>
 
-                <button id="ledger-reset-filter" type="button"
-                        class="border border-slate-300 rounded-md px-3 py-1.5 text-xs font-bold uppercase text-slate-700 hover:bg-slate-100">
-                    Reset
-                </button>
+                    <button id="ledger-reset-filter" type="button"
+                            class="border border-slate-300 rounded-md px-3 py-1.5 text-xs font-bold uppercase text-slate-700 hover:bg-slate-100">
+                        Reset
+                    </button>
+                </div>
             </div>
 
             <div class="flex items-center justify-between mt-3">
