@@ -993,7 +993,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     function monthName(monthNum) {
-        const map = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const map = ['January','February','March','April','May','June','July','August','September','October','November','December'];
         const idx = parseInt(monthNum, 10) - 1;
         return (idx >= 0 && idx < 12) ? map[idx] : String(monthNum || '');
     }
@@ -1204,7 +1204,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!ledgerPeriodYearEl || !ledgerPeriodMonthEl) return;
 
         const years = Array.isArray(options && options.years) ? options.years : [];
-        const months = Array.isArray(options && options.months) ? options.months : [];
 
         ledgerPeriodYearEl.innerHTML = '<option value="">All Years</option>';
         years.forEach(function (y) {
@@ -1213,17 +1212,19 @@ document.addEventListener('DOMContentLoaded', function () {
             opt.textContent = String(y);
             ledgerPeriodYearEl.appendChild(opt);
         });
-
+        // Always show full month list (All Months + January..December) to keep options consistent
         ledgerPeriodMonthEl.innerHTML = '<option value="">All Months</option>';
-        months.forEach(function (m) {
+        for (let i = 1; i <= 12; i++) {
             const opt = document.createElement('option');
-            opt.value = String(m);
-            opt.textContent = `${String(m).padStart(2, '0')} - ${monthName(m)}`;
+            opt.value = String(i);
+            opt.textContent = monthName(i);
             ledgerPeriodMonthEl.appendChild(opt);
-        });
+        }
 
         ledgerPeriodYearEl.value = selectedYear || '';
-        ledgerPeriodMonthEl.value = selectedMonth || '';
+        // normalize selectedMonth (accept '03' or '3')
+        const selMonth = (selectedMonth && !isNaN(parseInt(selectedMonth, 10))) ? String(parseInt(selectedMonth, 10)) : '';
+        ledgerPeriodMonthEl.value = selMonth;
     }
 
     function updateLedgerAssetMeta(asset) {
@@ -1237,10 +1238,27 @@ document.addEventListener('DOMContentLoaded', function () {
         const params = new URLSearchParams();
         params.set('asset_id', String(ledgerState.asset.id));
         if (ledgerState.filters.date_from) params.set('date_from', ledgerState.filters.date_from);
-        if (ledgerState.filters.date_to) params.set('date_to', ledgerState.filters.date_to);
+        // If a period (month + year) is selected, treat it as "as of" and set date_to to the last day
+        // of that month. Do NOT send period_year/period_month to avoid server filtering to that single
+        // period (server applies equality filters when those are present).
+        if (ledgerState.filters.period_year && ledgerState.filters.period_month) {
+            const y = parseInt(ledgerState.filters.period_year, 10);
+            const m = parseInt(ledgerState.filters.period_month, 10);
+            if (!isNaN(y) && !isNaN(m) && m >= 1 && m <= 12) {
+                // JS Date: month index is 0-based; passing m gives next month, day 0 => last day of previous month
+                const last = new Date(y, m, 0);
+                const yyyy = last.getFullYear();
+                const mm = String(last.getMonth() + 1).padStart(2, '0');
+                const dd = String(last.getDate()).padStart(2, '0');
+                params.set('date_to', `${yyyy}-${mm}-${dd}`);
+            } else if (ledgerState.filters.date_to) {
+                params.set('date_to', ledgerState.filters.date_to);
+            }
+        } else {
+            if (ledgerState.filters.date_to) params.set('date_to', ledgerState.filters.date_to);
+        }
+
         if (ledgerState.filters.entry_side) params.set('entry_side', ledgerState.filters.entry_side);
-        if (ledgerState.filters.period_year) params.set('period_year', ledgerState.filters.period_year);
-        if (ledgerState.filters.period_month) params.set('period_month', ledgerState.filters.period_month);
         return params.toString();
     }
 
@@ -1273,7 +1291,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 renderLedgerRows(ledgerRows);
                 renderFsRows(ledgerRows);
                 updateLedgerFooter(res.totals || {}, ledgerRows);
-                populatePeriodOptions(res.options || {}, (res.filters && res.filters.period_year) || '', (res.filters && res.filters.period_month) || '');
+                // Preserve user's selected period (if any) when server doesn't echo them back
+                populatePeriodOptions(
+                    res.options || {},
+                    (res.filters && res.filters.period_year) || ledgerState.filters.period_year || '',
+                    (res.filters && res.filters.period_month) || ledgerState.filters.period_month || ''
+                );
 
                 if (ledgerDateFromEl) ledgerDateFromEl.value = (res.filters && res.filters.date_from) || ledgerState.filters.date_from;
                 if (ledgerDateToEl) ledgerDateToEl.value = (res.filters && res.filters.date_to) || ledgerState.filters.date_to;
@@ -1293,19 +1316,24 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!assetPayload || !assetPayload.id || !ledgerModalEl) return;
 
         ledgerState.asset = assetPayload;
+        // default filters; set period to current month/year so modal opens "As of" current period
+        const now = new Date();
+        const curYear = String(now.getFullYear());
+        const curMonth = String(now.getMonth() + 1);
+
         ledgerState.filters = {
             date_from: '',
             date_to: '',
             entry_side: 'ALL',
-            period_year: '',
-            period_month: '',
+            period_year: curYear,
+            period_month: curMonth,
         };
 
         if (ledgerDateFromEl) ledgerDateFromEl.value = '';
         if (ledgerDateToEl) ledgerDateToEl.value = '';
         if (ledgerEntrySideEl) ledgerEntrySideEl.value = 'ALL';
-        if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = '';
-        if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = '';
+        if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = curYear;
+        if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = curMonth;
 
         setLedgerTab('LEDGER');
         openModal('modal-asset-ledger');
