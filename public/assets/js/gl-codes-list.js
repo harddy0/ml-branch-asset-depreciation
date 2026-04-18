@@ -19,6 +19,12 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             return JSON.parse(text);
         } catch (_e) {
+            const arrayStart = text.indexOf('[');
+            const arrayEnd = text.lastIndexOf(']');
+            if (arrayStart !== -1 && arrayEnd > arrayStart) {
+                return JSON.parse(text.slice(arrayStart, arrayEnd + 1));
+            }
+
             const jsonStart = text.indexOf('{');
             const jsonEnd = text.lastIndexOf('}');
             if (jsonStart !== -1 && jsonEnd > jsonStart) {
@@ -171,10 +177,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Expose loadGlCodes for external use (e.g., after adding a new GL code)
     window.loadGlCodes = loadGlCodes;
 
-    // Expose modal functions globally
-    window.openModal = openModal;
-    window.closeModal = closeModal;
-
     // Handle delete button clicks
     function handleDeleteClick(glCode) {
         const modal = document.getElementById('modal-delete-gl-code');
@@ -250,31 +252,6 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => {
             alertDiv.style.display = 'none';
         }, 3500);
-    }
-
-    // Modal functions
-    function openModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (!modal) return;
-        modal.classList.remove('hidden');
-        setTimeout(() => {
-            const backdrop = modal.querySelector('.modal-backdrop');
-            const panel = modal.querySelector('.modal-panel');
-            if (backdrop) backdrop.classList.remove('opacity-0');
-            if (panel) panel.classList.remove('opacity-0', 'scale-95');
-        }, 10);
-    }
-
-    function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (!modal) return;
-        const backdrop = modal.querySelector('.modal-backdrop');
-        const panel = modal.querySelector('.modal-panel');
-        if (backdrop) backdrop.classList.add('opacity-0');
-        if (panel) panel.classList.add('opacity-0', 'scale-95');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-        }, 200);
     }
 
     // Attach delete event listeners to dynamically created buttons

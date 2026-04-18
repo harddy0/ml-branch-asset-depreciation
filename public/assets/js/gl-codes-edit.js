@@ -1,6 +1,31 @@
 (function() {
     'use strict';
 
+    function parseJsonPayload(rawText) {
+        var text = (rawText || '').replace(/^\uFEFF/, '').trim();
+        if (!text) {
+            throw new Error('Empty response from server.');
+        }
+
+        try {
+            return JSON.parse(text);
+        } catch (_e) {
+            var arrayStart = text.indexOf('[');
+            var arrayEnd = text.lastIndexOf(']');
+            if (arrayStart !== -1 && arrayEnd > arrayStart) {
+                return JSON.parse(text.slice(arrayStart, arrayEnd + 1));
+            }
+
+            var objectStart = text.indexOf('{');
+            var objectEnd = text.lastIndexOf('}');
+            if (objectStart !== -1 && objectEnd > objectStart) {
+                return JSON.parse(text.slice(objectStart, objectEnd + 1));
+            }
+
+            throw new Error('Invalid JSON response from server.');
+        }
+    }
+
     document.querySelectorAll('[data-modal-close="modal-edit-gl-code"]').forEach((el) => {
         el.addEventListener('click', () => closeModal('modal-edit-gl-code'));
     });
@@ -9,10 +34,15 @@
     function handleEditClick(glCode) {
         // Fetch current GL code data
         fetch(`../api/get_gl_codes.php?gl_code=${encodeURIComponent(glCode)}`)
-            .then(res => res.text())
+            .then(async (res) => {
+                var rawText = await res.text();
+                if (!res.ok) {
+                    throw new Error(`Failed to load GL code (${res.status}).`);
+                }
+                return rawText;
+            })
             .then(rawText => {
-                const text = rawText.replace(/^\uFEFF/, '');
-                return JSON.parse(text);
+                return parseJsonPayload(rawText);
             })
             .then(data => {
                 if (data.success && data.data) {

@@ -1,570 +1,531 @@
-var classificationsStore = {
-    plRules: [],
-    assetTypes: [],
-    assetGroups: []
-};
+document.addEventListener('DOMContentLoaded', function () {
+    var categoriesTbody = document.getElementById('categories-tbody');
+    var addBtn = document.getElementById('btn-add-category');
+    var categoryModal = document.getElementById('category-modal');
+    var categoryForm = document.getElementById('category-form');
+    var categoryModalTitle = document.getElementById('category-modal-title');
+    var depreciationCodeInput = document.getElementById('depreciation_code');
+    var originalCodeInput = document.getElementById('original_depreciation_code');
+    var descriptionInput = document.getElementById('description');
+    var monthsInput = document.getElementById('input_months');
+    var monthsToYearsDisplay = document.getElementById('months_to_years_display');
+    var glCodeSelect = document.getElementById('gl_code_select');
+    var glCodePickerInput = document.getElementById('gl_code_picker');
+    var glCodeDropdown = document.getElementById('gl_code_dropdown');
+    var codeLockedHint = document.getElementById('code-locked-hint');
+    var deleteModal = document.getElementById('modal-delete-confirmation');
+    var deleteForm = document.getElementById('delete-confirm-form');
+    var deleteHiddenFields = document.getElementById('delete-hidden-fields');
+    var deleteMessage = document.getElementById('delete-modal-message');
 
-var activeState = {
-    depreciationCode: null,
-    assetCode: null
-};
-
-function escapeHtml(input) {
-    return String(input ?? '').replace(/[&<>"']/g, function (char) {
-        return {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        }[char];
-    });
-}
-
-function normalizeResponseText(text) {
-    return text.replace(/^\uFEFF/, '').trim();
-}
-
-function getApiUrl() {
-    return BASE_URL + '/public/api/get_classifications.php';
-}
-
-function emptyState(title, description) {
-    return '' +
-        '<div class="h-full min-h-[320px] flex items-center justify-center">' +
-            '<div class="text-center max-w-[260px]">' +
-                '<div class="w-11 h-11 rounded-xl bg-slate-100 mx-auto mb-3 flex items-center justify-center">' +
-                    '<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 6h16M4 12h16M4 18h16"/>' +
-                    '</svg>' +
-                '</div>' +
-                '<p class="text-sm font-bold text-slate-600">' + escapeHtml(title) + '</p>' +
-                '<p class="text-xs font-medium text-slate-400 mt-1">' + escapeHtml(description) + '</p>' +
-            '</div>' +
-        '</div>';
-}
-
-function cardActions(onEdit, onDelete) {
-    return '' +
-        '<div class="flex items-center gap-1 shrink-0">' +
-            '<button type="button" class="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" data-action="edit" aria-label="Edit">' +
-                '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.5-7.5L9 14l-3 1 1-3 8.5-8.5a1.5 1.5 0 012 2z"/>' +
-                '</svg>' +
-            '</button>' +
-            '<button type="button" class="p-1.5 rounded-md text-slate-400 hover:text-red-700 hover:bg-red-50 transition-colors" data-action="delete" aria-label="Delete">' +
-                '<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"/>' +
-                '</svg>' +
-            '</button>' +
-        '</div>';
-}
-
-function renderPlRules() {
-    var container = document.getElementById('pl-rules-container');
-    if (!container) return;
-
-    if (!classificationsStore.plRules.length) {
-        container.innerHTML = emptyState('No P&L policies yet', 'Add a policy to start the hierarchy.');
+    if (!categoriesTbody || !categoryForm) {
         return;
     }
 
-    container.innerHTML = classificationsStore.plRules.map(function (rule) {
-        var isActive = activeState.depreciationCode === rule.depreciation_code;
-        return '' +
-            '<article class="js-pl-rule-card mb-2 border rounded-xl px-3 py-2.5 cursor-pointer transition-all ' + (isActive ? 'border-red-400 bg-red-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50') + '" data-code="' + escapeHtml(rule.depreciation_code) + '">' +
-                '<div class="flex items-start justify-between gap-2">' +
-                    '<div>' +
-                        '<p class="text-xs font-black font-mono text-slate-800">' + escapeHtml(rule.depreciation_code) + '</p>' +
-                        '<p class="text-xs font-semibold text-slate-600 mt-1">' + escapeHtml(rule.description) + '</p>' +
-                        '<p class="text-[11px] text-slate-500 mt-1">Limit: <span class="font-bold">' + escapeHtml(rule.limit_months) + '</span> mos | Rule: <span class="font-bold">' + escapeHtml(rule.rule_type) + '</span></p>' +
-                    '</div>' +
-                    cardActions() +
-                '</div>' +
-            '</article>';
-    }).join('');
+    var storeAction = categoryForm.getAttribute('action') || '';
+    var updateAction = storeAction.replace('pl_rule_store.php', 'pl_rule_update.php');
+    var deleteAction = storeAction.replace('pl_rule_store.php', 'pl_rule_delete.php');
+    var categoriesApiUrl = '../api/get_categories.php';
+    var glCodesApiUrl = '../api/get_gl_codes.php';
+    var glCodesCache = [];
 
-    container.querySelectorAll('.js-pl-rule-card').forEach(function (card) {
-        var code = card.getAttribute('data-code');
-        var rule = classificationsStore.plRules.find(function (item) { return item.depreciation_code === code; });
-        if (!rule) return;
+    function stripBom(text) {
+        return (text || '').replace(/^\uFEFF/, '').trim();
+    }
 
-        card.addEventListener('click', function () {
-            activeState.depreciationCode = code;
-            activeState.assetCode = null;
-            renderPlRules();
-            renderAssetTypes();
-            renderAssetGroups();
-        });
-
-        var editBtn = card.querySelector('[data-action="edit"]');
-        var deleteBtn = card.querySelector('[data-action="delete"]');
-
-        if (editBtn) {
-            editBtn.addEventListener('click', function (event) {
-                event.stopPropagation();
-                openPlRuleEditModal(rule);
-            });
+    function parseJsonResponse(rawText) {
+        var cleaned = stripBom(rawText);
+        if (!cleaned) {
+            throw new Error('Empty server response.');
         }
 
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', function (event) {
-                event.stopPropagation();
-                openDeleteModal({
-                    action: BASE_URL + '/public/actions/pl_rule_delete.php',
-                    hiddenFields: [{ name: 'depreciation_code', value: rule.depreciation_code }],
-                    message: 'Delete P&L policy ' + rule.depreciation_code + '? This cannot be undone.'
+        return JSON.parse(cleaned);
+    }
+
+    function escapeHtml(value) {
+        var div = document.createElement('div');
+        div.textContent = value == null ? '' : String(value);
+        return div.innerHTML;
+    }
+
+    function renderEmptyRow(message) {
+        categoriesTbody.innerHTML =
+            '<tr>' +
+            '<td colspan="5" class="px-4 py-8 text-center text-slate-500 text-sm">' +
+            escapeHtml(message || 'No categories found.') +
+            '</td>' +
+            '</tr>';
+    }
+
+    function formatGlLabel(item) {
+        var glCode = item.gl_code || '';
+        var description = item.description || '';
+        var accountType = (item.account_type || '').toUpperCase();
+        var label = glCode;
+        if (description) {
+            label += ' - ' + description;
+        }
+        if (accountType) {
+            label += ' (' + accountType + ')';
+        }
+        return label;
+    }
+
+    function updateMonthsToYearsDisplay() {
+        if (!monthsToYearsDisplay) {
+            return;
+        }
+
+        var months = monthsInput ? parseFloat(monthsInput.value) : 0;
+        if (isNaN(months) || months <= 0) {
+            monthsToYearsDisplay.textContent = 'Equivalent: 0.00 years';
+            return;
+        }
+
+        var years = months / 12;
+        monthsToYearsDisplay.textContent = 'Equivalent: ' + years.toFixed(2) + ' years';
+    }
+
+    function findGlByPickerText(value) {
+        var normalized = (value || '').trim().toLowerCase();
+        if (!normalized) {
+            return null;
+        }
+
+        for (var i = 0; i < glCodesCache.length; i++) {
+            var item = glCodesCache[i] || {};
+            var code = (item.gl_code || '').toLowerCase();
+            var label = formatGlLabel(item).toLowerCase();
+            if (code === normalized || label === normalized) {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    function setCodeEditableUi(isEditable) {
+        if (!depreciationCodeInput) {
+            return;
+        }
+
+        if (isEditable) {
+            depreciationCodeInput.readOnly = false;
+            depreciationCodeInput.classList.remove('bg-slate-100', 'text-slate-500', 'cursor-not-allowed', 'border-amber-300');
+            depreciationCodeInput.classList.add('bg-slate-50', 'text-slate-700');
+            if (codeLockedHint) {
+                codeLockedHint.classList.add('hidden');
+            }
+        } else {
+            depreciationCodeInput.readOnly = true;
+            depreciationCodeInput.classList.remove('bg-slate-50', 'text-slate-700');
+            depreciationCodeInput.classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed', 'border-amber-300');
+            if (codeLockedHint) {
+                codeLockedHint.classList.remove('hidden');
+            }
+        }
+    }
+
+    function closeGlDropdown() {
+        if (!glCodeDropdown) {
+            return;
+        }
+
+        glCodeDropdown.classList.add('hidden');
+    }
+
+    function openGlDropdown() {
+        if (!glCodeDropdown) {
+            return;
+        }
+
+        glCodeDropdown.classList.remove('hidden');
+    }
+
+    function clearGlSelection() {
+        if (glCodeSelect) {
+            glCodeSelect.value = '';
+        }
+    }
+
+    function setGlSelection(item) {
+        if (!item) {
+            clearGlSelection();
+            return;
+        }
+
+        if (glCodeSelect) {
+            glCodeSelect.value = item.gl_code || '';
+        }
+        if (glCodePickerInput) {
+            glCodePickerInput.value = formatGlLabel(item);
+        }
+    }
+
+    function renderGlDropdown(items) {
+        if (!glCodeDropdown) {
+            return;
+        }
+
+        glCodeDropdown.innerHTML = '';
+
+        if (!items.length) {
+            var empty = document.createElement('div');
+            empty.className = 'px-3 py-2 text-xs text-slate-500';
+            empty.textContent = 'No matching GL account found.';
+            glCodeDropdown.appendChild(empty);
+            openGlDropdown();
+            return;
+        }
+
+        for (var i = 0; i < items.length; i++) {
+            (function () {
+                var item = items[i] || {};
+                var row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-b-0';
+
+                var line1 = document.createElement('div');
+                line1.className = 'text-xs font-bold text-slate-700';
+                line1.textContent = (item.gl_code || '') + ' - ' + (item.description || '');
+
+                var line2 = document.createElement('div');
+                line2.className = 'text-[10px] font-semibold uppercase tracking-wide text-slate-500';
+                line2.textContent = item.account_type || '';
+
+                row.appendChild(line1);
+                row.appendChild(line2);
+                row.addEventListener('click', function () {
+                    setGlSelection(item);
+                    closeGlDropdown();
                 });
-            });
+
+                glCodeDropdown.appendChild(row);
+            })();
         }
-    });
-}
 
-function getAssetTypesForActiveRule() {
-    if (!activeState.depreciationCode) return [];
-    return classificationsStore.assetTypes.filter(function (assetType) {
-        return assetType.depreciation_code === activeState.depreciationCode;
-    });
-}
-
-function renderAssetTypes() {
-    var container = document.getElementById('asset-types-container');
-    if (!container) return;
-
-    if (!activeState.depreciationCode) {
-        container.innerHTML = emptyState('Select a policy', 'Select a P&L policy to view asset types.');
-        return;
+        openGlDropdown();
     }
 
-    var records = getAssetTypesForActiveRule();
-    if (!records.length) {
-        container.innerHTML = emptyState('No asset types', 'No asset types are linked to this P&L policy yet.');
-        return;
+    function syncHiddenGlCodeFromPicker() {
+        if (!glCodePickerInput || !glCodeSelect) {
+            return;
+        }
+
+        var selected = findGlByPickerText(glCodePickerInput.value);
+        glCodeSelect.value = selected ? (selected.gl_code || '') : '';
     }
 
-    container.innerHTML = records.map(function (assetType) {
-        var isActive = activeState.assetCode === assetType.asset_code;
-        return '' +
-            '<article class="js-asset-type-card mb-2 border rounded-xl px-3 py-2.5 cursor-pointer transition-all ' + (isActive ? 'border-red-400 bg-red-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50') + '" data-code="' + escapeHtml(assetType.asset_code) + '">' +
-                '<div class="flex items-start justify-between gap-2">' +
-                    '<div>' +
-                        '<p class="text-xs font-black font-mono text-slate-800">' + escapeHtml(assetType.asset_code) + '</p>' +
-                        '<p class="text-xs font-semibold text-slate-600 mt-1">' + escapeHtml(assetType.asset_name) + '</p>' +
-                    '</div>' +
-                    cardActions() +
-                '</div>' +
-            '</article>';
-    }).join('');
+    function filterGlCodes(searchTerm) {
+        var term = (searchTerm || '').toLowerCase();
+        if (!term) {
+            return glCodesCache.slice();
+        }
 
-    container.querySelectorAll('.js-asset-type-card').forEach(function (card) {
-        var code = card.getAttribute('data-code');
-        var record = classificationsStore.assetTypes.find(function (item) { return item.asset_code === code; });
-        if (!record) return;
+        var filtered = [];
+        for (var i = 0; i < glCodesCache.length; i++) {
+            var item = glCodesCache[i] || {};
+            var haystack = ((item.gl_code || '') + ' ' + (item.description || '') + ' ' + (item.account_type || '')).toLowerCase();
+            if (haystack.indexOf(term) !== -1) {
+                filtered.push(item);
+            }
+        }
+        return filtered;
+    }
 
-        card.addEventListener('click', function () {
-            activeState.assetCode = code;
-            renderAssetTypes();
-            renderAssetGroups();
+    function renderCategories(rows) {
+        if (!rows || !rows.length) {
+            renderEmptyRow('No categories found.');
+            return;
+        }
+
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i] || {};
+            var code = row.depreciation_code || '';
+            var description = row.description || '';
+            var months = parseInt(row.months, 10);
+            if (isNaN(months)) {
+                months = 0;
+            }
+            var glCode = row.gl_code || '';
+            var glDescription = row.gl_description || '';
+            var glDisplay = glCode;
+            if (glCode && glDescription) {
+                glDisplay = glCode + ' - ' + glDescription;
+            }
+
+            html +=
+                '<tr class="border-b border-slate-100 hover:bg-slate-50">' +
+                '<td class="py-3 px-4 font-semibold text-slate-800">' + escapeHtml(code) + '</td>' +
+                '<td class="py-3 px-4">' + escapeHtml(description) + '</td>' +
+                '<td class="py-3 px-4">' + escapeHtml(months) + '</td>' +
+                '<td class="py-3 px-4">' + escapeHtml(glDisplay || '-') + '</td>' +
+                '<td class="py-3 px-4 text-right">' +
+                '<button type="button" class="btn-edit-category mr-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100" ' +
+                'data-code="' + escapeHtml(code) + '" ' +
+                'data-description="' + escapeHtml(description) + '" ' +
+                'data-months="' + escapeHtml(months) + '" ' +
+                'data-gl-code="' + escapeHtml(glCode) + '">Edit</button>' +
+                '<button type="button" class="btn-delete-category px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg border border-red-300 text-red-700 hover:bg-red-50" ' +
+                'data-code="' + escapeHtml(code) + '" ' +
+                'data-description="' + escapeHtml(description) + '">Delete</button>' +
+                '</td>' +
+                '</tr>';
+        }
+
+        categoriesTbody.innerHTML = html;
+    }
+
+    function setAddMode() {
+        categoryForm.reset();
+        categoryForm.setAttribute('action', storeAction);
+        if (categoryModalTitle) {
+            categoryModalTitle.textContent = 'Add Category';
+        }
+        if (originalCodeInput) {
+            originalCodeInput.value = '';
+        }
+        setCodeEditableUi(true);
+        if (monthsInput) {
+            monthsInput.value = '';
+        }
+        updateMonthsToYearsDisplay();
+        if (glCodePickerInput) {
+            glCodePickerInput.value = '';
+        }
+        clearGlSelection();
+        renderGlDropdown(glCodesCache);
+        closeGlDropdown();
+    }
+
+    function setEditMode(data) {
+        var months = parseInt(data.months, 10);
+        if (isNaN(months)) {
+            months = 0;
+        }
+
+        categoryForm.setAttribute('action', updateAction);
+        if (categoryModalTitle) {
+            categoryModalTitle.textContent = 'Edit Category';
+        }
+        if (originalCodeInput) {
+            originalCodeInput.value = data.code;
+        }
+        if (depreciationCodeInput) {
+            depreciationCodeInput.value = data.code;
+        }
+        setCodeEditableUi(false);
+        if (descriptionInput) {
+            descriptionInput.value = data.description;
+        }
+        if (monthsInput) {
+            monthsInput.value = months > 0 ? months : '';
+        }
+        updateMonthsToYearsDisplay();
+        if (glCodePickerInput) {
+            glCodePickerInput.value = '';
+        }
+        clearGlSelection();
+        renderGlDropdown(glCodesCache);
+        if (glCodePickerInput && data.glCode) {
+            var selected = null;
+            for (var i = 0; i < glCodesCache.length; i++) {
+                var item = glCodesCache[i] || {};
+                if ((item.gl_code || '') === data.glCode) {
+                    selected = item;
+                    break;
+                }
+            }
+            if (selected) {
+                setGlSelection(selected);
+            } else {
+                glCodePickerInput.value = data.glCode;
+                if (glCodeSelect) {
+                    glCodeSelect.value = data.glCode;
+                }
+            }
+        }
+        closeGlDropdown();
+    }
+
+    function openCategoryModal() {
+        if (typeof openModal === 'function') {
+            openModal('category-modal');
+        } else if (categoryModal) {
+            categoryModal.classList.remove('hidden');
+            categoryModal.classList.add('flex');
+        }
+    }
+
+    function closeCategoryModal() {
+        if (typeof closeModal === 'function') {
+            closeModal('category-modal');
+        } else if (categoryModal) {
+            categoryModal.classList.add('hidden');
+            categoryModal.classList.remove('flex');
+        }
+    }
+
+    function openDeleteModal(code, description) {
+        if (!deleteForm || !deleteHiddenFields || !deleteMessage) {
+            return;
+        }
+
+        deleteForm.setAttribute('action', deleteAction);
+        deleteHiddenFields.innerHTML =
+            '<input type="hidden" name="depreciation_code" value="' + escapeHtml(code) + '">';
+        deleteMessage.textContent = 'Are you sure you want to delete category "' + code + ' - ' + description + '"?';
+
+        if (typeof openModal === 'function') {
+            openModal('modal-delete-confirmation');
+        } else if (deleteModal) {
+            deleteModal.classList.remove('hidden');
+            deleteModal.classList.add('flex');
+        }
+    }
+
+    function loadGlCodes() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', glCodesApiUrl, true);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) {
+                return;
+            }
+
+            if (xhr.status < 200 || xhr.status >= 300) {
+                return;
+            }
+
+            try {
+                var codes = parseJsonResponse(xhr.responseText);
+                if (!Array.isArray(codes)) {
+                    throw new Error('Unexpected GL code payload format.');
+                }
+
+                glCodesCache = codes;
+                renderGlDropdown(glCodesCache);
+                closeGlDropdown();
+            } catch (error) {
+                console.error('Failed to load GL codes:', error);
+            }
+        };
+        xhr.send();
+    }
+
+    function loadCategories() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', categoriesApiUrl, true);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) {
+                return;
+            }
+
+            if (xhr.status < 200 || xhr.status >= 300) {
+                renderEmptyRow('Unable to load categories right now.');
+                return;
+            }
+
+            try {
+                var payload = parseJsonResponse(xhr.responseText);
+                var rules = [];
+
+                if (Array.isArray(payload)) {
+                    rules = payload;
+                } else if (payload && Array.isArray(payload.data)) {
+                    rules = payload.data;
+                } else if (payload && Array.isArray(payload.plRules)) {
+                    rules = payload.plRules;
+                } else {
+                    throw new Error('Unexpected category payload format.');
+                }
+
+                renderCategories(rules);
+            } catch (error) {
+                console.error('Failed to load categories:', error);
+                renderEmptyRow('Unable to parse category data.');
+            }
+        };
+        xhr.send();
+    }
+
+    if (addBtn) {
+        addBtn.addEventListener('click', function () {
+            setAddMode();
+            openCategoryModal();
         });
+    }
 
-        var editBtn = card.querySelector('[data-action="edit"]');
-        var deleteBtn = card.querySelector('[data-action="delete"]');
+    var closeButtons = categoryModal ? categoryModal.querySelectorAll('.close-modal') : [];
+    for (var i = 0; i < closeButtons.length; i++) {
+        closeButtons[i].addEventListener('click', closeCategoryModal);
+    }
 
+    categoriesTbody.addEventListener('click', function (event) {
+        var editBtn = event.target.closest('.btn-edit-category');
         if (editBtn) {
-            editBtn.addEventListener('click', function (event) {
-                event.stopPropagation();
-                openAssetTypeEditModal(record);
+            setEditMode({
+                code: editBtn.getAttribute('data-code') || '',
+                description: editBtn.getAttribute('data-description') || '',
+                months: editBtn.getAttribute('data-months') || '',
+                glCode: editBtn.getAttribute('data-gl-code') || ''
             });
+            openCategoryModal();
+            return;
         }
 
+        var deleteBtn = event.target.closest('.btn-delete-category');
         if (deleteBtn) {
-            deleteBtn.addEventListener('click', function (event) {
-                event.stopPropagation();
-                openDeleteModal({
-                    action: BASE_URL + '/public/actions/asset_type_delete.php',
-                    hiddenFields: [{ name: 'asset_code', value: record.asset_code }],
-                    message: 'Delete asset type ' + record.asset_code + '? This cannot be undone.'
-                });
-            });
+            openDeleteModal(
+                deleteBtn.getAttribute('data-code') || '',
+                deleteBtn.getAttribute('data-description') || ''
+            );
         }
     });
-}
 
-function getAssetGroupsForActiveAssetType() {
-    if (!activeState.assetCode) return [];
-    return classificationsStore.assetGroups.filter(function (group) {
-        return group.asset_code === activeState.assetCode;
-    });
-}
-
-function renderAssetGroups() {
-    var container = document.getElementById('asset-groups-container');
-    if (!container) return;
-
-    if (!activeState.depreciationCode) {
-        container.innerHTML = emptyState('Select a policy', 'Select a P&L policy and then an asset type to view groups.');
-        return;
-    }
-
-    if (!activeState.assetCode) {
-        container.innerHTML = emptyState('Select an asset type', 'Select an asset type to view asset groups.');
-        return;
-    }
-
-    var records = getAssetGroupsForActiveAssetType();
-    if (!records.length) {
-        container.innerHTML = emptyState('No asset groups', 'No groups are linked to this asset type yet.');
-        return;
-    }
-
-    container.innerHTML = records.map(function (group) {
-        return '' +
-            '<article class="mb-2 border border-slate-200 rounded-xl px-3 py-2.5 hover:border-slate-300 hover:bg-slate-50 transition-all">' +
-                '<div class="flex items-start justify-between gap-2">' +
-                    '<div>' +
-                        '<p class="text-xs font-black font-mono text-slate-800">' + escapeHtml(group.group_code) + '</p>' +
-                        '<p class="text-xs font-semibold text-slate-600 mt-1">' + escapeHtml(group.group_name) + '</p>' +
-                        '<p class="text-[11px] text-slate-500 mt-1">Actual Months: <span class="font-bold">' + escapeHtml(group.actual_months) + '</span></p>' +
-                    '</div>' +
-                    cardActions() +
-                '</div>' +
-            '</article>';
-    }).join('');
-
-    container.querySelectorAll('article').forEach(function (card, index) {
-        var record = records[index];
-        if (!record) return;
-
-        var editBtn = card.querySelector('[data-action="edit"]');
-        var deleteBtn = card.querySelector('[data-action="delete"]');
-
-        if (editBtn) {
-            editBtn.addEventListener('click', function () {
-                openCategoryEditModal(record);
-            });
-        }
-
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', function () {
-                openDeleteModal({
-                    action: BASE_URL + '/public/actions/category_delete.php',
-                    hiddenFields: [{ name: 'id', value: record.id }],
-                    message: 'Delete asset group ' + record.group_code + '? This cannot be undone.'
-                });
-            });
-        }
-    });
-}
-
-function buildOptions(list, valueKey, labelKey, placeholderText, selectedValue) {
-    var html = '<option value="">' + escapeHtml(placeholderText) + '</option>';
-    html += list.map(function (item) {
-        var value = String(item[valueKey] ?? '');
-        var label = String(item[labelKey] ?? value);
-        var selected = String(selectedValue ?? '') === value ? ' selected' : '';
-        return '<option value="' + escapeHtml(value) + '"' + selected + '>' + escapeHtml(value + ' - ' + label) + '</option>';
-    }).join('');
-    return html;
-}
-
-function populatePlRuleSelects(selectedValue) {
-    var options = buildOptions(
-        classificationsStore.plRules,
-        'depreciation_code',
-        'description',
-        'Select P&L policy',
-        selectedValue
-    );
-
-    document.querySelectorAll('.js-pl-rule-select').forEach(function (select) {
-        select.innerHTML = options;
-    });
-}
-
-function populateAssetTypeSelects(selectedValue, restrictToActiveRule) {
-    var source = classificationsStore.assetTypes;
-
-    if (restrictToActiveRule && activeState.depreciationCode) {
-        source = source.filter(function (item) {
-            return item.depreciation_code === activeState.depreciationCode;
-        });
-    }
-
-    var options = buildOptions(
-        source,
-        'asset_code',
-        'asset_name',
-        'Select asset type',
-        selectedValue
-    );
-
-    document.querySelectorAll('.js-asset-type-select').forEach(function (select) {
-        select.innerHTML = options;
-    });
-}
-
-function buildAutoGroupCode(assetCode, actualMonths) {
-    var months = parseInt(actualMonths, 10);
-    if (!assetCode || !months || months < 1) return '';
-
-    var assetType = classificationsStore.assetTypes.find(function (item) {
-        return item.asset_code === assetCode;
-    });
-
-    var rawName = assetType && assetType.asset_name
-        ? String(assetType.asset_name).trim()
-        : String(assetCode).trim();
-
-    var words = rawName
-        .split(/\s+/)
-        .map(function (word) { return word.replace(/[^A-Za-z0-9]/g, ''); })
-        .filter(Boolean);
-
-    var baseName = '';
-    if (words.length >= 2) {
-        baseName = words
-            .map(function (word) { return word.charAt(0); })
-            .join('')
-            .toUpperCase();
-
-        if (baseName.length > 4) {
-            baseName = baseName.substring(0, 4);
-        }
-    } else if (words.length === 1) {
-        baseName = words[0].substring(0, 3).toUpperCase();
-    }
-
-    if (!baseName) {
-        baseName = String(assetCode).replace(/[^A-Za-z0-9]/g, '').toUpperCase().substring(0, 3);
-    }
-
-    var suffix = String(months) + 'MOS';
-    var maxBaseLength = 50 - suffix.length;
-    if (maxBaseLength < 1) return suffix;
-
-    return baseName.substring(0, maxBaseLength) + suffix;
-}
-
-function buildAutoGroupName(assetCode, actualMonths) {
-    var months = parseInt(actualMonths, 10);
-    if (!assetCode || !months || months < 1) return '';
-
-    var assetType = classificationsStore.assetTypes.find(function (item) {
-        return item.asset_code === assetCode;
-    });
-
-    var baseName = assetType && assetType.asset_name
-        ? String(assetType.asset_name).trim()
-        : String(assetCode).trim();
-
-    return baseName + ' (' + months + 'mos)';
-}
-
-function refreshAddCategoryCodeAutofill() {
-    var groupCodeInput = document.getElementById('category-add-group-code');
-    var groupNameInput = document.getElementById('category-add-group-name');
-    var monthsInput = document.getElementById('category-add-actual-months');
-    var assetCodeSelect = document.getElementById('category-add-asset-code');
-
-    if (!groupCodeInput || !groupNameInput || !monthsInput || !assetCodeSelect) return;
-
-    var generatedName = buildAutoGroupName(assetCodeSelect.value, monthsInput.value);
-    if (groupNameInput.dataset.manualEdit !== '1') {
-        groupNameInput.value = generatedName;
-    }
-
-    if (groupCodeInput.dataset.manualEdit === '1') return;
-
-    var generatedCode = buildAutoGroupCode(assetCodeSelect.value, monthsInput.value);
-    if (!generatedCode) {
-        groupCodeInput.value = '';
-        return;
-    }
-
-    groupCodeInput.value = generatedCode;
-}
-
-function initializeAddCategoryAutofill() {
-    var groupCodeInput = document.getElementById('category-add-group-code');
-    var groupNameInput = document.getElementById('category-add-group-name');
-    var monthsInput = document.getElementById('category-add-actual-months');
-    var assetCodeSelect = document.getElementById('category-add-asset-code');
-
-    if (!groupCodeInput || !groupNameInput || !monthsInput || !assetCodeSelect) return;
-
-    groupCodeInput.dataset.manualEdit = '0';
-    groupNameInput.dataset.manualEdit = '0';
-
-    groupCodeInput.addEventListener('input', function () {
-        groupCodeInput.dataset.manualEdit = '1';
-    });
-
-    groupNameInput.addEventListener('input', function () {
-        groupNameInput.dataset.manualEdit = '1';
-    });
-
-    assetCodeSelect.addEventListener('change', refreshAddCategoryCodeAutofill);
-    monthsInput.addEventListener('input', refreshAddCategoryCodeAutofill);
-}
-
-function openPlRuleEditModal(rule) {
-    document.getElementById('pl-rule-edit-original-code').value = rule.depreciation_code;
-    document.getElementById('pl-rule-edit-code').value = rule.depreciation_code;
-    document.getElementById('pl-rule-edit-description').value = rule.description;
-    document.getElementById('pl-rule-edit-limit').value = rule.limit_months;
-    document.getElementById('pl-rule-edit-type').value = rule.rule_type;
-    openModal('modal-edit-pl-rule');
-}
-
-function openAssetTypeEditModal(record) {
-    populatePlRuleSelects(record.depreciation_code);
-
-    document.getElementById('asset-type-edit-original-code').value = record.asset_code;
-    document.getElementById('asset-type-edit-code').value = record.asset_code;
-    document.getElementById('asset-type-edit-name').value = record.asset_name;
-    document.getElementById('asset-type-edit-depreciation-code').value = record.depreciation_code;
-    openModal('modal-edit-asset-type');
-}
-
-function openCategoryEditModal(record) {
-    populateAssetTypeSelects(record.asset_code, false);
-
-    document.getElementById('category-edit-id').value = record.id;
-    document.getElementById('category-edit-group-code').value = record.group_code;
-    document.getElementById('category-edit-group-name').value = record.group_name;
-    document.getElementById('category-edit-actual-months').value = record.actual_months;
-    document.getElementById('category-edit-asset-code').value = record.asset_code;
-    openModal('modal-edit-category');
-}
-
-function openDeleteModal(config) {
-    var form = document.getElementById('delete-confirm-form');
-    var hiddenFieldsContainer = document.getElementById('delete-hidden-fields');
-    var message = document.getElementById('delete-modal-message');
-    if (!form || !hiddenFieldsContainer || !message) return;
-
-    form.setAttribute('action', config.action || '#');
-    message.textContent = config.message || 'Are you sure you want to delete this record?';
-    hiddenFieldsContainer.innerHTML = '';
-
-    (config.hiddenFields || []).forEach(function (field) {
-        var input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = field.name;
-        input.value = field.value;
-        hiddenFieldsContainer.appendChild(input);
-    });
-
-    openModal('modal-delete-confirmation');
-}
-
-function attachAddButtons() {
-    var addPlRuleBtn = document.getElementById('btn-add-pl-rule');
-    var addAssetTypeBtn = document.getElementById('btn-add-asset-type');
-    var addCategoryBtn = document.getElementById('btn-add-category');
-
-    if (addPlRuleBtn) {
-        addPlRuleBtn.addEventListener('click', function () {
-            openModal('modal-add-pl-rule');
-        });
-    }
-
-    if (addAssetTypeBtn) {
-        addAssetTypeBtn.addEventListener('click', function () {
-            populatePlRuleSelects(activeState.depreciationCode || '');
-            openModal('modal-add-asset-type');
-        });
-    }
-
-    if (addCategoryBtn) {
-        addCategoryBtn.addEventListener('click', function () {
-            populateAssetTypeSelects(activeState.assetCode || '', true);
-            var groupCodeInput = document.getElementById('category-add-group-code');
-            var groupNameInput = document.getElementById('category-add-group-name');
-            var monthsInput = document.getElementById('category-add-actual-months');
-            if (groupCodeInput) {
-                groupCodeInput.dataset.manualEdit = '0';
+    categoryForm.addEventListener('submit', function (event) {
+        syncHiddenGlCodeFromPicker();
+        if (glCodeSelect && !glCodeSelect.value) {
+            event.preventDefault();
+            alert('Please select a valid GL Account from the dropdown suggestions.');
+            if (glCodePickerInput) {
+                glCodePickerInput.focus();
             }
-            if (groupNameInput) {
-                groupNameInput.dataset.manualEdit = '0';
-            }
-            if (monthsInput) {
-                monthsInput.value = '';
-            }
-            refreshAddCategoryCodeAutofill();
-            openModal('modal-add-category');
-            if (monthsInput) {
-                monthsInput.focus();
+            return;
+        }
+    });
+
+    if (monthsInput) {
+        monthsInput.addEventListener('input', updateMonthsToYearsDisplay);
+        monthsInput.addEventListener('change', updateMonthsToYearsDisplay);
+    }
+
+    if (glCodePickerInput && glCodeDropdown) {
+        glCodePickerInput.addEventListener('focus', function () {
+            var filtered = filterGlCodes(glCodePickerInput.value);
+            renderGlDropdown(filtered);
+        });
+
+        glCodePickerInput.addEventListener('input', function () {
+            var filtered = filterGlCodes(glCodePickerInput.value);
+            renderGlDropdown(filtered);
+            syncHiddenGlCodeFromPicker();
+        });
+
+        glCodePickerInput.addEventListener('change', syncHiddenGlCodeFromPicker);
+
+        document.addEventListener('click', function (event) {
+            var clickedInsideInput = event.target === glCodePickerInput;
+            var clickedInsideDropdown = glCodeDropdown.contains(event.target);
+            if (!clickedInsideInput && !clickedInsideDropdown) {
+                closeGlDropdown();
             }
         });
     }
-}
 
-function attachCodeInputFilters() {
-    document.querySelectorAll('.js-code-input').forEach(function (element) {
-        element.addEventListener('input', function () {
-            var cursor = this.selectionStart;
-            this.value = this.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '');
-            this.setSelectionRange(cursor, cursor);
-        });
-    });
-}
+    setCodeEditableUi(true);
+    updateMonthsToYearsDisplay();
 
-async function loadClassifications() {
-    var response = await fetch(getApiUrl(), {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json'
-        }
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to load hierarchy data.');
-    }
-
-    var rawText = await response.text();
-    var cleaned = normalizeResponseText(rawText);
-    var data = JSON.parse(cleaned);
-
-    if (data.error) {
-        throw new Error(data.error);
-    }
-
-    classificationsStore.plRules = Array.isArray(data.plRules) ? data.plRules : [];
-    classificationsStore.assetTypes = Array.isArray(data.assetTypes) ? data.assetTypes : [];
-    classificationsStore.assetGroups = Array.isArray(data.assetGroups) ? data.assetGroups : [];
-}
-
-function renderErrorState(message) {
-    var text = message || 'Unable to load hierarchy data.';
-    var markup = emptyState('Load failed', text);
-
-    var plContainer = document.getElementById('pl-rules-container');
-    var atContainer = document.getElementById('asset-types-container');
-    var agContainer = document.getElementById('asset-groups-container');
-
-    if (plContainer) plContainer.innerHTML = markup;
-    if (atContainer) atContainer.innerHTML = markup;
-    if (agContainer) agContainer.innerHTML = markup;
-}
-
-async function initializeCategoryManagement() {
-    attachAddButtons();
-    attachCodeInputFilters();
-    initializeAddCategoryAutofill();
-
-    try {
-        await loadClassifications();
-
-        populatePlRuleSelects(activeState.depreciationCode || '');
-        populateAssetTypeSelects(activeState.assetCode || '', false);
-
-        renderPlRules();
-        renderAssetTypes();
-        renderAssetGroups();
-    } catch (error) {
-        renderErrorState(error.message);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', initializeCategoryManagement);
+    loadGlCodes();
+    loadCategories();
+});

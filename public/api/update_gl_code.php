@@ -6,8 +6,8 @@ use App\GlCodeService;
 // Must be set before init so shutdown/layout middleware does not wrap this endpoint.
 $noLayout = true;
 
-require_once '../../src/includes/init.php';
-require_once '../../src/classes/GlCodeService.php';
+require_once __DIR__ . '/../../src/includes/init.php';
+require_once __DIR__ . '/../../src/classes/GlCodeService.php';
 
 header('Content-Type: application/json; charset=utf-8');
 

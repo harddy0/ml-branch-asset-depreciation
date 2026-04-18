@@ -1,65 +1,83 @@
 <?php
-// API endpoint: Get paginated GL codes
 $noLayout = true;
-header('Content-Type: application/json; charset=utf-8');
-
 require_once __DIR__ . '/../../src/includes/init.php';
 require_once __DIR__ . '/../../src/classes/GlCodeService.php';
 
-use App\GlCodeService;
-
-// Prevent warnings/notices from corrupting JSON payloads for AJAX callers.
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
-error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE);
+error_reporting(0);
+while (ob_get_level()) {
+    ob_end_clean();
+}
 
-function respondJson(array $payload, int $statusCode = 200): void
-{
-    http_response_code($statusCode);
-    if (function_exists('ob_get_level') && ob_get_level() > 0) {
-        ob_clean();
-    }
-    echo json_encode($payload);
+header('Content-Type: application/json; charset=utf-8');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
     exit;
 }
 
-// Parse pagination params
-$limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 20;
-$offset = isset($_GET['offset']) ? max(0, (int)$_GET['offset']) : 0;
-$search = trim($_GET['search'] ?? '');
-$glCode = trim($_GET['gl_code'] ?? '');
+if (!$auth->isLoggedIn()) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+    exit;
+}
 
 try {
-    $service = new GlCodeService($pdo);
+    $service = new \App\GlCodeService($pdo);
 
-    // If gl_code is provided, fetch single GL code
-    if (!empty($glCode)) {
-        $glCodeData = $service->getGlCode($glCode);
-        if ($glCodeData) {
-            respondJson([
-                'success' => true,
-                'data' => $glCodeData
-            ]);
-        } else {
-            respondJson([
-                'success' => false,
-                'error' => 'GL code not found'
-            ], 404);
+    // Single-record mode used by edit modal loader.
+    if (isset($_GET['gl_code']) && trim((string)$_GET['gl_code']) !== '') {
+        $glCode = trim((string)$_GET['gl_code']);
+        $record = $service->getGlCode($glCode);
+        if (!$record) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'GL code not found.']);
+            exit;
         }
+
+        echo json_encode(['success' => true, 'data' => $record]);
+        exit;
     }
 
-    // Otherwise, fetch paginated list
-    $result = $service->getPaginatedGlCodes($limit, $offset, $search);
-    respondJson([
-        'success' => true,
-        'data' => $result['data'],
-        'total' => $result['total'],
-        'limit' => $limit,
-        'offset' => $offset
-    ]);
-} catch (Throwable $e) {
-    respondJson([
-        'success' => false,
-        'error' => 'Failed to fetch GL codes.'
-    ], 500);
+    // Paged/list mode used by GL Codes table.
+    $hasListParams = isset($_GET['limit']) || isset($_GET['offset']) || isset($_GET['search']);
+    if ($hasListParams) {
+        $limit = (int)($_GET['limit'] ?? 20);
+        $offset = (int)($_GET['offset'] ?? 0);
+        $search = trim((string)($_GET['search'] ?? ''));
+
+        if ($limit < 1) {
+            $limit = 20;
+        }
+        if ($limit > 200) {
+            $limit = 200;
+        }
+        if ($offset < 0) {
+            $offset = 0;
+        }
+
+        $result = $service->getPaginatedGlCodes($limit, $offset, $search);
+        echo json_encode([
+            'success' => true,
+            'data' => $result['data'],
+            'total' => (int)$result['total'],
+        ]);
+        exit;
+    }
+
+    // Backward-compatible plain-array mode used by dropdown fetches.
+    $codes = $service->getAllGlCodes();
+    if (isset($_GET['type'])) {
+        $type = strtoupper(trim((string)$_GET['type']));
+        $codes = array_values(array_filter($codes, function ($code) use ($type) {
+            return strtoupper((string)($code['account_type'] ?? '')) === $type;
+        }));
+    }
+
+    echo json_encode($codes);
+} catch (\Throwable $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Failed to fetch GL codes.']);
 }
