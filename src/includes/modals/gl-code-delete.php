@@ -1,8 +1,8 @@
-<div id="modal-delete-gl-code" class="fixed inset-0 z-[100] hidden">
+<div id="modal-delete-gl-code" class="fixed inset-0 z-[100] hidden flex items-center justify-center">
     <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity opacity-0 modal-backdrop" onclick="closeModal('modal-delete-gl-code')"></div>
 
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-        <div class="relative bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-md w-full scale-95 opacity-0 modal-panel border border-slate-100">
+    <div class="relative w-full max-w-md px-4 z-10 flex items-center justify-center">
+        <div class="bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all w-full scale-95 opacity-0 modal-panel border border-slate-100">
 
             <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h3 class="text-sm font-black text-slate-800 uppercase tracking-widest">
