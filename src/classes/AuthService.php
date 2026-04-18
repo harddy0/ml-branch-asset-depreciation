@@ -66,13 +66,13 @@ class AuthService {
     }
 
     /**
-     * Admin resets a user's password to the system default: Mlinc1234@
+     * Admin resets a user's password to the system default: Mlinc1234
      * Sets password_changed_at = NOW() so the user is forced to change it on next login.
      */
     public function resetPassword(int $userId): array {
         $ok = $this->db->prepare(
             "UPDATE users SET password_hash = :h, password_changed_at = NOW() WHERE id = :id"
-        )->execute([':h' => password_hash('Mlinc1234@', PASSWORD_ARGON2ID), ':id' => $userId]);
+        )->execute([':h' => password_hash('Mlinc1234', PASSWORD_ARGON2ID), ':id' => $userId]);
         return $ok
             ? ['success' => true]
             : ['success' => false, 'error' => 'Reset failed.'];
@@ -111,7 +111,7 @@ class AuthService {
      * Create a new user.
      *  - id       : manually supplied employee ID (no AUTO_INCREMENT)
      *  - username : auto-generated as first 4 chars of last name + id (uppercase)
-     *  - password : Mlinc1234@ (user forced to change on first login)
+    *  - password : Mlinc1234 (user forced to change on first login)
      */
     public function registerUser(
         int    $id,
@@ -131,7 +131,7 @@ class AuthService {
                 ':mn' => trim($mn) ?: null,
                 ':ln' => trim($ln),
                 ':u'  => $username,
-                ':h'  => password_hash('Mlinc1234@', PASSWORD_ARGON2ID),
+                ':h'  => password_hash('Mlinc1234', PASSWORD_ARGON2ID),
                 ':t'  => $type,
             ]);
             return ['success' => true, 'username' => $username];

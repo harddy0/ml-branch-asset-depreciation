@@ -17,7 +17,7 @@ if (!$id) {
 $result = $auth->resetPassword($id);
 
 if ($result['success']) {
-    $_SESSION['flash_success'] = 'Password reset to Mlinc1234@. User will be required to change it on next login.';
+    $_SESSION['flash_success'] = 'Password reset to Mlinc1234. User will be required to change it on next login.';
 } else {
     $_SESSION['flash_error'] = $result['error'] ?? 'Password reset failed.';
 }

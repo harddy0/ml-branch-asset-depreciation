@@ -40,6 +40,12 @@ unset($_SESSION['cp_error']);
             background: rgba(15, 23, 42, 0.5); /* dark slate with 30% opacity */
             z-index: 0;
         }
+
+        .req-dot {
+            flex: 0 0 auto;
+        }
+        .req-met { background: #16a34a; border-color: #16a34a; }
+        .req-unmet { background: transparent; border-color: #cbd5e1; }
     </style>
 </head>
 <body class="h-full flex items-center justify-center overflow-hidden">
@@ -50,16 +56,9 @@ unset($_SESSION['cp_error']);
     </video>
     <div class="video-overlay"></div>
 
-    <div class="relative z-10 w-full max-w-md bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 p-10">
-        <div class="text-center mb-8">
-            <div class="w-14 h-14 bg-[#e11d48] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-500/30">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                </svg>
-            </div>
-            <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tight">Set New Password</h1>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Required Security Update</p>
+    <div class="relative z-10 w-full max-w-md bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 px-10 py-5">
+        <div class="text-center mb-2">
+            <h1 class="text-lg font-black text-slate-800 uppercase tracking-tight">Set New Password</h1>
         </div>
 
         <?php if ($error): ?>
@@ -68,28 +67,57 @@ unset($_SESSION['cp_error']);
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="<?= BASE_URL ?>/public/actions/update_password.php" class="space-y-6">
+        <form method="POST" action="<?= BASE_URL ?>/public/actions/update_password.php" class="space-y-6" id="pwForm">
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-2">New Password</label>
-                <input type="password" name="new_password" id="new_pw" required minlength="8"
-                    placeholder="••••••••"
-                    class="w-full border-2 border-slate-200 focus:border-[#e11d48] rounded-xl px-4 py-3.5
-                           text-sm font-bold text-slate-800 outline-none bg-white transition-all shadow-sm">
+                <div class="relative">
+                    <input type="password" name="new_password" id="new_pw" required minlength="10"
+                        placeholder="••••••••"
+                        class="w-full pr-12 border-2 border-slate-200 focus:border-[#e11d48] rounded-xl px-4 py-3.5
+                               text-sm font-bold text-slate-800 outline-none bg-white transition-all shadow-sm">
+                    <button type="button" id="toggle_new_pw" aria-label="Show password"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
+                        <svg id="icon_new_pw" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-2">Password requirements</label>
+                <ul id="pwRequirements" class="text-[10px] space-y-2 text-slate-500 ml-2">
+                    <li id="req-length" class="flex items-start gap-2"><span class="req-dot w-3 h-3 rounded-full border req-unmet mt-1"></span>Minimum 10 characters</li>
+                    <li id="req-upper" class="flex items-start gap-2"><span class="req-dot w-3 h-3 rounded-full border req-unmet mt-1"></span>One uppercase character</li>
+                    <li id="req-lower" class="flex items-start gap-2"><span class="req-dot w-3 h-3 rounded-full border req-unmet mt-1"></span>One lowercase character</li>
+                    <li id="req-number" class="flex items-start gap-2"><span class="req-dot w-3 h-3 rounded-full border req-unmet mt-1"></span>One number</li>
+                    <li id="req-special" class="flex items-start gap-2"><span class="req-dot w-3 h-3 rounded-full border req-unmet mt-1"></span>One special character (e.g. !@#$%)</li>
+                </ul>
             </div>
 
             <div>
                 <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-2">Confirm Password</label>
-                <input type="password" name="confirm_password" id="confirm_pw" required minlength="8"
-                    placeholder="••••••••"
-                    class="w-full border-2 border-slate-200 focus:border-[#e11d48] rounded-xl px-4 py-3.5
-                           text-sm font-bold text-slate-800 outline-none bg-white transition-all shadow-sm">
+                <div class="relative">
+                    <input type="password" name="confirm_password" id="confirm_pw" required minlength="10"
+                        placeholder="••••••••"
+                        class="w-full pr-12 border-2 border-slate-200 focus:border-[#e11d48] rounded-xl px-4 py-3.5
+                               text-sm font-bold text-slate-800 outline-none bg-white transition-all shadow-sm">
+                    <button type="button" id="toggle_confirm_pw" aria-label="Show confirm password"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
+                        <svg id="icon_confirm_pw" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </button>
+                </div>
                 <p id="matchHint" class="text-[10px] font-black mt-2 hidden"></p>
             </div>
 
-            <button type="submit"
-                class="w-full bg-[#e11d48] hover:bg-[#be123c] text-white font-black
+            <button type="submit" id="submitBtn" disabled
+                class="w-full bg-[#e11d48] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#be123c] text-white font-black
                        py-4 rounded-xl text-xs uppercase tracking-[0.2em] transition-all shadow-xl shadow-red-500/20 hover:-translate-y-0.5 active:scale-[0.98]">
-                Update Password
+                Change Password
             </button>
         </form>
 
@@ -101,29 +129,6 @@ unset($_SESSION['cp_error']);
         </div>
     </div>
 
-    <script>
-        const np = document.getElementById('new_pw');
-        const cp = document.getElementById('confirm_pw');
-        const hint = document.getElementById('matchHint');
-
-        const validatePasswords = () => {
-            if (!cp.value) { 
-                hint.classList.add('hidden'); 
-                return; 
-            }
-            
-            hint.classList.remove('hidden');
-            if (np.value === cp.value) {
-                hint.textContent = '✓ Passwords match';
-                hint.className = 'text-[10px] font-black mt-2 text-green-600 uppercase tracking-wider';
-            } else {
-                hint.textContent = '✗ Passwords do not match';
-                hint.className = 'text-[10px] font-black mt-2 text-red-500 uppercase tracking-wider';
-            }
-        };
-
-        cp.addEventListener('input', validatePasswords);
-        np.addEventListener('input', validatePasswords);
-    </script>
+    <script src="change-password.js"></script>
 </body>
 </html>

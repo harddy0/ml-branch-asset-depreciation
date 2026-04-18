@@ -13,7 +13,7 @@
             <p class="text-sm font-black text-slate-800 mb-3" id="reset-username-display"></p>
             <p class="text-xs text-slate-400 leading-relaxed">
                Default passoword is
-                <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-600">Mlinc1234@</code>.
+                <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-600">Mlinc1234</code>.
                 The user will be required to update.
             </p>
         </div>

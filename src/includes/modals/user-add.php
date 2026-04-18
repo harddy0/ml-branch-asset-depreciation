@@ -18,8 +18,8 @@
             class="px-7 py-2 space-y-2">
 
             <div class="mb-4 mt-2">
-                <label class="block text-xs font-black text-Red-500 uppercase tracking-widest mb-1.5">
-                    Default password: Mlinc1234@
+                <label class="block text-xs font-black text-Red-500 tracking-widest mb-1.5">
+                    Default password: Mlinc1234
                 </label>
             </div>
 
