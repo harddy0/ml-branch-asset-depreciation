@@ -8,11 +8,9 @@ class RunningDepreciationService {
         $this->db = $db;
     }
 
-    public function initializeForAsset(int $assetId, float $acquisitionCost, string $groupCode): void {
-        $actualMonths = $this->getActualMonthsByGroupCode($groupCode);
-
-        if ($actualMonths <= 0) {
-            throw new \RuntimeException('Unable to initialize running depreciation: invalid actual_months for selected group.');
+    public function initializeForAsset(int $assetId, float $acquisitionCost, int $months): void {
+        if ($months <= 0) {
+            throw new \RuntimeException('Unable to initialize running depreciation: invalid asset months.');
         }
 
         $stmt = $this->db->prepare(
@@ -39,19 +37,8 @@ class RunningDepreciationService {
 
         $stmt->execute([
             ':asset_id' => $assetId,
-            ':periods_remaining' => $actualMonths,
+            ':periods_remaining' => $months,
             ':book_value' => round($acquisitionCost, 2),
         ]);
-    }
-
-    private function getActualMonthsByGroupCode(string $groupCode): int {
-        if (trim($groupCode) === '') {
-            return 0;
-        }
-
-        $stmt = $this->db->prepare('SELECT actual_months FROM asset_groups WHERE group_code = :group_code LIMIT 1');
-        $stmt->execute([':group_code' => $groupCode]);
-
-        return (int)($stmt->fetchColumn() ?: 0);
     }
 }

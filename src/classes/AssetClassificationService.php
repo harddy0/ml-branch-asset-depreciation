@@ -89,4 +89,72 @@ class AssetClassificationService {
             return ['success' => false, 'error' => $this->extractDbErrorMessage($e)];
         }
     }
+
+    /**
+     * Returns options for the add-asset group selector.
+     * Compatibility shape: group_code/group_name.
+     */
+    public function getDropdownOptions(): array {
+        $sql = "
+            SELECT
+                ad.depreciation_code AS group_code,
+                CONCAT(ad.depreciation_code, ' - ', ad.description) AS group_name
+            FROM amortization_depreciation ad
+            ORDER BY ad.depreciation_code ASC
+        ";
+
+        $stmt = $this->db->query($sql);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Compatibility adapter for legacy group-details API.
+     * Treats group_code as depreciation_code in the migrated model.
+     */
+    public function getGroupDetailsForAssetCreation(string $groupCode): ?array {
+        $groupCode = trim($groupCode);
+        if ($groupCode === '') {
+            return null;
+        }
+
+        $sql = "
+            SELECT
+                ad.depreciation_code AS group_code,
+                ad.description AS group_name,
+                ad.months AS actual_months,
+                ad.depreciation_code,
+                ad.description AS depreciation_description
+            FROM amortization_depreciation ad
+            WHERE ad.depreciation_code = :group_code
+            LIMIT 1
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':group_code' => $groupCode]);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            return null;
+        }
+
+        $assetSql = "
+            SELECT gl_code AS asset_code, description AS asset_name
+            FROM gl_codes
+            WHERE account_type = 'CREDIT'
+            ORDER BY gl_code ASC
+            LIMIT 1
+        ";
+        $assetStmt = $this->db->query($assetSql);
+        $assetRow = $assetStmt ? $assetStmt->fetch(\PDO::FETCH_ASSOC) : null;
+
+        return [
+            'group_code' => $row['group_code'],
+            'group_name' => $row['group_name'],
+            'actual_months' => (int)$row['actual_months'],
+            'asset_code' => $assetRow['asset_code'] ?? '',
+            'asset_name' => $assetRow['asset_name'] ?? '',
+            'depreciation_code' => $row['depreciation_code'],
+            'depreciation_description' => $row['depreciation_description'],
+        ];
+    }
 }

@@ -29,9 +29,12 @@ try {
         'region_code'             => $_POST['region_code'] ?? '',
         'cost_center_code'        => $_POST['cost_center_code'] ?? '',
         'branch_name'             => $_POST['branch_name'] ?? '',
+        'asset_name'              => trim($_POST['asset_name'] ?? ''),
+        'months'                  => (int)($_POST['months'] ?? 0),
         'group_code'              => $_POST['group_code'] ?? '',
         'asset_code'              => $_POST['asset_code'] ?? '',
         'depreciation_code'       => $_POST['depreciation_code'] ?? '',
+        'item_gl_code'            => $_POST['item_gl_code'] ?? '',
         'description'             => trim($_POST['description'] ?? ''),
         'serial_number'           => $_POST['serial_number'] ?? null,
         'quantity'                => (int)($_POST['quantity'] ?? 1),
@@ -44,7 +47,6 @@ try {
         'acquisition_cost'        => $_POST['acquisition_cost'] ?? 0,
         'cost_unit'               => $_POST['cost_unit'] ?? 0,
         'item_code'               => $_POST['item_code'] ?? null,
-        'monthly_depreciation'    => $_POST['monthly_depreciation'] ?? 0,
         'status'                  => $_POST['status'] ?? 'ACTIVE'
     ];
 

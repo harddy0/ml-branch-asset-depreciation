@@ -35,16 +35,22 @@ try {
         $row['cost_center'] = $row['cost_center_code'];
     }
 
+    $assetMonths = (int)($row['months'] ?? $row['asset_life_months'] ?? 0);
+    if ($assetMonths <= 0 && !empty($row['policy_months'])) {
+        $assetMonths = (int)$row['policy_months'];
+    }
+    $row['asset_life_months'] = $assetMonths;
+
     // Calculate Depreciation
-    $row['period_depreciation_expense'] = isset($row['acquisition_cost'], $row['asset_life_months']) && $row['asset_life_months'] > 0
-        ? ($row['acquisition_cost'] / max(1, $row['asset_life_months']))
+    $row['period_depreciation_expense'] = isset($row['acquisition_cost']) && $assetMonths > 0
+        ? ($row['acquisition_cost'] / max(1, $assetMonths))
         : 0;
 
     if (empty($row['monthly_depreciation'])) $row['monthly_depreciation'] = $row['period_depreciation_expense'];
 
-    if (!isset($row['remaining_life']) && isset($row['accumulated_depreciation']) && isset($row['acquisition_cost']) && isset($row['asset_life_months'])) {
-        $per = $row['acquisition_cost'] / max(1, $row['asset_life_months']);
-        $row['remaining_life'] = ($per > 0) ? ($row['asset_life_months'] - round($row['accumulated_depreciation'] / $per)) : 0;
+    if (!isset($row['remaining_life']) && isset($row['accumulated_depreciation']) && isset($row['acquisition_cost']) && $assetMonths > 0) {
+        $per = $row['acquisition_cost'] / max(1, $assetMonths);
+        $row['remaining_life'] = ($per > 0) ? ($assetMonths - round($row['accumulated_depreciation'] / $per)) : 0;
     }
 
     echo json_encode(['success' => true, 'row' => $row]);

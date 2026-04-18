@@ -45,6 +45,7 @@ try {
             'group_name'                => $details['group_name'],
             'actual_months'             => $details['actual_months'],
             'asset_code'                => $details['asset_code'],
+            'item_gl_code'              => $details['asset_code'],
             'asset_name'                => $details['asset_name'],
             'depreciation_code'         => $details['depreciation_code'],
             'depreciation_description'  => $details['depreciation_description'],

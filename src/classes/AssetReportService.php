@@ -76,10 +76,10 @@ class AssetReportService {
                 a.region_code as region,
                 a.cost_center_code as cost_center,
                 a.branch_name, 
-                a.group_code,
-                a.group_code as category_code,
-                a.group_code as category_name,
-                COALESCE(ag.actual_months, rd.periods_elapsed + rd.periods_remaining, 0) as asset_life_months,
+                a.depreciation_code as group_code,
+                a.depreciation_code as category_code,
+                COALESCE(ad.description, a.asset_name, a.description) as category_name,
+                COALESCE(a.months, rd.periods_elapsed + rd.periods_remaining, 0) as asset_life_months,
                 a.description, 
                 a.date_received,
                 a.depreciation_start_date,
@@ -93,7 +93,7 @@ class AssetReportService {
                 a.monthly_depreciation
             FROM assets a
             JOIN running_depreciation rd ON a.id = rd.asset_id
-            LEFT JOIN asset_groups ag ON a.group_code = ag.group_code
+            LEFT JOIN amortization_depreciation ad ON a.depreciation_code = ad.depreciation_code
             WHERE a.status = 'ACTIVE'
               AND COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) >= :date_from 
               AND COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) <= :date_to

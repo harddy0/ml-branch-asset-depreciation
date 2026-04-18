@@ -3,18 +3,23 @@ namespace App;
 
 class AssetService {
                 /**
-                 * Retrieves asset details (with category and depreciation info) by system asset code.
+                 * Retrieves asset details (with depreciation and running totals) by system asset code.
                  * @param string $code System asset code
                  * @return array|null Asset details row or null if not found
                  */
                 public function getAssetDetailsByCode(string $code): ?array {
-                    $sql = "SELECT a.*, c.category_name, c.category_code, c.asset_life_months,
-                                   rd.accumulated_depreciation, rd.book_value, rd.period_date
+                    $sql = "SELECT a.*, 
+                                   ad.description AS pl_description,
+                                   ad.description AS depreciation_label,
+                                   ad.months AS policy_months,
+                                   a.months AS asset_life_months,
+                                   rd.accumulated_depreciation,
+                                   rd.book_value,
+                                   rd.last_depreciation_date AS period_date
                             FROM assets a
-                            LEFT JOIN asset_categories c ON a.category_code = c.category_code
+                            LEFT JOIN amortization_depreciation ad ON a.depreciation_code = ad.depreciation_code
                             LEFT JOIN running_depreciation rd ON a.id = rd.asset_id
                             WHERE a.system_asset_code = :code
-                            ORDER BY rd.period_date DESC
                             LIMIT 1";
                     $stmt = $this->db->prepare($sql);
                     $stmt->execute([':code' => $code]);
@@ -22,18 +27,23 @@ class AssetService {
                     return $row ?: null;
                 }
             /**
-             * Retrieves asset details (with category and depreciation info) by asset ID.
+             * Retrieves asset details (with depreciation and running totals) by asset ID.
              * @param int $id Asset ID
              * @return array|null Asset details row or null if not found
              */
             public function getAssetDetailsById(int $id): ?array {
-                $sql = "SELECT a.*, c.category_name, c.category_code, c.asset_life_months,
-                               rd.accumulated_depreciation, rd.book_value, rd.period_date
+                $sql = "SELECT a.*, 
+                               ad.description AS pl_description,
+                               ad.description AS depreciation_label,
+                               ad.months AS policy_months,
+                               a.months AS asset_life_months,
+                               rd.accumulated_depreciation,
+                               rd.book_value,
+                               rd.last_depreciation_date AS period_date
                         FROM assets a
-                        LEFT JOIN asset_categories c ON a.category_code = c.category_code
+                        LEFT JOIN amortization_depreciation ad ON a.depreciation_code = ad.depreciation_code
                         LEFT JOIN running_depreciation rd ON a.id = rd.asset_id
                         WHERE a.id = :id
-                        ORDER BY rd.period_date DESC
                         LIMIT 1";
                 $stmt = $this->db->prepare($sql);
                 $stmt->execute([':id' => $id]);
@@ -53,7 +63,7 @@ class AssetService {
                 $normalizeNumber = function ($v) {
                     $s = trim((string)($v ?? ''));
                     if ($s === '') return 0.0;
-                    $s = str_replace([',', ' ', '₱', '$'], '', $s);
+                    $s = str_replace([',', ' ', '$'], '', $s);
                     $s = preg_replace('/[^0-9.\-]/', '', $s);
                     if ($s === '' || $s === '.' || $s === '-') return 0.0;
                     return (float)$s;
@@ -67,9 +77,10 @@ class AssetService {
                     'region_code'             => $postData['region_code'] ?? '',
                     'cost_center_code'        => $postData['cost_center_code'] ?? '',
                     'branch_name'             => $postData['branch_name'] ?? '',
-                    'group_code'              => $postData['group_code'] ?? '',
-                    'asset_code'              => $postData['asset_code'] ?? '',
+                    'asset_name'              => trim((string)($postData['asset_name'] ?? $postData['description'] ?? '')),
+                    'months'                  => (int)($postData['months'] ?? 0),
                     'depreciation_code'       => $postData['depreciation_code'] ?? '',
+                    'item_gl_code'            => $postData['item_gl_code'] ?? $postData['asset_code'] ?? '',
                     'description'             => trim($postData['description'] ?? ''),
                     'serial_number'           => $postData['serial_number'] ?? null,
                     'quantity'                => (int)($postData['quantity'] ?? 1),
@@ -82,7 +93,6 @@ class AssetService {
                     'acquisition_cost'        => $normalizeNumber($postData['acquisition_cost'] ?? 0),
                     'cost_unit'               => $normalizeNumber($postData['cost_unit'] ?? 0),
                     'item_code'               => $postData['item_code'] ?? null,
-                    'monthly_depreciation'    => $normalizeNumber($postData['monthly_depreciation'] ?? 0),
                     'status'                  => $postData['status'] ?? 'ACTIVE'
                 ];
 
@@ -91,15 +101,34 @@ class AssetService {
                 $rand = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
                 $data['system_asset_code'] = "LRI-{$data['main_zone_code']}-{$data['zone_code']}-{$year}{$rand}";
 
-                // 2b. Server-side fallback for monthly depreciation if client value is missing/zero
-                if ($data['monthly_depreciation'] <= 0 && $data['acquisition_cost'] > 0 && !empty($data['group_code'])) {
-                    $stmt = $this->db->prepare("SELECT actual_months FROM asset_groups WHERE group_code = :group_code LIMIT 1");
-                    $stmt->execute([':group_code' => $data['group_code']]);
-                    $actualMonths = (int)($stmt->fetchColumn() ?: 0);
-                    if ($actualMonths > 0) {
-                        $data['monthly_depreciation'] = round($data['acquisition_cost'] / $actualMonths, 2);
+                if ($data['depreciation_code'] === '') {
+                    return ['success' => false, 'error' => 'Depreciation code is required.'];
+                }
+                if ($data['item_gl_code'] === '') {
+                    return ['success' => false, 'error' => 'Item GL code is required.'];
+                }
+                if ($data['asset_name'] === '') {
+                    return ['success' => false, 'error' => 'Asset name is required.'];
+                }
+                if ($data['months'] <= 0) {
+                    $policyMonthsFallback = $this->getPolicyMonthsByDepreciationCode((string)$data['depreciation_code']);
+                    if ($policyMonthsFallback > 0) {
+                        $data['months'] = $policyMonthsFallback;
                     }
                 }
+                if ($data['months'] <= 0) {
+                    return ['success' => false, 'error' => 'Asset months must be greater than zero.'];
+                }
+
+                $policyMonths = $this->getPolicyMonthsByDepreciationCode((string)$data['depreciation_code']);
+                if ($policyMonths <= 0) {
+                    return ['success' => false, 'error' => 'Invalid depreciation code or missing policy months.'];
+                }
+                if ($data['months'] > $policyMonths) {
+                    return ['success' => false, 'error' => 'Asset months cannot exceed policy baseline months.'];
+                }
+
+                $data['monthly_depreciation'] = round(((float)$data['acquisition_cost']) / max(1, (int)$data['months']), 2);
 
                 // 3. Save to Database (reuse createAsset)
                 $result = $this->createAsset($data, $userId);
@@ -127,36 +156,32 @@ class AssetService {
                 INSERT INTO assets (
                     system_asset_code, reference_no, 
                     main_zone_code, zone_code, region_code, cost_center_code, branch_name,
-                    group_code, asset_code, depreciation_code, 
-                    description, serial_number, quantity, property_type,
+                    asset_name, months, depreciation_code, item_gl_code,
+                    description, serial_number, item_code, quantity, property_type,
                     date_received, depreciation_start_date, depreciation_end_date,
                     depreciation_on, depreciation_day,
-                    acquisition_cost, cost_unit, item_code, monthly_depreciation, status,
+                    acquisition_cost, cost_unit, monthly_depreciation, status,
                     created_by
                 ) VALUES (
                     :system_asset_code, :reference_no, 
                     :main_zone_code, :zone_code, :region_code, :cost_center_code, :branch_name,
-                    :group_code, :asset_code, :depreciation_code, 
-                    :description, :serial_number, :quantity, :property_type,
+                    :asset_name, :months, :depreciation_code, :item_gl_code,
+                    :description, :serial_number, :item_code, :quantity, :property_type,
                     :date_received, :depreciation_start_date, :depreciation_end_date,
                     :depreciation_on, :depreciation_day, 
-                    :acquisition_cost, :cost_unit, :item_code, :monthly_depreciation, :status,
+                    :acquisition_cost, :cost_unit, :monthly_depreciation, :status,
                     :created_by
                 )
             ";
 
             // Recompute monthly_depreciation on the server to ensure correctness
             $acq = (float)($data['acquisition_cost'] ?? 0);
-            $providedMonthly = isset($data['monthly_depreciation']) ? (float)$data['monthly_depreciation'] : 0.0;
-            $monthlyToUse = $providedMonthly;
-            if (!empty($data['group_code']) && $acq > 0) {
-                $gStmt = $this->db->prepare('SELECT actual_months FROM asset_groups WHERE group_code = :group_code LIMIT 1');
-                $gStmt->execute([':group_code' => $data['group_code']]);
-                $actualMonths = (int)($gStmt->fetchColumn() ?: 0);
-                if ($actualMonths > 0) {
-                    $monthlyToUse = round($acq / $actualMonths, 2);
-                }
+            $assetMonths = (int)($data['months'] ?? 0);
+            if ($assetMonths <= 0) {
+                throw new \InvalidArgumentException('Asset months must be greater than zero.');
             }
+
+            $monthlyToUse = round($acq / $assetMonths, 2);
             // ensure the data array carries the canonical monthly value
             $data['monthly_depreciation'] = $monthlyToUse;
 
@@ -169,11 +194,13 @@ class AssetService {
                 ':region_code'             => $data['region_code'],
                 ':cost_center_code'        => $data['cost_center_code'],
                 ':branch_name'             => $data['branch_name'],
-                ':group_code'              => $data['group_code'],
-                ':asset_code'              => $data['asset_code'],
+                ':asset_name'              => $data['asset_name'],
+                ':months'                  => $assetMonths,
                 ':depreciation_code'       => $data['depreciation_code'],
+                ':item_gl_code'            => $data['item_gl_code'],
                 ':description'             => $data['description'],
                 ':serial_number'           => $data['serial_number'],
+                ':item_code'               => $data['item_code'],
                 ':quantity'                => $data['quantity'],
                 ':property_type'           => $data['property_type'],
                 ':date_received'           => $data['date_received'],
@@ -183,7 +210,6 @@ class AssetService {
                 ':depreciation_day'        => $data['depreciation_day'],
                 ':acquisition_cost'        => $data['acquisition_cost'],
                 ':cost_unit'               => $data['cost_unit'],
-                ':item_code'               => $data['item_code'],
                 ':monthly_depreciation'    => $data['monthly_depreciation'],
                 ':status'                  => $data['status'],
                 ':created_by'              => $userId
@@ -195,7 +221,7 @@ class AssetService {
             $runningDepService->initializeForAsset(
                 $assetId,
                 (float)$data['acquisition_cost'],
-                (string)$data['group_code']
+                (int)$assetMonths
             );
 
             $this->generateAssetLedgerEntries($assetId, $data);
@@ -290,7 +316,7 @@ class AssetService {
             'serial_number' => 'a.serial_number',
             'description' => 'a.description',
             'item_code' => 'a.item_code',
-            'group_code' => 'a.group_code',
+            'group_code' => 'a.depreciation_code',
             'branch_name' => 'a.branch_name',
             'acquisition_cost' => 'a.acquisition_cost',
             'monthly_depreciation' => 'a.monthly_depreciation',
@@ -314,7 +340,7 @@ class AssetService {
         }
 
         if ($groupCode !== '') {
-            $where[] = 'a.group_code = :group_code';
+            $where[] = 'a.depreciation_code = :group_code';
             $params[':group_code'] = $groupCode;
         }
 
@@ -338,7 +364,7 @@ class AssetService {
                 a.serial_number LIKE :search
                 OR a.description LIKE :search
                 OR a.item_code LIKE :search
-                OR a.group_code LIKE :search
+                OR a.depreciation_code LIKE :search
                 OR a.branch_name LIKE :search
                 OR u.username LIKE :search
             )';
@@ -375,7 +401,7 @@ class AssetService {
                 a.serial_number,
                 a.description,
                 a.item_code,
-                a.group_code,
+                a.depreciation_code AS group_code,
                 a.branch_name,
                 a.acquisition_cost,
                 a.monthly_depreciation,
@@ -411,7 +437,7 @@ class AssetService {
         }
 
         if ($groupCode !== '') {
-            $branchWhere[] = 'a.group_code = :group_code';
+            $branchWhere[] = 'a.depreciation_code = :group_code';
             $branchParams[':group_code'] = $groupCode;
         }
 
@@ -534,39 +560,63 @@ class AssetService {
      * Generates the fully denormalized GL ledger entries for the entire lifespan of the asset.
      */
     private function generateAssetLedgerEntries(int $assetId, array $data): void {
-        // 1. Fetch the total lifespan months from the asset_groups table
-        $stmt = $this->db->prepare('SELECT actual_months FROM asset_groups WHERE group_code = :group_code LIMIT 1');
-        $stmt->execute([':group_code' => $data['group_code']]);
-        $lifespanMonths = (int)($stmt->fetchColumn() ?: 0);
+        $lifespanMonths = (int)($data['months'] ?? 0);
 
         if ($lifespanMonths <= 0) {
             return; // Safety check
         }
 
+        // Category GL context from amortization_depreciation + gl_codes
+        $categoryStmt = $this->db->prepare(
+            'SELECT ad.gl_code AS category_gl_code, gc.account_type AS category_gl_type
+             FROM amortization_depreciation ad
+             LEFT JOIN gl_codes gc ON gc.gl_code = ad.gl_code
+             WHERE ad.depreciation_code = :depreciation_code
+             LIMIT 1'
+        );
+        $categoryStmt->execute([':depreciation_code' => $data['depreciation_code']]);
+        $categoryGl = $categoryStmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+
+        if (!$categoryGl || empty($categoryGl['category_gl_code']) || empty($categoryGl['category_gl_type'])) {
+            throw new \RuntimeException('Unable to resolve Category GL mapping for depreciation code.');
+        }
+
+        // Item GL context from gl_codes
+        $itemStmt = $this->db->prepare('SELECT account_type FROM gl_codes WHERE gl_code = :gl_code LIMIT 1');
+        $itemStmt->execute([':gl_code' => $data['item_gl_code']]);
+        $itemGlType = (string)($itemStmt->fetchColumn() ?: '');
+
+        if ($itemGlType === '') {
+            throw new \RuntimeException('Unable to resolve Item GL mapping for item GL code.');
+        }
+
         $acquisitionCost = (float)$data['acquisition_cost'];
         $monthlyDepreciation = (float)$data['monthly_depreciation'];
         $startDate = new \DateTime($data['depreciation_start_date']);
+        $specificDay = (int)($data['depreciation_day'] ?? 1);
 
-        // 2. Prepare the exact statement matching your depreciation_ledger table
+        // 2. Prepare the exact statement matching depreciation_ledger table
         $sql = "
             INSERT INTO depreciation_ledger (
                 asset_id, system_asset_code, description,
                 main_zone_code, zone_code, region_code, cost_center_code, branch_name,
-                group_code, asset_code, depreciation_code, property_type,
+                asset_name, months, depreciation_code, property_type,
                 acquisition_cost, monthly_depreciation,
                 period_date, period_month, period_year,
                 periods_elapsed, periods_remaining, period_depreciation_expense,
                 accumulated_depreciation, book_value,
-                gl_debit_code, gl_debit_amount, gl_credit_code, gl_credit_amount
+                category_gl_code, category_gl_type, category_amount,
+                item_gl_code, item_gl_type, item_amount
             ) VALUES (
                 :asset_id, :system_asset_code, :description,
                 :main_zone_code, :zone_code, :region_code, :cost_center_code, :branch_name,
-                :group_code, :asset_code, :depreciation_code, :property_type,
+                :asset_name, :months, :depreciation_code, :property_type,
                 :acquisition_cost, :monthly_depreciation,
                 :period_date, :period_month, :period_year,
                 :periods_elapsed, :periods_remaining, :period_depreciation_expense,
                 :accumulated_depreciation, :book_value,
-                :gl_debit_code, :gl_debit_amount, :gl_credit_code, :gl_credit_amount
+                :category_gl_code, :category_gl_type, :category_amount,
+                :item_gl_code, :item_gl_type, :item_amount
             )
         ";
         $insertStmt = $this->db->prepare($sql);
@@ -582,6 +632,19 @@ class AssetService {
                 $currentPeriodDate->modify('first day of this month');
                 $currentPeriodDate->modify("+{$i} months");
                 $currentPeriodDate->modify('last day of this month');
+            } elseif ($depreciateOn === 'FIRST_DAY') {
+                $currentPeriodDate = clone $startDate;
+                $currentPeriodDate->modify('first day of this month');
+                $currentPeriodDate->modify("+{$i} months");
+            } elseif ($depreciateOn === 'SPECIFIC_DATE') {
+                $currentPeriodDate = clone $startDate;
+                $currentPeriodDate->modify('first day of this month');
+                $currentPeriodDate->modify("+{$i} months");
+                $year = (int)$currentPeriodDate->format('Y');
+                $month = (int)$currentPeriodDate->format('n');
+                $maxDay = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+                $safeDay = min(max(1, $specificDay), $maxDay);
+                $currentPeriodDate->setDate($year, $month, $safeDay);
             } else {
                 // Default: just add months
                 $currentPeriodDate = clone $startDate;
@@ -613,8 +676,8 @@ class AssetService {
                 ':branch_name'                => $data['branch_name'],
 
                 // Classification Snapshot
-                ':group_code'                 => $data['group_code'],
-                ':asset_code'                 => $data['asset_code'],
+                ':asset_name'                 => $data['asset_name'],
+                ':months'                     => $lifespanMonths,
                 ':depreciation_code'          => $data['depreciation_code'],
                 ':property_type'              => $data['property_type'],
 
@@ -635,12 +698,25 @@ class AssetService {
                 ':book_value'                 => round($bookValue, 2),
 
                 // Journal Entry (GL Posting)
-                ':gl_debit_code'              => $data['depreciation_code'],
-                ':gl_debit_amount'            => $monthlyDepreciation,
-                ':gl_credit_code'             => $data['asset_code'],
-                ':gl_credit_amount'           => $monthlyDepreciation
+                ':category_gl_code'           => $categoryGl['category_gl_code'],
+                ':category_gl_type'           => $categoryGl['category_gl_type'],
+                ':category_amount'            => $monthlyDepreciation,
+                ':item_gl_code'               => $data['item_gl_code'],
+                ':item_gl_type'               => $itemGlType,
+                ':item_amount'                => $monthlyDepreciation
             ]);
         }
+    }
+
+    private function getPolicyMonthsByDepreciationCode(string $depreciationCode): int {
+        if (trim($depreciationCode) === '') {
+            return 0;
+        }
+
+        $stmt = $this->db->prepare('SELECT months FROM amortization_depreciation WHERE depreciation_code = :depreciation_code LIMIT 1');
+        $stmt->execute([':depreciation_code' => $depreciationCode]);
+
+        return (int)($stmt->fetchColumn() ?: 0);
     }
 
 }
