@@ -38,16 +38,25 @@ class ExpenseTypeService {
     /**
      * READ: Get all expense types with Search and Pagination
      */
-    public function getExpenseTypes($searchTerm = '', $limit = 10, $offset = 0) {
+    public function getExpenseTypes($searchTerm = '', $limit = 10, $offset = 0, $categoryType = '') {
         $sql = "SELECT id, expense_name, category_type, policy_months 
                 FROM expense_types";
         
         $params = [];
+        $clauses = [];
 
         if (!empty($searchTerm)) {
-            $sql .= " WHERE expense_name LIKE :search 
-                      OR category_type LIKE :search";
+            $clauses[] = "(expense_name LIKE :search OR category_type LIKE :search)";
             $params[':search'] = '%' . $searchTerm . '%';
+        }
+
+        if (!empty($categoryType)) {
+            $clauses[] = "category_type = :category";
+            $params[':category'] = $categoryType;
+        }
+
+        if (!empty($clauses)) {
+            $sql .= ' WHERE ' . implode(' AND ', $clauses);
         }
 
         $sql .= " ORDER BY id DESC LIMIT :limit OFFSET :offset";
@@ -68,14 +77,23 @@ class ExpenseTypeService {
     /**
      * HELPERS: Get total count for Pagination logic
      */
-    public function getTotalCount($searchTerm = '') {
+    public function getTotalCount($searchTerm = '', $categoryType = '') {
         $sql = "SELECT COUNT(id) as total FROM expense_types";
         $params = [];
+        $clauses = [];
 
         if (!empty($searchTerm)) {
-            $sql .= " WHERE expense_name LIKE :search 
-                      OR category_type LIKE :search";
+            $clauses[] = "(expense_name LIKE :search OR category_type LIKE :search)";
             $params[':search'] = '%' . $searchTerm . '%';
+        }
+
+        if (!empty($categoryType)) {
+            $clauses[] = "category_type = :category";
+            $params[':category'] = $categoryType;
+        }
+
+        if (!empty($clauses)) {
+            $sql .= ' WHERE ' . implode(' AND ', $clauses);
         }
 
         $stmt = $this->pdo->prepare($sql);

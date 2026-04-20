@@ -227,6 +227,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Expense Type filter on Asset Groups page
+    const expenseFilter = document.getElementById('filter-category-type');
+    if (expenseFilter) {
+        expenseFilter.addEventListener('change', function () {
+            const v = this.value;
+            const allRows = Object.values(assetGroupsCache || {});
+            if (!v) {
+                renderAssetGroups(allRows);
+                return;
+            }
+            const filtered = allRows.filter(r => String(r.expense_type_id) === String(v));
+            if (filtered.length === 0) {
+                const tbody = document.getElementById('assetGroupsTbody');
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-slate-500">No matching asset groups.</td></tr>';
+            } else {
+                renderAssetGroups(filtered);
+            }
+        });
+    }
+
     // --- Fetch and Populate Dropdowns ---
     async function loadDropdownData() {
         try {
@@ -260,12 +280,20 @@ document.addEventListener('DOMContentLoaded', function() {
     function populateExpenseDropdowns(expenses) {
         const optionsHTML = `<option value="">-- Select Expense Type --</option>` + 
             expenses.map(ex => `<option value="${ex.id}">${ex.expense_name} (${ex.policy_months} months policy)</option>`).join('');
-        
+
         const addExpenseSelect = document.querySelector('#formAddAssetGroup select[name="expense_type_id"]');
         if (addExpenseSelect) addExpenseSelect.innerHTML = optionsHTML;
 
         const editExpenseSelect = document.getElementById('edit_expense_type_id');
         if (editExpenseSelect) editExpenseSelect.innerHTML = optionsHTML;
+
+        // Also populate the filter on the Asset Groups page so the same expense types are available
+        const filterSelect = document.getElementById('filter-category-type');
+        if (filterSelect) {
+            const filterOptions = `<option value="">-- All --</option>` +
+                expenses.map(ex => `<option value="${ex.id}">${ex.expense_name} (${ex.policy_months} months)</option>`).join('');
+            filterSelect.innerHTML = filterOptions;
+        }
     }
 
     function populateGLDropdowns(glCodes) {

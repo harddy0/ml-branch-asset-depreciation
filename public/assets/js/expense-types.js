@@ -1,5 +1,17 @@
 var currentPage = 1;
 var currentSearch = '';
+var currentCategoryFilter = '';
+
+document.addEventListener('DOMContentLoaded', function() {
+    var filterSelect = document.getElementById('filter-category-type');
+    if (filterSelect) {
+        currentCategoryFilter = filterSelect.value || '';
+        filterSelect.addEventListener('change', function () {
+            currentCategoryFilter = this.value || '';
+            loadExpenseTypes(currentSearch, 1);
+        });
+    }
+});
 
 // Simple toast/flash utility (top-center)
 function showToast(type, message) {
@@ -59,6 +71,9 @@ function handleSearch() {
 function loadExpenseTypes(search, page) {
     currentPage = page;
     var url = BASE_URL + '/api/get_expense_types.php?search=' + encodeURIComponent(search) + '&page=' + page;
+    if (currentCategoryFilter) {
+        url += '&category=' + encodeURIComponent(currentCategoryFilter);
+    }
     
     fetch(url)
         .then(function(response) { return response.json(); })

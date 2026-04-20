@@ -16,7 +16,7 @@
                     <label class="block text-xs font-black text-slate-600 tracking-wide mb-1">Expense Type (Mother Policy) <span class="text-red-500">*</span></label>
                     <select name="expense_type_id" required class="w-full px-4 py-2 border-2 border-slate-100 focus:border-slate-300 rounded-xl text-sm font-medium outline-none transition-all bg-white">
                         <option value="">-- Select Expense Type --</option>
-                        <option value="1">Dumb Option: Vaults (120 mos)</option>
+                        <option value="1">Dumb Option: Vaults (120 months)</option>
                     </select>
                 </div>
 
