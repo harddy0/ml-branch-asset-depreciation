@@ -225,6 +225,7 @@ class AssetGroupService {
                 ag.actual_months, 
                 ag.asset_gl_code, 
                 ag.expense_gl_code,
+                ag.expense_type_id,
                 et.expense_name,
                 et.policy_months
             FROM asset_groups ag

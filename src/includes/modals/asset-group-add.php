@@ -8,12 +8,12 @@
         <form id="formAddAssetGroup">
             <div class="p-4 space-y-4">
                 <div>
-                    <label class="block text-xs font-black text-slate-600 uppercase tracking-wide mb-1">Group Name <span class="text-red-500">*</span></label>
+                    <label class="block text-xs font-black text-slate-600 tracking-wide mb-1">Group Name <span class="text-red-500">*</span></label>
                     <input type="text" name="group_name" placeholder="e.g., Branch Vaults" required class="w-full px-4 py-2 border-2 border-slate-100 focus:border-slate-300 rounded-xl text-sm font-medium outline-none transition-all">
                 </div>
                 
                 <div>
-                    <label class="block text-xs font-black text-slate-600 uppercase tracking-wide mb-1">Expense Type (Mother Policy) <span class="text-red-500">*</span></label>
+                    <label class="block text-xs font-black text-slate-600 tracking-wide mb-1">Expense Type (Mother Policy) <span class="text-red-500">*</span></label>
                     <select name="expense_type_id" required class="w-full px-4 py-2 border-2 border-slate-100 focus:border-slate-300 rounded-xl text-sm font-medium outline-none transition-all bg-white">
                         <option value="">-- Select Expense Type --</option>
                         <option value="1">Dumb Option: Vaults (120 mos)</option>
@@ -21,12 +21,12 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-black text-slate-600 uppercase tracking-wide mb-1">Actual Months <span class="text-red-500">*</span></label>
+                    <label class="block text-xs font-black text-slate-600 tracking-wide mb-1">Actual Months <span class="text-red-500">*</span></label>
                     <input type="number" name="actual_months" placeholder="Must not exceed policy months" required class="w-full px-4 py-2 border-2 border-slate-100 focus:border-slate-300 rounded-xl text-sm font-medium outline-none transition-all">
                 </div>
 
                 <div>
-                    <label class="block text-xs font-black text-slate-600 uppercase tracking-wide mb-1">Asset GL Code (Balance Sheet Side) <span class="text-red-500">*</span></label>
+                    <label class="block text-xs font-black text-slate-600 tracking-wide mb-1">Asset GL Code (Balance Sheet Side) <span class="text-red-500">*</span></label>
                     <select name="asset_gl_code" required class="w-full px-4 py-2 border-2 border-slate-100 focus:border-slate-300 rounded-xl text-sm font-medium outline-none transition-all bg-white">
                         <option value="">-- Select GL Code --</option>
                         <option value="1231101">Dumb Option: 1231101 - Asset</option>
@@ -34,7 +34,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-black text-slate-600 uppercase tracking-wide mb-1">Expense GL Code (P&L Side) <span class="text-red-500">*</span></label>
+                    <label class="block text-xs font-black text-slate-600 tracking-wide mb-1">Expense GL Code (P&L Side) <span class="text-red-500">*</span></label>
                     <select name="expense_gl_code" required class="w-full px-4 py-2 border-2 border-slate-100 focus:border-slate-300 rounded-xl text-sm font-medium outline-none transition-all bg-white">
                         <option value="">-- Select GL Code --</option>
                         <option value="5678801">Dumb Option: 5678801 - Expense</option>
@@ -43,8 +43,8 @@
             </div>
             
             <div class="bg-slate-50 px-4 py-3 border-t border-slate-200 flex justify-end gap-2">
-                <button type="button" onclick="closeModal('asset-group-add-modal')" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 text-xs font-black uppercase tracking-widest transition">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-[#ce2216] text-white rounded-xl hover:bg-red-700 text-xs font-black uppercase tracking-widest transition">Save Asset Group</button>
+                <button type="button" onclick="closeModal('asset-group-add-modal')" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 text-xs font-black tracking-widest transition">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-[#ce2216] text-white rounded-xl hover:bg-red-700 text-xs font-black tracking-widest transition">Save</button>
             </div>
         </form>
     </div>

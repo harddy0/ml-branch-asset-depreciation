@@ -44,7 +44,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
                 <tr class="bg-[#ce2216] border-b border-slate-200">
                     <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2">ID</th>
                     <th class="text-left text-xs font-black text-white tracking-widest px-6 py-2">Expense Name</th>
-                    <th class="text-left text-xs font-black text-white tracking-widest px-6 py-2">Category Type</th>
+                    <th class="text-left text-xs font-black text-white tracking-widest px-6 py-2 pl-8">Category Type</th>
                     <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2">Amortization</th>
                     <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2">Actions</th>
                 </tr>

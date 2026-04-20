@@ -1,6 +1,51 @@
 var currentPage = 1;
 var currentSearch = '';
 
+// Simple toast/flash utility (top-center)
+function showToast(type, message) {
+    if (!message) return;
+    let container = document.getElementById('global-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'global-toast-container';
+        container.style.position = 'fixed';
+        container.style.top = '1rem';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'mb-3 flex items-center gap-3 text-sm font-bold rounded-xl px-5 py-3.5 shadow-sm';
+    if (type === 'success') {
+        toast.className += ' bg-green-50 border border-green-200 text-green-800';
+        toast.innerHTML = `
+            <svg class="w-5 h-5 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>${message}</div>
+        `;
+    } else {
+        toast.className += ' bg-red-50 border border-red-200 text-red-800';
+        toast.innerHTML = `
+            <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>${message}</div>
+        `;
+    }
+
+    container.appendChild(toast);
+    // Auto remove after 3.5s
+    setTimeout(() => {
+        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 3500);
+
+    // Remove on click
+    toast.addEventListener('click', () => { if (toast.parentNode) toast.parentNode.removeChild(toast); });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     loadExpenseTypes('', 1);
 });
@@ -22,10 +67,10 @@ function loadExpenseTypes(search, page) {
                 renderTable(result.data);
                 renderPagination(result.pagination);
             } else {
-                alert('Failed to load data: ' + result.message);
+                showToast('error', 'Failed to load data: ' + (result.message || 'Unknown'));
             }
         })
-        .catch(function(error) { console.error('Error fetching data:', error); });
+        .catch(function(error) { console.error('Error fetching data:', error); showToast('error', 'Network error loading expense types.'); });
 }
 
 function renderTable(data) {
@@ -109,7 +154,7 @@ function openEditModal(id) {
                 document.getElementById('edit_policy_months').value = result.data.policy_months;
                 document.getElementById('editExpenseTypeModal').classList.remove('hidden');
             }
-        });
+        }).catch(function(err){ console.error('Failed to fetch expense type by id:', err); showToast('error', 'Failed to load expense type.'); });
 }
 
 function closeEditModal() {
@@ -128,26 +173,6 @@ function closeDeleteModal() {
 // --- API ACTIONS ---
 function submitAddForm() {
     var formData = new FormData(document.getElementById('addExpenseTypeForm'));
-    fetch(BASE_URL + '/actions/expense_type_store.php', { method: 'POST', body: formData })
-        .then(function(response) { return response.json(); })
-        .then(function(result) {
-            if (result.success) { 
-                alert(result.message); // Show success message
-                closeAddModal(); 
-                loadExpenseTypes(currentSearch, 1); 
-            } else { 
-                alert('Error: ' + result.message); 
-            }
-        })
-        .catch(function(error) { 
-            console.error('Fetch error:', error);
-            alert('A system error occurred. Check the console for details.');
-        });
-}
-
-// --- API ACTIONS ---
-function submitAddForm() {
-    var formData = new FormData(document.getElementById('addExpenseTypeForm'));
     fetch(BASE_URL + '/public/actions/expense_type_store.php', { method: 'POST', body: formData })
         .then(function(response) { 
             return response.text(); // 1. Get raw text instead of json
@@ -158,16 +183,16 @@ function submitAddForm() {
             var result = JSON.parse(cleanText); // 3. Parse it safely
             
             if (result.success) { 
-                alert(result.message); 
+                showToast('success', result.message || 'Saved successfully.');
                 closeAddModal(); 
                 loadExpenseTypes(currentSearch, 1); 
             } else { 
-                alert('Error: ' + result.message); 
+                showToast('error', result.message || 'Save failed.'); 
             }
         })
         .catch(function(error) { 
             console.error('Fetch error:', error);
-            alert('A system error occurred. Check the console for details.');
+            showToast('error', 'A system error occurred. Check console.');
         });
 }
 
@@ -180,16 +205,16 @@ function submitEditForm() {
             var result = JSON.parse(cleanText);
             
             if (result.success) { 
-                alert(result.message); 
+                showToast('success', result.message || 'Updated successfully.'); 
                 closeEditModal(); 
                 loadExpenseTypes(currentSearch, currentPage); 
             } else { 
-                alert('Error: ' + result.message); 
+                showToast('error', result.message || 'Update failed.'); 
             }
         })
         .catch(function(error) { 
             console.error('Fetch error:', error);
-            alert('A system error occurred. Check the console for details.');
+            showToast('error', 'A system error occurred. Check console.');
         });
 }
 
@@ -203,15 +228,15 @@ function confirmDelete() {
             var result = JSON.parse(cleanText);
             
             if (result.success) { 
-                alert(result.message); 
+                showToast('success', result.message || 'Deleted successfully.'); 
                 closeDeleteModal(); 
                 loadExpenseTypes(currentSearch, currentPage); 
             } else { 
-                alert('Error: ' + result.message); 
+                showToast('error', result.message || 'Delete failed.'); 
             }
         })
         .catch(function(error) { 
             console.error('Fetch error:', error);
-            alert('A system error occurred. Check the console for details.');
+            showToast('error', 'A system error occurred. Check console.');
         });
 }
