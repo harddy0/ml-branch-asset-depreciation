@@ -98,6 +98,21 @@ $baseUrl = BASE_URL . '/public';
 
             <?php if (($_SESSION['user_type'] ?? '') === 'ADMIN'): ?>
 
+            <li class="<?= $currentPage === 'asset-groups'
+                ? 'bg-black/25 border-l-4 border-white'
+                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
+                <a href="<?= $baseUrl ?>/asset-groups/"
+                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 7.5V6a2 2 0 012-2h14a2 2 0 012 2v1.5M3 7.5l9 6 9-6M3 7.5v8a2 2 0 002 2h14a2 2 0 002-2v-8" />
+                    </svg>
+                    <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                        Asset Group
+                    </span>
+                </a>
+            </li>
+
             <li class="<?= $currentPage === 'category-mgt'
                 ? 'bg-black/25 border-l-4 border-white'
                 : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
@@ -113,20 +128,7 @@ $baseUrl = BASE_URL . '/public';
                 </a>
             </li>
 
-            <li class="<?= $currentPage === 'asset-groups'
-                ? 'bg-black/25 border-l-4 border-white'
-                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
-                <a href="<?= $baseUrl ?>/asset-groups/"
-                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
-                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 7.5V6a2 2 0 012-2h14a2 2 0 012 2v1.5M3 7.5l9 6 9-6M3 7.5v8a2 2 0 002 2h14a2 2 0 002-2v-8" />
-                    </svg>
-                    <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
-                        Asset Group
-                    </span>
-                </a>
-            </li>
+           
 
             <li class="<?= $currentPage === 'gl-codes'
                 ? 'bg-black/25 border-l-4 border-white'
