@@ -47,6 +47,7 @@ try {
         $limit = (int)($_GET['limit'] ?? 20);
         $offset = (int)($_GET['offset'] ?? 0);
         $search = trim((string)($_GET['search'] ?? ''));
+        $type = isset($_GET['type']) ? strtoupper(trim((string)$_GET['type'])) : '';
 
         if ($limit < 1) {
             $limit = 20;
@@ -58,7 +59,7 @@ try {
             $offset = 0;
         }
 
-        $result = $service->getPaginatedGlCodes($limit, $offset, $search);
+        $result = $service->getPaginatedGlCodes($limit, $offset, $search, $type);
         echo json_encode([
             'success' => true,
             'data' => $result['data'],

@@ -8,7 +8,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let currentPage = 0;
     let currentSearch = '';
+    let currentAccountType = '';
     const limit = 20;
+    const filterSelect = document.getElementById('filter-account-type');
+    if (filterSelect) {
+        currentAccountType = filterSelect.value || '';
+        filterSelect.addEventListener('change', function () {
+            currentAccountType = this.value || '';
+            currentPage = 0;
+            loadGlCodes(currentPage, currentSearch);
+        });
+    }
+
+    // Listen for external filter events
+    window.addEventListener('glCodesFilterChange', function (e) {
+        const v = (e.detail && e.detail.accountType) ? e.detail.accountType : '';
+        currentAccountType = v || '';
+        if (filterSelect) filterSelect.value = currentAccountType;
+        currentPage = 0;
+        loadGlCodes(currentPage, currentSearch);
+    });
 
     function parseJsonPayload(rawText) {
         const text = (rawText || '').replace(/^\uFEFF/, '').trim();
@@ -45,6 +64,9 @@ document.addEventListener('DOMContentLoaded', function () {
             offset: page * limit,
             search: search
         });
+        if (currentAccountType) {
+            params.append('type', currentAccountType);
+        }
 
         fetch(`../api/get_gl_codes.php?${params}`)
             .then(async (res) => {

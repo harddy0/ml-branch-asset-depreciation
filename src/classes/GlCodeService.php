@@ -45,12 +45,20 @@ class GlCodeService {
      * @param string $search
      * @return array [ 'data' => [...], 'total' => int ]
      */
-    public function getPaginatedGlCodes(int $limit = 20, int $offset = 0, string $search = ''): array {
+    public function getPaginatedGlCodes(int $limit = 20, int $offset = 0, string $search = '', string $accountType = ''): array {
         $where = '';
         $params = [];
+        $clauses = [];
         if (!empty($search)) {
-            $where = "WHERE gl_code LIKE :search OR description LIKE :search";
+            $clauses[] = "(gl_code LIKE :search OR description LIKE :search)";
             $params[':search'] = '%' . $search . '%';
+        }
+        if (!empty($accountType)) {
+            $clauses[] = "account_type = :type";
+            $params[':type'] = strtoupper($accountType);
+        }
+        if (!empty($clauses)) {
+            $where = 'WHERE ' . implode(' AND ', $clauses);
         }
 
         $stmt = $this->db->prepare("SELECT gl_code, description, account_type FROM gl_codes {$where} ORDER BY gl_code ASC LIMIT :limit OFFSET :offset");
