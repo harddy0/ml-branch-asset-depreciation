@@ -1,9 +1,9 @@
 <div id="asset-group-delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-        <div class="bg-red-50 px-6 py-4 border-b border-red-100 flex justify-between items-center">
-            <h3 class="font-black text-red-700 uppercase tracking-wide">Confirm Deletion</h3>
-            <button type="button" onclick="closeModal('asset-group-delete-modal')" class="text-red-400 hover:text-red-700 transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+       <div class="bg-[#ce2216] flex justify-between items-center px-4 py-3">
+            <h3 class="text-lg font-black text-white uppercase tracking-wider">Confirm Delete</h3>
+            <button type="button" onclick="closeModal('asset-group-delete-modal')" class="text-red-100 hover:text-white text-2xl font-bold">
+                &times;
             </button>
         </div>
         
@@ -11,7 +11,7 @@
             <input type="hidden" id="delete_id" name="id">
             <div class="p-6">
                 <p class="text-sm text-slate-600 font-medium">Are you sure you want to delete this asset group?</p>
-                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-3 mt-3 rounded-r-md">
+                <div class="bg-yellow-50 border-l-4 border-yellow-50 p-3 mt-3 rounded-r-md">
                     <p class="text-sm text-yellow-700"><i class="fas fa-info-circle"></i> <strong>Note:</strong> You cannot delete an asset group if it is currently assigned to active assets in the system.</p>
                 </div>
             </div>

@@ -19,6 +19,46 @@ window.closeModal = function(modalId) {
     }
 };
 
+// Small toast utility (reusable) - top center
+function showToast(type, message) {
+    if (!message) return;
+    let container = document.getElementById('global-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'global-toast-container';
+        container.style.position = 'fixed';
+        container.style.top = '1rem';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'mb-3 flex items-center gap-3 text-sm font-bold rounded-xl px-5 py-3.5 shadow-sm';
+    if (type === 'success') {
+        toast.className += ' bg-green-50 border border-green-200 text-green-800';
+        toast.innerHTML = `
+            <svg class="w-5 h-5 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>${message}</div>
+        `;
+    } else {
+        toast.className += ' bg-red-50 border border-red-200 text-red-800';
+        toast.innerHTML = `
+            <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>${message}</div>
+        `;
+    }
+
+    container.appendChild(toast);
+    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 3500);
+    toast.addEventListener('click', () => { if (toast.parentNode) toast.parentNode.removeChild(toast); });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log("Asset Groups JS Initialized - Tailwind UI Ready");
 
@@ -93,6 +133,28 @@ document.addEventListener('DOMContentLoaded', function() {
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
+    // Helper: set select value, retrying briefly if options are not loaded yet
+    function setSelectValueWithRetry(selectEl, value, attempts = 6, delay = 120) {
+        if (!selectEl) return;
+        const trySet = () => {
+            if (value === null || value === undefined) {
+                selectEl.value = '';
+                return;
+            }
+            // If option exists, set it
+            const opt = Array.from(selectEl.options).find(o => o.value === String(value));
+            if (opt) {
+                selectEl.value = String(value);
+                return;
+            }
+            // If no options yet and we have attempts left, retry
+            attempts -= 1;
+            if (attempts > 0) setTimeout(trySet, delay);
+            else selectEl.value = '';
+        };
+        trySet();
+    }
+
     // Setup click handlers for edit/delete using event delegation on tbody
     document.addEventListener('click', function(e) {
         const editBtn = e.target.closest && e.target.closest('.edit-btn');
@@ -107,11 +169,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('edit_group_name').value = row.group_name ?? '';
                     document.getElementById('edit_actual_months').value = row.actual_months ?? '';
                     const selectExpense = document.getElementById('edit_expense_type_id');
-                    if (selectExpense) selectExpense.value = row.expense_type_id ?? '';
+                    setSelectValueWithRetry(selectExpense, row.expense_type_id ?? '');
+                    if (typeof dropdownsLoaded?.then === 'function') dropdownsLoaded.then(() => setSelectValueWithRetry(selectExpense, row.expense_type_id ?? ''));
+
                     const selectAssetGl = document.getElementById('edit_asset_gl_code');
-                    if (selectAssetGl) selectAssetGl.value = row.asset_gl_code ?? '';
+                    setSelectValueWithRetry(selectAssetGl, row.asset_gl_code ?? '');
+                    if (typeof dropdownsLoaded?.then === 'function') dropdownsLoaded.then(() => setSelectValueWithRetry(selectAssetGl, row.asset_gl_code ?? ''));
+
                     const selectExpenseGl = document.getElementById('edit_expense_gl_code');
-                    if (selectExpenseGl) selectExpenseGl.value = row.expense_gl_code ?? '';
+                    setSelectValueWithRetry(selectExpenseGl, row.expense_gl_code ?? '');
+                    if (typeof dropdownsLoaded?.then === 'function') dropdownsLoaded.then(() => setSelectValueWithRetry(selectExpenseGl, row.expense_gl_code ?? ''));
                 }
                 openModal('asset-group-edit-modal');
             }
@@ -216,8 +283,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (editExpenseGl) editExpenseGl.innerHTML = optionsHTML;
     }
 
-    // Trigger the load immediately
-    loadDropdownData();
+    // Trigger the load immediately and keep its promise so we can retry setting selects after options load
+    const dropdownsLoaded = loadDropdownData();
 
     // Click outside to close modal
     window.addEventListener('click', function(e) {
@@ -270,24 +337,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     result = JSON.parse(text);
                 } catch (jsonError) {
                     console.error("PHP Error on Save:\n\n", text);
-                    alert("A backend error occurred. Check the console for details.");
+                    showToast('error', 'A backend error occurred. Check console.');
                     return;
                 }
 
                 // 4. Handle the success or failure logic
                 if (result.success) {
-                    // Success: Close modal, clear form, and reload table data
+                    // Success: show toast, close modal, clear form, and reload table data
+                    showToast('success', result.message || 'Asset group added successfully.');
                     closeModal('asset-group-add-modal');
                     this.reset();
                     await loadAssetGroups();
                 } else {
                     // Backend Validation Failed (e.g., Months exceeded policy)
-                    alert("Notice: " + result.message);
+                    showToast('error', result.message || 'Failed to add asset group.');
                 }
 
             } catch (error) {
                 console.error("Network submission failed:", error);
-                alert("Could not connect to the server.");
+                showToast('error', 'Could not connect to the server.');
             } finally {
                 // Restore button state
                 submitBtn.innerText = originalBtnText;
@@ -308,14 +376,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const res = await fetch('../actions/asset_group_update.php', { method: 'POST', body: formData });
                 const text = await res.text();
                 let result;
-                try { result = JSON.parse(text); } catch (err) { console.error('PHP Error on Update:', text); alert('Server error.'); return; }
+                try { result = JSON.parse(text); } catch (err) { console.error('PHP Error on Update:', text); showToast('error', 'Server error.'); return; }
                 if (result.success) {
+                    showToast('success', result.message || 'Updated successfully.');
                     closeModal('asset-group-edit-modal');
                     await loadAssetGroups();
                 } else {
-                    alert('Notice: ' + result.message);
+                    showToast('error', result.message || 'Update failed.');
                 }
-            } catch (err) { console.error('Update failed:', err); alert('Network error.'); }
+            } catch (err) { console.error('Update failed:', err); showToast('error', 'Network error.'); }
             finally { submitBtn.innerText = orig; submitBtn.disabled = false; }
         });
     }
@@ -332,14 +401,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const res = await fetch('../actions/asset_group_delete.php', { method: 'POST', body: formData });
                 const text = await res.text();
                 let result;
-                try { result = JSON.parse(text); } catch (err) { console.error('PHP Error on Delete:', text); alert('Server error.'); return; }
+                try { result = JSON.parse(text); } catch (err) { console.error('PHP Error on Delete:', text); showToast('error', 'Server error.'); return; }
                 if (result.success) {
+                    showToast('success', result.message || 'Asset group deleted.');
                     closeModal('asset-group-delete-modal');
                     await loadAssetGroups();
                 } else {
-                    alert('Notice: ' + result.message);
+                    showToast('error', result.message || 'Delete failed.');
                 }
-            } catch (err) { console.error('Delete failed:', err); alert('Network error.'); }
+            } catch (err) { console.error('Delete failed:', err); showToast('error', 'Network error.'); }
             finally { submitBtn.innerText = orig; submitBtn.disabled = false; }
         });
     }
