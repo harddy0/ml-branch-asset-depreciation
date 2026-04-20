@@ -77,16 +77,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         glCodes.forEach(gl => {
             const row = document.createElement('tr');
-            row.className = 'hover:bg-slate-50/70 transition-colors';
+            row.className = 'hover:bg-slate-100 transition-colors';
             row.innerHTML = `
-                <td class="px-6 py-3 font-mono text-xs font-bold text-slate-600">${gl.gl_code}</td>
-                <td class="px-6 py-3"><p class="font-bold uppercase text-slate-800">${gl.description}</p></td>
-                <td class="px-6 py-3">
+                <td class="px-6 py-0 font-mono text-xs text-center font-bold text-slate-600">${gl.gl_code}</td>
+                <td class="px-6 py-0"><p class="font-bold uppercase text-slate-800">${gl.description}</p></td>
+                <td class="px-6  text-center py-0">
                     <span class="inline-flex items-center gap-1.5 ${gl.account_type === 'CREDIT' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'} text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
                         ${gl.account_type}
                     </span>
                 </td>
-                <td class="px-6 py-3">
+                <td class="px-6 py-0">
                     <div class="flex items-center justify-center gap-1">
                         <button class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all edit-gl-code-btn" title="Edit" data-gl-code="${gl.gl_code}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
