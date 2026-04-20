@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="<?= ASSET_URL ?>css/style.css">
     <script>const BASE_URL = '<?= BASE_URL ?>';</script>
 </head>
-<body class="min-h-screen bg-slate-100 flex flex-col m-0">
+<body class="h-full bg-slate-100 flex flex-col m-0 overflow-hidden">
 
         <?php include dirname(__DIR__) . '/includes/header.php'; ?>
 

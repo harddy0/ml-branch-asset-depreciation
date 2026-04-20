@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $envFile = dirname(__DIR__, 2) . '/.env';
 if (!file_exists($envFile)) die('Missing .env — copy .env.example to .env');
 

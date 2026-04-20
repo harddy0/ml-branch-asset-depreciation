@@ -1,0 +1,308 @@
+/**
+ * Asset Groups Management - Tailwind Modals & API Hooks
+ */
+
+// Global Window functions so Tailwind HTML triggers can find them
+window.openModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if(modal) {
+        modal.classList.remove('hidden');
+    } else {
+        console.error("Modal not found: " + modalId);
+    }
+};
+
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if(modal) {
+        modal.classList.add('hidden');
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Asset Groups JS Initialized - Tailwind UI Ready");
+
+    // In-memory cache of asset groups keyed by id for quick lookup when editing
+    let assetGroupsCache = {};
+
+    // Fetch asset groups from API and render into the table
+    async function loadAssetGroups() {
+        const tbody = document.getElementById('assetGroupsTbody');
+        if (!tbody) return;
+
+        try {
+            const res = await fetch('../api/get_asset_groups.php?page=1&limit=1000');
+            const text = await res.text();
+            let json;
+            try {
+                json = JSON.parse(text);
+            } catch (err) {
+                console.error('PHP error from get_asset_groups.php:', text);
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-red-600">Server error loading asset groups.</td></tr>';
+                return;
+            }
+
+            const rows = json.data || [];
+            assetGroupsCache = {};
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-slate-500">No asset groups found.</td></tr>';
+                return;
+            }
+
+            const html = rows.map(r => {
+                assetGroupsCache[r.id] = r;
+                const expenseName = r.expense_name ? `${r.expense_name}${r.policy_months ? ' (' + r.policy_months + ' mos)' : ''}` : '-';
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-3 text-sm font-medium text-slate-700">${escapeHtml(r.group_name || '')}</td>
+                        <td class="px-6 py-3 text-sm font-medium text-slate-700">${escapeHtml(expenseName)}</td>
+                        <td class="px-6 py-3 text-sm font-medium text-slate-700">${escapeHtml(r.actual_months ?? '')}</td>
+                        <td class="px-6 py-3 text-sm font-medium text-slate-700">${escapeHtml(r.asset_gl_code || '')}</td>
+                        <td class="px-6 py-3 text-sm font-medium text-slate-700">${escapeHtml(r.expense_gl_code || '')}</td>
+                        <td class="px-6 py-3 text-right text-sm">
+                            <button data-id="${r.id}" class="edit-btn inline-flex items-center justify-center w-8 h-8 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-lg shadow-sm transition" title="Edit">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                            <button data-id="${r.id}" class="delete-btn inline-flex items-center justify-center w-8 h-8 ml-1 bg-white hover:bg-red-50 border border-slate-200 text-red-600 rounded-lg shadow-sm transition" title="Delete">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-7 0h8"/></svg>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            tbody.innerHTML = html;
+        } catch (err) {
+            console.error('Failed to fetch asset groups:', err);
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-red-600">Network error loading asset groups.</td></tr>';
+        }
+    }
+
+    // Simple HTML escape for values inserted into templates
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Setup click handlers for edit/delete using event delegation on tbody
+    document.addEventListener('click', function(e) {
+        const editBtn = e.target.closest && e.target.closest('.edit-btn');
+        if (editBtn) {
+            const id = editBtn.getAttribute('data-id');
+            const row = assetGroupsCache[id];
+            if (row) {
+                // Populate edit form
+                const editForm = document.getElementById('formEditAssetGroup');
+                if (editForm) {
+                    document.getElementById('edit_id').value = row.id;
+                    document.getElementById('edit_group_name').value = row.group_name ?? '';
+                    document.getElementById('edit_actual_months').value = row.actual_months ?? '';
+                    const selectExpense = document.getElementById('edit_expense_type_id');
+                    if (selectExpense) selectExpense.value = row.expense_type_id ?? '';
+                    const selectAssetGl = document.getElementById('edit_asset_gl_code');
+                    if (selectAssetGl) selectAssetGl.value = row.asset_gl_code ?? '';
+                    const selectExpenseGl = document.getElementById('edit_expense_gl_code');
+                    if (selectExpenseGl) selectExpenseGl.value = row.expense_gl_code ?? '';
+                }
+                openModal('asset-group-edit-modal');
+            }
+            return;
+        }
+
+        const deleteBtn = e.target.closest && e.target.closest('.delete-btn');
+        if (deleteBtn) {
+            const id = deleteBtn.getAttribute('data-id');
+            const deleteInput = document.getElementById('delete_id');
+            if (deleteInput) deleteInput.value = id;
+            openModal('asset-group-delete-modal');
+            return;
+        }
+    });
+
+    // Initial load of asset groups
+    loadAssetGroups();
+
+    // --- Fetch and Populate Dropdowns ---
+    async function loadDropdownData() {
+        try {
+            // 1. Fetch Expense Types
+            const expenseRes = await fetch('../api/get_expense_types_dropdown.php');
+            const expenseText = await expenseRes.text(); // Read as text first to catch PHP errors
+            
+            try {
+                const expenseData = JSON.parse(expenseText);
+                if(expenseData.success) populateExpenseDropdowns(expenseData.data);
+            } catch(e) {
+                console.error("PHP Error in Expense Types API! Here is what PHP outputted:\n\n", expenseText);
+            }
+
+            // 2. Fetch GL Codes
+            const glRes = await fetch('../api/get_gl_codes_dropdown.php');
+            const glText = await glRes.text();
+            
+            try {
+                const glData = JSON.parse(glText);
+                if(glData.success) populateGLDropdowns(glData.data);
+            } catch(e) {
+                console.error("PHP Error in GL Codes API! Here is what PHP outputted:\n\n", glText);
+            }
+
+        } catch (error) {
+            console.error("Network request failed:", error);
+        }
+    }
+
+    function populateExpenseDropdowns(expenses) {
+        const optionsHTML = `<option value="">-- Select Expense Type --</option>` + 
+            expenses.map(ex => `<option value="${ex.id}">${ex.expense_name} (${ex.policy_months} mos policy)</option>`).join('');
+        
+        const addExpenseSelect = document.querySelector('#formAddAssetGroup select[name="expense_type_id"]');
+        if (addExpenseSelect) addExpenseSelect.innerHTML = optionsHTML;
+
+        const editExpenseSelect = document.getElementById('edit_expense_type_id');
+        if (editExpenseSelect) editExpenseSelect.innerHTML = optionsHTML;
+    }
+
+    function populateGLDropdowns(glCodes) {
+        const optionsHTML = `<option value="">-- Select GL Code --</option>` + 
+            glCodes.map(gl => `<option value="${gl.gl_code}">${gl.gl_code} - ${gl.description}</option>`).join('');
+
+        const addAssetGl = document.querySelector('#formAddAssetGroup select[name="asset_gl_code"]');
+        const addExpenseGl = document.querySelector('#formAddAssetGroup select[name="expense_gl_code"]');
+        if (addAssetGl) addAssetGl.innerHTML = optionsHTML;
+        if (addExpenseGl) addExpenseGl.innerHTML = optionsHTML;
+
+        const editAssetGl = document.getElementById('edit_asset_gl_code');
+        const editExpenseGl = document.getElementById('edit_expense_gl_code');
+        if (editAssetGl) editAssetGl.innerHTML = optionsHTML;
+        if (editExpenseGl) editExpenseGl.innerHTML = optionsHTML;
+    }
+
+    // Trigger the load immediately
+    loadDropdownData();
+
+    // Click outside to close modal
+    window.addEventListener('click', function(e) {
+        if (e.target.id === 'asset-group-add-modal' ||
+            e.target.id === 'asset-group-edit-modal' ||
+            e.target.id === 'asset-group-delete-modal') {
+            e.target.classList.add('hidden');
+        }
+    });
+
+    // Press Escape to close any open modal
+    window.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+
+        ['asset-group-add-modal', 'asset-group-edit-modal', 'asset-group-delete-modal'].forEach(function(id) {
+            const modal = document.getElementById(id);
+            if (modal && !modal.classList.contains('hidden')) {
+                modal.classList.add('hidden');
+            }
+        });
+    });
+
+    // Form Event Listeners 
+    // --- ADD ASSET GROUP FORM LOGIC ---
+    const addForm = document.getElementById('formAddAssetGroup');
+    if(addForm) {
+        addForm.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Stop the browser from refreshing immediately
+            
+            // 1. Scoop up all the input values automatically
+            const formData = new FormData(this);
+            
+            // Optional: Change button text to show it's working
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerText;
+            submitBtn.innerText = "Saving...";
+            submitBtn.disabled = true;
+
+            try {
+                // 2. Send the data to your action endpoint
+                const response = await fetch('../actions/asset_group_store.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // 3. Catch PHP errors just like we did with the dropdowns
+                const text = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (jsonError) {
+                    console.error("PHP Error on Save:\n\n", text);
+                    alert("A backend error occurred. Check the console for details.");
+                    return;
+                }
+
+                // 4. Handle the success or failure logic
+                if (result.success) {
+                    // Success: Close modal, clear form, and reload table data
+                    closeModal('asset-group-add-modal');
+                    this.reset();
+                    await loadAssetGroups();
+                } else {
+                    // Backend Validation Failed (e.g., Months exceeded policy)
+                    alert("Notice: " + result.message);
+                }
+
+            } catch (error) {
+                console.error("Network submission failed:", error);
+                alert("Could not connect to the server.");
+            } finally {
+                // Restore button state
+                submitBtn.innerText = originalBtnText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+
+    const editForm = document.getElementById('formEditAssetGroup');
+    if(editForm) {
+        editForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const orig = submitBtn.innerText;
+            submitBtn.innerText = 'Updating...'; submitBtn.disabled = true;
+            try {
+                const res = await fetch('../actions/asset_group_update.php', { method: 'POST', body: formData });
+                const text = await res.text();
+                let result;
+                try { result = JSON.parse(text); } catch (err) { console.error('PHP Error on Update:', text); alert('Server error.'); return; }
+                if (result.success) {
+                    closeModal('asset-group-edit-modal');
+                    await loadAssetGroups();
+                } else {
+                    alert('Notice: ' + result.message);
+                }
+            } catch (err) { console.error('Update failed:', err); alert('Network error.'); }
+            finally { submitBtn.innerText = orig; submitBtn.disabled = false; }
+        });
+    }
+
+    const deleteForm = document.getElementById('formDeleteAssetGroup');
+    if(deleteForm) {
+        deleteForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const orig = submitBtn.innerText;
+            submitBtn.innerText = 'Deleting...'; submitBtn.disabled = true;
+            try {
+                const res = await fetch('../actions/asset_group_delete.php', { method: 'POST', body: formData });
+                const text = await res.text();
+                let result;
+                try { result = JSON.parse(text); } catch (err) { console.error('PHP Error on Delete:', text); alert('Server error.'); return; }
+                if (result.success) {
+                    closeModal('asset-group-delete-modal');
+                    await loadAssetGroups();
+                } else {
+                    alert('Notice: ' + result.message);
+                }
+            } catch (err) { console.error('Delete failed:', err); alert('Network error.'); }
+            finally { submitBtn.innerText = orig; submitBtn.disabled = false; }
+        });
+    }
+});
