@@ -1,10 +1,11 @@
 ﻿<?php
 $baseUrl = BASE_URL . '/public';
-if (!isset($currentPage)) {
+    if (!isset($currentPage)) {
     $uri = $_SERVER['REQUEST_URI'];
     if     (str_contains($uri, '/dashboard'))     $currentPage = 'dashboard';
     elseif (str_contains($uri, '/manage-assets')) $currentPage = 'manage-assets';
     elseif (str_contains($uri, '/asset-import'))  $currentPage = 'asset-import';
+        elseif (str_contains($uri, '/asset-groups'))  $currentPage = 'asset-groups';
     elseif (str_contains($uri, '/depreciation-list')) $currentPage = 'depreciation-list';
     elseif (str_contains($uri, '/category-mgt'))  $currentPage = 'category-mgt';
     elseif (str_contains($uri, '/gl-codes'))      $currentPage = 'gl-codes'; // Added GL Codes route
@@ -122,7 +123,7 @@ if (!isset($currentPage)) {
                             d="M3 7.5V6a2 2 0 012-2h14a2 2 0 012 2v1.5M3 7.5l9 6 9-6M3 7.5v8a2 2 0 002 2h14a2 2 0 002-2v-8" />
                     </svg>
                     <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
-                        Asset Groups
+                        Asset Group
                     </span>
                 </a>
             </li>
@@ -137,7 +138,7 @@ if (!isset($currentPage)) {
                             d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                     </svg>
                     <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
-                        GL Codes
+                        GL Code
                     </span>
                 </a>
             </li>

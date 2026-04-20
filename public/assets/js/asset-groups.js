@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!tbody) return;
 
         const html = rows.map(r => {
-            const expenseName = r.expense_name ? `${r.expense_name}${r.policy_months ? ' (' + r.policy_months + ' mos)' : ''}` : '-';
+            const expenseName = r.expense_name ? `${r.expense_name}${r.policy_months ? ' (' + r.policy_months + ' months)' : ''}` : '-';
             return `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-6 py-0 text-sm font-medium text-slate-700">${escapeHtml(r.group_name || '')}</td>
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function populateExpenseDropdowns(expenses) {
         const optionsHTML = `<option value="">-- Select Expense Type --</option>` + 
-            expenses.map(ex => `<option value="${ex.id}">${ex.expense_name} (${ex.policy_months} mos policy)</option>`).join('');
+            expenses.map(ex => `<option value="${ex.id}">${ex.expense_name} (${ex.policy_months} months policy)</option>`).join('');
         
         const addExpenseSelect = document.querySelector('#formAddAssetGroup select[name="expense_type_id"]');
         if (addExpenseSelect) addExpenseSelect.innerHTML = optionsHTML;
