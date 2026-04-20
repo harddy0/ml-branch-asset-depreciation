@@ -6,127 +6,144 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 
-class AssetReportService {
-    private \PDO $db;
+class AssetReportService
+{
+    private \PDO  $db;
     private ?\PDO $dbMaster;
 
-    public function __construct(\PDO $db, ?\PDO $dbMaster) {
-        $this->db = $db;
+    public function __construct(\PDO $db, ?\PDO $dbMaster = null)
+    {
+        $this->db       = $db;
         $this->dbMaster = $dbMaster;
     }
 
-    /**
-     * Fetch unique zones from active assets.
-     */
-    public function getZones(): array {
-        $stmt = $this->db->query("SELECT DISTINCT main_zone_code FROM assets WHERE status = 'ACTIVE' AND main_zone_code IS NOT NULL AND main_zone_code != '' ORDER BY main_zone_code");
+    // ==========================================
+    // FILTER DROPDOWN DATA
+    // ==========================================
+
+    public function getZones(): array
+    {
+        $stmt = $this->db->query("
+            SELECT DISTINCT main_zone_code
+            FROM assets
+            WHERE status = 'ACTIVE'
+              AND main_zone_code IS NOT NULL
+              AND main_zone_code <> ''
+            ORDER BY main_zone_code ASC
+        ");
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
-    /**
-     * Fetch unique regions based on selected zone from active assets.
-     */
-    public function getRegions(?string $zone = null): array {
-        $sql = "SELECT DISTINCT region_code FROM assets WHERE status = 'ACTIVE' AND region_code IS NOT NULL AND region_code != ''";
+    public function getRegions(?string $zone = null): array
+    {
+        $sql    = "SELECT DISTINCT region_code FROM assets WHERE status = 'ACTIVE' AND region_code IS NOT NULL AND region_code <> ''";
         $params = [];
+
         if (!empty($zone)) {
-            $sql .= " AND main_zone_code = ?";
-            $params[] = $zone;
+            $sql           .= ' AND main_zone_code = ?';
+            $params[]       = $zone;
         }
-        $sql .= " ORDER BY region_code";
+
+        $sql .= ' ORDER BY region_code ASC';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
-    /**
-     * Fetch unique branch names based on zone and region from active assets.
-     */
-    public function getBranches(?string $zone = null, ?string $region = null): array {
-        $sql = "SELECT DISTINCT branch_name FROM assets WHERE status = 'ACTIVE' AND branch_name IS NOT NULL AND branch_name != ''";
+    public function getBranches(?string $zone = null, ?string $region = null): array
+    {
+        $sql    = "SELECT DISTINCT branch_name FROM assets WHERE status = 'ACTIVE' AND branch_name IS NOT NULL AND branch_name <> ''";
         $params = [];
+
         if (!empty($zone)) {
-            $sql .= " AND main_zone_code = ?";
-            $params[] = $zone;
+            $sql      .= ' AND main_zone_code = ?';
+            $params[]  = $zone;
         }
         if (!empty($region)) {
-            $sql .= " AND region_code = ?";
-            $params[] = $region;
+            $sql      .= ' AND region_code = ?';
+            $params[]  = $region;
         }
-        $sql .= " ORDER BY branch_name";
+
+        $sql .= ' ORDER BY branch_name ASC';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
+    // ==========================================
+    // REPORT DATA
+    // ==========================================
+
     /**
-     * Fetch running depreciation report data and totals by effective run date.
+     * Returns running depreciation report data filtered by date range, zone, region, branch.
+     * Joins asset_groups and expense_types for category/group labels (no amortization_depreciation).
      */
-    public function getFilteredAssets(array $filters): array {
+    public function getFilteredAssets(array $filters): array
+    {
         if (empty($filters['date_from']) || empty($filters['date_to'])) {
             return ['data' => [], 'totals' => ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0]];
         }
 
-        $sql = "
-            SELECT 
-                a.id as asset_id,
-                a.system_asset_code, 
+        $sql = '
+            SELECT
+                a.id                                                          AS asset_id,
+                a.system_asset_code,
                 a.reference_no,
-                a.main_zone_code as zone,
-                a.region_code as region,
-                a.cost_center_code as cost_center,
-                a.branch_name, 
-                a.depreciation_code as group_code,
-                a.depreciation_code as category_code,
-                COALESCE(ad.description, a.asset_name, a.description) as category_name,
-                COALESCE(a.months, rd.periods_elapsed + rd.periods_remaining, 0) as asset_life_months,
-                a.description, 
+                a.main_zone_code                                              AS zone,
+                a.region_code                                                 AS region,
+                a.cost_center_code                                            AS cost_center,
+                a.branch_name,
+                a.asset_group_id,
+                ag.group_name,
+                et.expense_name                                               AS category_name,
+                et.category_type,
+                a.months                                                      AS asset_life_months,
+                a.description,
+                a.asset_name,
                 a.date_received,
                 a.depreciation_start_date,
                 a.retirement_date,
-                a.acquisition_cost, 
-                a.monthly_depreciation as period_depreciation_expense,
-                rd.accumulated_depreciation, 
-                rd.periods_remaining as remaining_life,
-                rd.book_value, 
-                COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) as period_date,
+                a.acquisition_cost,
+                a.monthly_depreciation                                        AS period_depreciation_expense,
+                rd.accumulated_depreciation,
+                rd.periods_remaining                                          AS remaining_life,
+                rd.book_value,
+                COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) AS period_date,
                 a.monthly_depreciation
             FROM assets a
-            JOIN running_depreciation rd ON a.id = rd.asset_id
-            LEFT JOIN amortization_depreciation ad ON a.depreciation_code = ad.depreciation_code
-            WHERE a.status = 'ACTIVE'
-              AND COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) >= :date_from 
+            JOIN running_depreciation rd ON rd.asset_id = a.id
+            LEFT JOIN asset_groups ag ON ag.id = a.asset_group_id
+            LEFT JOIN expense_types et ON et.id = ag.expense_type_id
+            WHERE a.status = \'ACTIVE\'
+              AND COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) >= :date_from
               AND COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) <= :date_to
-        ";
+        ';
 
         $params = [
             ':date_from' => $filters['date_from'],
-            ':date_to'   => $filters['date_to']
+            ':date_to'   => $filters['date_to'],
         ];
 
         if (!empty($filters['zone'])) {
-            $sql .= " AND a.main_zone_code = :zone";
+            $sql            .= ' AND a.main_zone_code = :zone';
             $params[':zone'] = $filters['zone'];
         }
-
         if (!empty($filters['region'])) {
-            $sql .= " AND a.region_code = :region";
+            $sql              .= ' AND a.region_code = :region';
             $params[':region'] = $filters['region'];
         }
-
         if (!empty($filters['branch_name'])) {
-            $sql .= " AND a.branch_name = :branch_name";
+            $sql                    .= ' AND a.branch_name = :branch_name';
             $params[':branch_name'] = $filters['branch_name'];
         }
 
-        $sql .= " ORDER BY period_date DESC, a.branch_name ASC";
+        $sql .= ' ORDER BY period_date DESC, a.branch_name ASC';
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $data = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-        // Calculate footer totals
-        $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
+        $totals = ['cost' => 0.0, 'de' => 0.0, 'ad' => 0.0, 'bv' => 0.0];
         foreach ($data as $row) {
             $totals['cost'] += (float)$row['acquisition_cost'];
             $totals['de']   += (float)$row['period_depreciation_expense'];
@@ -137,27 +154,30 @@ class AssetReportService {
         return ['data' => $data, 'totals' => $totals];
     }
 
-    /**
-     * Generate Excel file from running depreciation report data.
-     */
-    public function exportToExcel(array $filters): void {
-        $report = $this->getFilteredAssets($filters);
-        $data = $report['data'];
-        $totals = $report['totals'];
+    // ==========================================
+    // EXCEL EXPORT
+    // ==========================================
+
+    public function exportToExcel(array $filters): void
+    {
+        $report      = $this->getFilteredAssets($filters);
+        $data        = $report['data'];
+        $totals      = $report['totals'];
         $generatedBy = strtoupper($_SESSION['full_name'] ?? 'User');
-        $tzName = $_ENV['APP_TIMEZONE'] ?? 'Asia/Manila';
+        $tzName      = $_ENV['APP_TIMEZONE'] ?? 'Asia/Manila';
+
         try {
             $tz = new \DateTimeZone($tzName);
         } catch (\Exception $e) {
             $tz = new \DateTimeZone('Asia/Manila');
         }
-        $generatedAt = (new \DateTime('now', $tz))->format('M j, Y g:i A');
 
+        $generatedAt = (new \DateTime('now', $tz))->format('M j, Y g:i A');
         $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
+        $sheet       = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Running Depreciation');
 
-        // 1. Header block (use export image header)
+        // Header image
         $headerImagePath = dirname(__DIR__, 2) . '/public/assets/img/excel_header.png';
         if (file_exists($headerImagePath)) {
             $drawing = new Drawing();
@@ -169,14 +189,13 @@ class AssetReportService {
             $drawing->setWorksheet($sheet);
         }
 
-        // 2. Set table headers
         $headerRow = 3;
-        $headers = [
-            'Codes', 'Branches', 'Group Code', 'Description', 
-            'Cost', 'Depreciation', 'Accu. Dep.', 'Asset Lives', 
-            'Book Value', 'Date Gen.'
+        $headers   = [
+            'Asset Code', 'Branch', 'Group', 'Category', 'Description',
+            'Cost', 'Depreciation', 'Accu. Dep.', 'Asset Lives',
+            'Book Value', 'Date Gen.',
         ];
-        
+
         $col = 'A';
         foreach ($headers as $header) {
             $sheet->setCellValue($col . $headerRow, $header);
@@ -185,68 +204,57 @@ class AssetReportService {
             $col++;
         }
 
-        // 3. Populate Data Rows
         $rowNum = $headerRow + 1;
         foreach ($data as $row) {
             $sheet->setCellValue('A' . $rowNum, $row['system_asset_code']);
             $sheet->setCellValue('B' . $rowNum, $row['branch_name']);
-            $sheet->setCellValue('C' . $rowNum, $row['group_code']);
-            $sheet->setCellValue('D' . $rowNum, $row['description']);
-            $sheet->setCellValue('E' . $rowNum, $row['acquisition_cost']);
-            $sheet->setCellValue('F' . $rowNum, $row['period_depreciation_expense']);
-            $sheet->setCellValue('G' . $rowNum, $row['accumulated_depreciation']);
-            $sheet->setCellValue('H' . $rowNum, $row['remaining_life']);
-            $sheet->setCellValue('I' . $rowNum, $row['book_value']);
-            $sheet->setCellValue('J' . $rowNum,
-    !empty($row['period_date'])
-        ? date('F j, Y', strtotime($row['period_date']))
-        : ''
-);
+            $sheet->setCellValue('C' . $rowNum, $row['group_name']);
+            $sheet->setCellValue('D' . $rowNum, $row['category_name']);
+            $sheet->setCellValue('E' . $rowNum, $row['description']);
+            $sheet->setCellValue('F' . $rowNum, $row['acquisition_cost']);
+            $sheet->setCellValue('G' . $rowNum, $row['period_depreciation_expense']);
+            $sheet->setCellValue('H' . $rowNum, $row['accumulated_depreciation']);
+            $sheet->setCellValue('I' . $rowNum, $row['remaining_life']);
+            $sheet->setCellValue('J' . $rowNum, $row['book_value']);
+            $sheet->setCellValue('K' . $rowNum,
+                !empty($row['period_date']) ? date('F j, Y', strtotime($row['period_date'])) : ''
+            );
 
-            // Apply number formatting for accounting columns
-            $sheet->getStyle('E'.$rowNum.':I'.$rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
-            $sheet->getStyle('H'.$rowNum)->getNumberFormat()->setFormatCode('0'); 
-            
+            $sheet->getStyle('F' . $rowNum . ':J' . $rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle('I' . $rowNum)->getNumberFormat()->setFormatCode('0');
+
             $rowNum++;
         }
 
-        // 4. Add Totals Footer
+        // Totals row
         $sheet->setCellValue('A' . $rowNum, 'TOTALS');
-        $sheet->mergeCells('A' . $rowNum . ':D' . $rowNum);
+        $sheet->mergeCells('A' . $rowNum . ':E' . $rowNum);
         $sheet->getStyle('A' . $rowNum)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle('A' . $rowNum . ':I' . $rowNum)->getFont()->setBold(true);
-        
-        $sheet->setCellValue('E' . $rowNum, $totals['cost']);
-        $sheet->setCellValue('F' . $rowNum, $totals['de']);
-        $sheet->setCellValue('G' . $rowNum, $totals['ad']);
-        $sheet->setCellValue('I' . $rowNum, $totals['bv']);
-        $sheet->getStyle('E'.$rowNum.':I'.$rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle('A' . $rowNum . ':J' . $rowNum)->getFont()->setBold(true);
+        $sheet->setCellValue('F' . $rowNum, $totals['cost']);
+        $sheet->setCellValue('G' . $rowNum, $totals['de']);
+        $sheet->setCellValue('H' . $rowNum, $totals['ad']);
+        $sheet->setCellValue('J' . $rowNum, $totals['bv']);
+        $sheet->getStyle('F' . $rowNum . ':J' . $rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
 
-        // 5. Add generated metadata at bottom-left
+        // Metadata
         $metaRow1 = $rowNum + 2;
         $metaRow2 = $rowNum + 3;
         $sheet->setCellValue('A' . $metaRow1, 'Generated by: ' . $generatedBy);
         $sheet->setCellValue('A' . $metaRow2, 'Generated on: ' . $generatedAt);
-        $sheet->mergeCells('A' . $metaRow1 . ':D' . $metaRow1);
-        $sheet->mergeCells('A' . $metaRow2 . ':D' . $metaRow2);
-        $sheet->getStyle('A' . $metaRow1 . ':D' . $metaRow2)->getFont()->setSize(10);
-        $sheet->getStyle('A' . $metaRow1 . ':D' . $metaRow2)
-            ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        $sheet->mergeCells('A' . $metaRow1 . ':E' . $metaRow1);
+        $sheet->mergeCells('A' . $metaRow2 . ':E' . $metaRow2);
+        $sheet->getStyle('A' . $metaRow1 . ':E' . $metaRow2)->getFont()->setSize(10);
+        $sheet->getStyle('A' . $metaRow1 . ':E' . $metaRow2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
-        // 6. Auto-size columns
-        foreach (range('A', 'J') as $columnID) {
+        foreach (range('A', 'K') as $columnID) {
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
-
         $sheet->getRowDimension(1)->setRowHeight(40);
 
-        // 7. STRICT BUFFER CLEANUP 
-        error_reporting(0); 
-        while (ob_get_level() > 0) {
-            ob_end_clean();
-        }
+        error_reporting(0);
+        while (ob_get_level() > 0) ob_end_clean();
 
-        // 8. Output stream to trigger browser download
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="Running_Depreciation_Report_' . date('Ymd_His') . '.xlsx"');
         header('Cache-Control: max-age=0');

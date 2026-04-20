@@ -106,6 +106,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'commit') {
     }
 
     // Delegate business logic to Service
+    // Ensure user id is an int and pass through as-is; ImportService will build payloads
     $result = $importService->prepareAndCommit($parsed['preview'], $selectedNums, $editedMap, (int)$_SESSION['user_id']);
 
     if ($result['success']) {

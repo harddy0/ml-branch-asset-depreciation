@@ -21,32 +21,44 @@ try {
     global $pdo;
     $assetService = new \App\AssetService($pdo);
 
-    // Only sanitize/collect POST data, no business logic
+    // Build payload matching AssetService expectations
+    $assetGroupId = isset($_POST['asset_group_id']) ? (int)$_POST['asset_group_id'] : 0;
+
+    // If UI sends a group code instead of ID, attempt to resolve it
+    if ($assetGroupId <= 0 && !empty($_POST['group_code'])) {
+        try {
+            $stmt = $pdo->prepare('SELECT id FROM asset_groups WHERE group_code = :code OR group_name = :code LIMIT 1');
+            $stmt->execute([':code' => trim((string)$_POST['group_code'])]);
+            $g = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($g) $assetGroupId = (int)$g['id'];
+        } catch (\Throwable $e) {
+            // ignore resolution errors; service will validate
+        }
+    }
+
     $sanitized = [
+        'asset_group_id'          => $assetGroupId,
+        'system_asset_code'       => $_POST['system_asset_code'] ?? null,
         'reference_no'            => $_POST['reference_no'] ?? null,
-        'main_zone_code'          => $_POST['main_zone_code'] ?? '',
-        'zone_code'               => $_POST['zone_code'] ?? '',
-        'region_code'             => $_POST['region_code'] ?? '',
-        'cost_center_code'        => $_POST['cost_center_code'] ?? '',
-        'branch_name'             => $_POST['branch_name'] ?? '',
-        'asset_name'              => trim($_POST['asset_name'] ?? ''),
+        'main_zone_code'          => trim((string)($_POST['main_zone_code'] ?? '')) ?: null,
+        'zone_code'               => trim((string)($_POST['zone_code'] ?? '')) ?: null,
+        'region_code'             => trim((string)($_POST['region_code'] ?? '')) ?: null,
+        'cost_center_code'        => trim((string)($_POST['cost_center_code'] ?? '')) ?: null,
+        'branch_name'             => trim((string)($_POST['branch_name'] ?? '')) ?: null,
+        'asset_name'              => trim((string)($_POST['asset_name'] ?? '')),
         'months'                  => (int)($_POST['months'] ?? 0),
-        'group_code'              => $_POST['group_code'] ?? '',
-        'asset_code'              => $_POST['asset_code'] ?? '',
-        'depreciation_code'       => $_POST['depreciation_code'] ?? '',
-        'item_gl_code'            => $_POST['item_gl_code'] ?? '',
-        'description'             => trim($_POST['description'] ?? ''),
+        'description'             => trim((string)($_POST['description'] ?? '')),
         'serial_number'           => $_POST['serial_number'] ?? null,
-        'quantity'                => (int)($_POST['quantity'] ?? 1),
+        'item_code'               => $_POST['item_code'] ?? null,
+        'quantity'                => max(1, (int)($_POST['quantity'] ?? 1)),
         'property_type'           => $_POST['property_type'] ?? 'PURCHASED',
-        'date_received'           => $_POST['date_received'] ?? '',
-        'depreciation_start_date' => $_POST['depreciation_start_date'] ?? '',
-        'depreciation_end_date'   => $_POST['depreciation_end_date'] ?? '',
+        'date_received'           => (!empty($_POST['date_received']) ? $_POST['date_received'] : null),
+        'depreciation_start_date' => (!empty($_POST['depreciation_start_date']) ? $_POST['depreciation_start_date'] : null),
+        'depreciation_end_date'   => (!empty($_POST['depreciation_end_date']) ? $_POST['depreciation_end_date'] : null),
         'depreciation_on'         => $_POST['depreciation_on'] ?? 'LAST_DAY',
-        'depreciation_day'        => !empty($_POST['depreciation_day']) ? (int)$_POST['depreciation_day'] : null,
+        'depreciation_day'        => isset($_POST['depreciation_day']) && $_POST['depreciation_day'] !== '' ? (int)$_POST['depreciation_day'] : null,
         'acquisition_cost'        => $_POST['acquisition_cost'] ?? 0,
         'cost_unit'               => $_POST['cost_unit'] ?? 0,
-        'item_code'               => $_POST['item_code'] ?? null,
         'status'                  => $_POST['status'] ?? 'ACTIVE'
     ];
 
