@@ -8,8 +8,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Assuming $db is initialized in init.php
-$assetGroupService = new AssetGroupService($db);
+// `init.php` exposes `$pdo` as the DB connection and services are namespaced under App\
+$assetGroupService = new \App\AssetGroupService($pdo);
 
 $result = $assetGroupService->create($_POST);
 

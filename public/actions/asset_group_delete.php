@@ -13,7 +13,7 @@ if (!isset($_POST['id']) || empty($_POST['id'])) {
     exit;
 }
 
-$assetGroupService = new AssetGroupService($db);
+$assetGroupService = new \App\AssetGroupService($pdo);
 
 $id = (int)$_POST['id'];
 $result = $assetGroupService->delete($id);

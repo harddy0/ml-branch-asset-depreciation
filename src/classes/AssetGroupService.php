@@ -1,9 +1,11 @@
 <?php
 
+namespace App;
+
 class AssetGroupService {
     private $db;
 
-    public function __construct(PDO $db) {
+    public function __construct(\PDO $db) {
         $this->db = $db;
     }
 
@@ -19,14 +21,14 @@ class AssetGroupService {
     private function validateMonths($expenseTypeId, $actualMonths) {
         $stmt = $this->db->prepare("SELECT policy_months, expense_name FROM expense_types WHERE id = ?");
         $stmt->execute([$expenseTypeId]);
-        $policy = $stmt->fetch(PDO::FETCH_ASSOC);
+        $policy = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if (!$policy) {
-            throw new Exception("Invalid Expense Type selected.");
+            throw new \Exception("Invalid Expense Type selected.");
         }
 
         if ($actualMonths > $policy['policy_months']) {
-            throw new Exception("Actual months ({$actualMonths}) cannot exceed the maximum policy of {$policy['policy_months']} months for {$policy['expense_name']}.");
+            throw new \Exception("Actual months ({$actualMonths}) cannot exceed the maximum policy of {$policy['policy_months']} months for {$policy['expense_name']}.");
         }
 
         return true;
@@ -38,10 +40,11 @@ class AssetGroupService {
     private function getGlAccountType($glCode) {
         $stmt = $this->db->prepare("SELECT account_type FROM gl_codes WHERE gl_code = ?");
         $stmt->execute([$glCode]);
+
         $type = $stmt->fetchColumn();
 
         if (!$type) {
-            throw new Exception("GL Code {$glCode} does not exist in the Chart of Accounts.");
+            throw new \Exception("GL Code {$glCode} does not exist in the Chart of Accounts.");
         }
 
         return $type;
@@ -96,7 +99,7 @@ class AssetGroupService {
                 'id' => $this->db->lastInsertId()
             ];
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
@@ -136,7 +139,7 @@ class AssetGroupService {
 
             return ['success' => true, 'message' => 'Asset group updated successfully.'];
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
@@ -144,7 +147,7 @@ class AssetGroupService {
     public function delete($id) {
         try {
             if ($this->isGroupInUse($id)) {
-                throw new Exception("Cannot delete: This asset group is currently assigned to active assets.");
+                throw new \Exception("Cannot delete: This asset group is currently assigned to active assets.");
             }
 
             $stmt = $this->db->prepare("DELETE FROM asset_groups WHERE id = ?");
@@ -152,7 +155,7 @@ class AssetGroupService {
 
             return ['success' => true, 'message' => 'Asset group deleted successfully.'];
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }
@@ -178,7 +181,7 @@ class AssetGroupService {
             WHERE ag.id = ?
         ");
         $stmt->execute([$id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetch(\PDO::FETCH_ASSOC);
     }
 
     public function getByExpenseType($expenseTypeId) {
@@ -189,7 +192,7 @@ class AssetGroupService {
             ORDER BY group_name ASC
         ");
         $stmt->execute([$expenseTypeId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     public function getPaginatedList($page = 1, $limit = 10, $search = '') {
@@ -235,7 +238,7 @@ class AssetGroupService {
         // Need to bind LIMIT and OFFSET explicitly as integers if using emulated prepares,
         // but since we injected them directly into the string securely via int variables, execute($params) is safe.
         $stmtData->execute($params);
-        $data = $stmtData->fetchAll(PDO::FETCH_ASSOC);
+        $data = $stmtData->fetchAll(\PDO::FETCH_ASSOC);
 
         return [
             'data' => $data,
