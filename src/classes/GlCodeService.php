@@ -129,4 +129,17 @@ class GlCodeService {
             return ['success' => false, 'error' => 'Failed to delete GL code. Please try again.'];
         }
     }
+
+    /**
+     * Fetches all GL Codes for dropdown population.
+     */
+    public function getAllForDropdown() {
+        $stmt = $this->db->query("
+            SELECT gl_code, description, account_type 
+            FROM gl_codes 
+            ORDER BY gl_code ASC
+        ");
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
 }

@@ -112,4 +112,18 @@ class ExpenseTypeService {
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute([':id' => $id]);
     }
+
+    /**
+     * Fetches all Expense Types for dropdown population.
+     * Includes policy_months to display as a helper in the UI.
+     */
+    public function getAllForDropdown() {
+        $stmt = $this->pdo->query("
+            SELECT id, expense_name, policy_months 
+            FROM expense_types 
+            ORDER BY expense_name ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 }
