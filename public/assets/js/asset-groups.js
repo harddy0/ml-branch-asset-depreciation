@@ -49,33 +49,42 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const html = rows.map(r => {
-                assetGroupsCache[r.id] = r;
-                const expenseName = r.expense_name ? `${r.expense_name}${r.policy_months ? ' (' + r.policy_months + ' mos)' : ''}` : '-';
-                return `
+            // Cache rows and render
+            rows.forEach(r => { assetGroupsCache[r.id] = r; });
+            renderAssetGroups(rows);
+        } catch (err) {
+            console.error('Failed to fetch asset groups:', err);
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-red-600">Network error loading asset groups.</td></tr>';
+        }
+    }
+
+    // Render function - can be reused for filtered views
+    function renderAssetGroups(rows) {
+        const tbody = document.getElementById('assetGroupsTbody');
+        if (!tbody) return;
+
+        const html = rows.map(r => {
+            const expenseName = r.expense_name ? `${r.expense_name}${r.policy_months ? ' (' + r.policy_months + ' mos)' : ''}` : '-';
+            return `
                     <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-6 py-3 text-sm font-medium text-slate-700">${escapeHtml(r.group_name || '')}</td>
-                        <td class="px-6 py-3 text-sm font-medium text-slate-700">${escapeHtml(expenseName)}</td>
-                        <td class="px-6 py-3 text-sm font-medium text-slate-700">${escapeHtml(r.actual_months ?? '')}</td>
-                        <td class="px-6 py-3 text-sm font-medium text-slate-700">${escapeHtml(r.asset_gl_code || '')}</td>
-                        <td class="px-6 py-3 text-sm font-medium text-slate-700">${escapeHtml(r.expense_gl_code || '')}</td>
-                        <td class="px-6 py-3 text-right text-sm">
-                            <button data-id="${r.id}" class="edit-btn inline-flex items-center justify-center w-8 h-8 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-lg shadow-sm transition" title="Edit">
+                        <td class="px-6 py-0 text-sm font-medium text-slate-700">${escapeHtml(r.group_name || '')}</td>
+                        <td class="px-6 py-0 text-sm font-medium text-slate-700">${escapeHtml(expenseName)}</td>
+                        <td class="px-6 py-0 text-sm font-medium text-slate-700 text-center">${escapeHtml(r.actual_months ?? '')}</td>
+                        <td class="px-6 py-0 text-sm font-medium text-slate-700 text-center">${escapeHtml(r.asset_gl_code || '')}</td>
+                        <td class="px-6 py-0 text-sm font-medium text-slate-700 text-center">${escapeHtml(r.expense_gl_code || '')}</td>
+                        <td class="px-6 py-0 text-center text-sm">
+                            <button data-id="${r.id}" class="edit-btn inline-flex items-center justify-center w-6 h-6 bg-white hover:bg-slate-50 text-slate-700 rounded-sm shadow-sm transition" title="Edit">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
-                            <button data-id="${r.id}" class="delete-btn inline-flex items-center justify-center w-8 h-8 ml-1 bg-white hover:bg-red-50 border border-slate-200 text-red-600 rounded-lg shadow-sm transition" title="Delete">
+                            <button data-id="${r.id}" class="delete-btn inline-flex items-center justify-center w-6 h-6 ml-1 bg-white hover:bg-red-50 text-red-600 rounded-sm shadow-sm transition" title="Delete">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-7 0h8"/></svg>
                             </button>
                         </td>
                     </tr>
                 `;
-            }).join('');
+        }).join('');
 
-            tbody.innerHTML = html;
-        } catch (err) {
-            console.error('Failed to fetch asset groups:', err);
-            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-red-600">Network error loading asset groups.</td></tr>';
-        }
+        tbody.innerHTML = html;
     }
 
     // Simple HTML escape for values inserted into templates
@@ -121,6 +130,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initial load of asset groups
     loadAssetGroups();
+
+    // --- Search / Filter ---
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const q = this.value.trim().toLowerCase();
+            // If no query, render all cached rows
+            const allRows = Object.values(assetGroupsCache || {});
+            if (!q) {
+                renderAssetGroups(allRows);
+                return;
+            }
+
+            // Filter by group_name, asset_gl_code, expense_gl_code
+            const filtered = allRows.filter(r => {
+                const group = (r.group_name || '').toString().toLowerCase();
+                const assetGl = (r.asset_gl_code || '').toString().toLowerCase();
+                const expenseGl = (r.expense_gl_code || '').toString().toLowerCase();
+                return group.includes(q) || assetGl.includes(q) || expenseGl.includes(q);
+            });
+
+            if (filtered.length === 0) {
+                const tbody = document.getElementById('assetGroupsTbody');
+                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-slate-500">No matching asset groups.</td></tr>';
+            } else {
+                renderAssetGroups(filtered);
+            }
+        });
+    }
 
     // --- Fetch and Populate Dropdowns ---
     async function loadDropdownData() {
