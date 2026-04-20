@@ -31,21 +31,19 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
 </div>
 <?php endif; ?>
 
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
     <div>
-        <h1 class="text-2xl font-black text-slate-800 uppercase tracking-wide">GL Codes Management</h1>
-        <p class="text-sm font-medium text-slate-500 mt-1">Manage Chart of Accounts</p>
+        <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">GL Code Management</h1>
     </div>
 
     <div class="flex items-center gap-4">
         <button onclick="openModal('modal-add-gl-code')"
             class="inline-flex items-center gap-2 bg-[#ce1126] hover:bg-red-700 active:bg-red-800
                    text-white text-xs font-black uppercase tracking-widest
-                   px-4 py-2 rounded-xl shadow-md shadow-slate-200 hover:shadow-md transition-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   px-2 py-2 rounded-xl shadow-md shadow-slate-200 hover:shadow-md transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
             </svg>
-            Add GL Code
         </button>
     </div>
 </div>
@@ -60,7 +58,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
         <input type="text" id="search-input"
                placeholder="Search by GL Code or Description"
                class="w-full pl-10 pr-4 py-1.5 border-2 border-slate-100 focus:border-slate-300 rounded-xl
-                      placeholder:text-slate-300 text-sm font-medium text-slate-700 outline-none bg-white transition-all">
+                      placeholder:text-slate-300 text-sm font-mono text-slate-700 outline-none bg-white transition-all">
     </div>
 </div>
 
@@ -69,10 +67,10 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
         <table class="w-full text-sm">
             <thead>
                 <tr class="bg-[#ce2216] border-b border-slate-200">
-                    <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-3">GL Code</th>
-                    <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-3">Description</th>
-                    <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-3">Account Type</th>
-                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-3">Actions</th>
+                    <th class="text-center text-sm font-black text-white tracking-widest px-6 py-1">GL Code</th>
+                    <th class="text-left text-sm font-black text-white tracking-widest px-6 py-1">Description</th>
+                    <th class="text-center text-sm font-black text-white tracking-widest px-6 py-1">Account Type</th>
+                    <th class="text-center text-sm font-black text-white tracking-widest px-6 py-1">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100" id="gl-codes-tbody">
@@ -80,8 +78,6 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error']);
             </tbody>
         </table>
     </div>
-
-    <div id="pagination-container" class="mt-4"></div>
 </div>
 
 <?php
