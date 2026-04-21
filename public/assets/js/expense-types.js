@@ -3,12 +3,110 @@ var currentSearch = '';
 var currentCategoryFilter = '';
 
 document.addEventListener('DOMContentLoaded', function() {
-    var filterSelect = document.getElementById('filter-category-type');
-    if (filterSelect) {
-        currentCategoryFilter = filterSelect.value || '';
-        filterSelect.addEventListener('change', function () {
-            currentCategoryFilter = this.value || '';
+    var filterInput = document.getElementById('filter-category-type');
+    var filterClearBtn = document.getElementById('filter-category-type-clear');
+    var suggestionBox = document.getElementById('filter-category-suggestions');
+
+    var categoryTypeOptions = [
+        { value: 'MAINTENANCE_REPAIR', label: 'Maintenance & Repair' },
+        { value: 'INVENTORY_ITEM', label: 'Inventory Item' },
+        { value: 'JOB_ORDER', label: 'Job Order' }
+    ].map(function (opt) {
+        return {
+            value: opt.value,
+            label: opt.label,
+            labelLower: opt.label.toLowerCase()
+        };
+    });
+
+    function updateFilterClearVisibility() {
+        if (!filterClearBtn || !filterInput) return;
+        filterClearBtn.classList.toggle('hidden', !(filterInput.value || '').trim());
+    }
+
+    function hideSuggestions() {
+        if (!suggestionBox) return;
+        suggestionBox.classList.add('hidden');
+        suggestionBox.innerHTML = '';
+    }
+
+    function getRankedOptions(query) {
+        var q = (query || '').trim().toLowerCase();
+        if (!q) return categoryTypeOptions.slice();
+        var starts = categoryTypeOptions.filter(function (opt) { return opt.labelLower.indexOf(q) === 0; });
+        var contains = categoryTypeOptions.filter(function (opt) { return opt.labelLower.indexOf(q) !== -1 && opt.labelLower.indexOf(q) !== 0; });
+        return starts.concat(contains);
+    }
+
+    function showSuggestions(query) {
+        if (!suggestionBox) return;
+        var ranked = getRankedOptions(query);
+        if (!ranked.length) {
+            hideSuggestions();
+            return;
+        }
+
+        suggestionBox.innerHTML = ranked.map(function (opt) {
+            return '<button type="button" class="expense-filter-option w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50" data-value="' + opt.value + '">' + opt.label + '</button>';
+        }).join('');
+        suggestionBox.classList.remove('hidden');
+    }
+
+    function applySelectedFilter(value) {
+        var selected = categoryTypeOptions.find(function (opt) { return opt.value === value; });
+        currentCategoryFilter = selected ? selected.value : '';
+        if (filterInput) filterInput.value = selected ? selected.label : '';
+        hideSuggestions();
+        updateFilterClearVisibility();
+        loadExpenseTypes(currentSearch, 1);
+    }
+
+    if (filterInput) {
+        filterInput.addEventListener('input', function () {
+            currentCategoryFilter = '';
+            showSuggestions(this.value);
+            updateFilterClearVisibility();
             loadExpenseTypes(currentSearch, 1);
+        });
+
+        filterInput.addEventListener('focus', function () {
+            showSuggestions(this.value);
+        });
+
+        filterInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                hideSuggestions();
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                var ranked = getRankedOptions(filterInput.value);
+                if (ranked.length) applySelectedFilter(ranked[0].value);
+            }
+        });
+
+        filterInput.addEventListener('blur', function () {
+            setTimeout(hideSuggestions, 120);
+        });
+
+        updateFilterClearVisibility();
+    }
+
+    if (suggestionBox) {
+        suggestionBox.addEventListener('click', function (e) {
+            var btn = e.target.closest('.expense-filter-option');
+            if (!btn) return;
+            applySelectedFilter(btn.getAttribute('data-value') || '');
+        });
+    }
+
+    if (filterClearBtn && filterInput) {
+        filterClearBtn.addEventListener('click', function () {
+            filterInput.value = '';
+            currentCategoryFilter = '';
+            hideSuggestions();
+            updateFilterClearVisibility();
+            loadExpenseTypes(currentSearch, 1);
+            filterInput.focus();
         });
     }
 });
