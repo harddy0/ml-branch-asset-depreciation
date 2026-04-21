@@ -33,7 +33,7 @@ class LedgerReportService
             $entrySide = 'ALL';
         }
 
-        [$where, $params] = $this->buildLedgerWhere($assetId, $dateFrom, $dateTo, $periodYear, $periodMonth);
+        [$where, $params] = $this->buildLedgerWhere($assetId, $dateFrom, $dateTo, $periodYear, $periodMonth, $entrySide);
 
         $sql = '
             SELECT
@@ -92,59 +92,70 @@ class LedgerReportService
             $row['uploaded_by'] = $uploadedBy;
             $row['journal_ref'] = 'LEDGER-' . $row['id'];
 
-            // Resolve which GL leg is DEBIT and which is CREDIT
-            [$debitCode, $debitDesc, $debitAmt, $creditCode, $creditDesc, $creditAmt]
-                = $this->resolveDebitCredit($row);
+            // Get both GL entries with their actual types preserved
+            $glSplit = $this->splitDebitCreditAmounts($row);
 
-            // Apply entry_side filter
-            $showDebit  = ($entrySide !== 'CREDIT');
-            $showCredit = ($entrySide !== 'DEBIT');
+            // Store GL entries with types for frontend
+            $row['gl1_code']        = $glSplit['gl1_code'];
+            $row['gl1_description'] = $glSplit['gl1_desc'];
+            $row['gl1_amount']      = (float)$glSplit['gl1_amt'];
+            $row['gl1_type']        = $glSplit['gl1_type'];
+            
+            $row['gl2_code']        = $glSplit['gl2_code'];
+            $row['gl2_description'] = $glSplit['gl2_desc'];
+            $row['gl2_amount']      = (float)$glSplit['gl2_amt'];
+            $row['gl2_type']        = $glSplit['gl2_type'];
 
-            $effectiveDebit  = $showDebit  ? $debitAmt  : 0.0;
-            $effectiveCredit = $showCredit ? $creditAmt : 0.0;
-
-            // Enrich row with resolved sides for front-end convenience
-            $row['gl_debit_code']        = $showDebit  ? $debitCode  : '';
-            $row['gl_debit_description'] = $showDebit  ? $debitDesc  : '';
-            $row['gl_debit_amount']      = $effectiveDebit;
-            $row['gl_credit_code']       = $showCredit ? $creditCode : '';
-            $row['gl_credit_description']= $showCredit ? $creditDesc : '';
-            $row['gl_credit_amount']     = $effectiveCredit;
-
-            $ledgerDebit  += $effectiveDebit;
-            $ledgerCredit += $effectiveCredit;
-
-            // Build FS (financial statement) split rows
-            if ($showDebit) {
-                $fsRows[] = [
-                    'ledger_id'        => (int)$row['id'],
-                    'journal_ref'      => $row['journal_ref'],
-                    'period_date'      => $row['period_date'],
-                    'entry_side'       => 'DEBIT',
-                    'account_code'     => $debitCode,
-                    'account_name'     => $debitDesc ?: $row['asset_name'],
-                    'debit_amount'     => $debitAmt,
-                    'credit_amount'    => 0.0,
-                    'line_description' => $row['asset_name'],
-                    'uploaded_by'      => $uploadedBy,
-                ];
-                $fsDebit += $debitAmt;
+            // Calculate totals based on actual GL types
+            if ($glSplit['gl1_type'] === 'DEBIT') {
+                $ledgerDebit += (float)$glSplit['gl1_amt'];
+            } else {
+                $ledgerCredit += (float)$glSplit['gl1_amt'];
+            }
+            
+            if ($glSplit['gl2_type'] === 'DEBIT') {
+                $ledgerDebit += (float)$glSplit['gl2_amt'];
+            } else {
+                $ledgerCredit += (float)$glSplit['gl2_amt'];
             }
 
-            if ($showCredit) {
+            // Build FS (financial statement) split rows - one row per GL with actual type shown
+            if ($entrySide === 'ALL' || $entrySide === $glSplit['gl1_type']) {
                 $fsRows[] = [
                     'ledger_id'        => (int)$row['id'],
                     'journal_ref'      => $row['journal_ref'],
                     'period_date'      => $row['period_date'],
-                    'entry_side'       => 'CREDIT',
-                    'account_code'     => $creditCode,
-                    'account_name'     => $creditDesc ?: $row['asset_name'],
-                    'debit_amount'     => 0.0,
-                    'credit_amount'    => $creditAmt,
+                    'entry_side'       => $glSplit['gl1_type'],
+                    'account_code'     => $glSplit['gl1_code'],
+                    'account_name'     => $glSplit['gl1_desc'] ?: $row['asset_name'],
+                    'debit_amount'     => $glSplit['gl1_type'] === 'DEBIT' ? (float)$glSplit['gl1_amt'] : 0.0,
+                    'credit_amount'    => $glSplit['gl1_type'] === 'CREDIT' ? (float)$glSplit['gl1_amt'] : 0.0,
                     'line_description' => $row['asset_name'],
                     'uploaded_by'      => $uploadedBy,
+                    'periods_elapsed'  => $row['periods_elapsed'],
+                    'period_depreciation_expense' => $row['period_depreciation_expense'],
+                    'accumulated_depreciation' => $row['accumulated_depreciation'],
+                    'book_value'       => $row['book_value'],
                 ];
-                $fsCredit += $creditAmt;
+            }
+
+            if ($entrySide === 'ALL' || $entrySide === $glSplit['gl2_type']) {
+                $fsRows[] = [
+                    'ledger_id'        => (int)$row['id'],
+                    'journal_ref'      => $row['journal_ref'],
+                    'period_date'      => $row['period_date'],
+                    'entry_side'       => $glSplit['gl2_type'],
+                    'account_code'     => $glSplit['gl2_code'],
+                    'account_name'     => $glSplit['gl2_desc'] ?: $row['asset_name'],
+                    'debit_amount'     => $glSplit['gl2_type'] === 'DEBIT' ? (float)$glSplit['gl2_amt'] : 0.0,
+                    'credit_amount'    => $glSplit['gl2_type'] === 'CREDIT' ? (float)$glSplit['gl2_amt'] : 0.0,
+                    'line_description' => $row['asset_name'],
+                    'uploaded_by'      => $uploadedBy,
+                    'periods_elapsed'  => $row['periods_elapsed'],
+                    'period_depreciation_expense' => $row['period_depreciation_expense'],
+                    'accumulated_depreciation' => $row['accumulated_depreciation'],
+                    'book_value'       => $row['book_value'],
+                ];
             }
         }
         unset($row);
@@ -199,12 +210,45 @@ class LedgerReportService
         ];
     }
 
+    /**
+     * Splits GL A and GL B and returns them with their actual TYPES preserved.
+     * Returns array with keys: gl1_code, gl1_desc, gl1_amt, gl1_type, gl2_code, gl2_desc, gl2_amt, gl2_type
+     * This preserves the actual GL type (DEBIT/CREDIT) even if both are the same type.
+     */
+    private function splitDebitCreditAmounts(array $row): array
+    {
+        $aType = strtoupper($row['gl_a_type'] ?? '');
+        $bType = strtoupper($row['gl_b_type'] ?? '');
+        
+        $aCode = $row['gl_a_code'] ?? '';
+        $aDesc = $row['gl_a_description'] ?? '';
+        $aAmt = (float)($row['gl_a_amount'] ?? 0);
+        
+        $bCode = $row['gl_b_code'] ?? '';
+        $bDesc = $row['gl_b_description'] ?? '';
+        $bAmt = (float)($row['gl_b_amount'] ?? 0);
+        
+        // Return both GLs with their actual types preserved
+        // The frontend will determine what to show based on actual types, not position
+        return [
+            'gl1_code'  => $aCode,
+            'gl1_desc'  => $aDesc,
+            'gl1_amt'   => $aAmt,
+            'gl1_type'  => $aType,
+            'gl2_code'  => $bCode,
+            'gl2_desc'  => $bDesc,
+            'gl2_amt'   => $bAmt,
+            'gl2_type'  => $bType,
+        ];
+    }
+
     private function buildLedgerWhere(
         int    $assetId,
         string $dateFrom,
         string $dateTo,
         int    $periodYear,
-        int    $periodMonth
+        int    $periodMonth,
+        string $entrySide = 'ALL'
     ): array {
         $where  = ['l.asset_id = :asset_id'];
         $params = [':asset_id' => $assetId];
@@ -225,6 +269,15 @@ class LedgerReportService
             $where[]                = 'l.period_month = :period_month';
             $params[':period_month'] = $periodMonth;
         }
+
+        // Add entry_side filter to WHERE clause if not 'ALL'
+        // This filters by GL type: at least one GL side must match the requested type
+        if ($entrySide === 'DEBIT') {
+            $where[] = "(l.gl_a_type = 'DEBIT' OR l.gl_b_type = 'DEBIT')";
+        } elseif ($entrySide === 'CREDIT') {
+            $where[] = "(l.gl_a_type = 'CREDIT' OR l.gl_b_type = 'CREDIT')";
+        }
+        // If entrySide === 'ALL', no additional filter needed
 
         return [$where, $params];
     }

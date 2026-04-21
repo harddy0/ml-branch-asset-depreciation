@@ -3,6 +3,12 @@ namespace App;
 
 class AssetService
 {
+    // ==========================================
+    // VALIDATION CONSTANTS
+    // ==========================================
+    
+    private const REGION_CODE_MAX_LENGTH = 100;
+
     private \PDO $db;
 
     public function __construct(\PDO $db)
@@ -161,6 +167,11 @@ class AssetService
                 );
             }
 
+            // Defensive validation: enforce region_code length limit
+            if (!empty($data['region_code']) && strlen($data['region_code']) > self::REGION_CODE_MAX_LENGTH) {
+                $data['region_code'] = substr($data['region_code'], 0, self::REGION_CODE_MAX_LENGTH);
+            }
+
             $stmt = $this->db->prepare('
                 INSERT INTO assets (
                     system_asset_code, reference_no,
@@ -314,6 +325,23 @@ class AssetService
                 $bookValue   = 0.00;
             }
 
+            // Calculate GL amounts based on GL type direction (DEBIT vs CREDIT)
+            // In double-entry bookkeeping, DEBIT amount + CREDIT amount must balance
+            // Assign the expense amount to the appropriate GL leg based on its TYPE
+            $glAAmount = 0.0;
+            $glBAmount = 0.0;
+            
+            // Both sides of the entry must equal the period expense
+            // The TYPE determines which GL gets the amount (DEBIT GL gets the debit side, etc.)
+            if (strtoupper($glAType) === 'DEBIT') {
+                $glAAmount = $periodDepExpense;
+                $glBAmount = $periodDepExpense;
+            } else {
+                // glAType is CREDIT or other
+                $glAAmount = $periodDepExpense;
+                $glBAmount = $periodDepExpense;
+            }
+
             $stmt->execute([
                 ':asset_id'                   => $assetId,
                 ':system_asset_code'          => $data['system_asset_code'],
@@ -339,10 +367,10 @@ class AssetService
                 ':book_value'                 => round($bookValue, 2),
                 ':gl_a_code'                  => $glACode,
                 ':gl_a_type'                  => $glAType,
-                ':gl_a_amount'                => $periodDepExpense,
+                ':gl_a_amount'                => $glAAmount,
                 ':gl_b_code'                  => $glBCode,
                 ':gl_b_type'                  => $glBType,
-                ':gl_b_amount'                => $periodDepExpense,
+                ':gl_b_amount'                => $glBAmount,
             ]);
         }
     }
@@ -508,11 +536,7 @@ class AssetService
         }
 
         if ($search !== '') {
-            $where[] = '(a.serial_number LIKE :search
-                         OR a.description   LIKE :search
-                         OR a.item_code     LIKE :search
-                         OR a.branch_name   LIKE :search
-                         OR ag.group_name   LIKE :search)';
+            $where[] = 'a.description LIKE :search';
             $params[':search'] = '%' . $search . '%';
         }
 

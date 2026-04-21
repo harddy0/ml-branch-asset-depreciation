@@ -67,15 +67,14 @@
                     <thead class="bg-[#ce2216]">
                         <tr>
                             <th class="px-3 py-2 text-left font-black text-white uppercase">Date</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">Period</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">G/L</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">Description</th>
+                            <th class="px-3 py-2 text-center font-black text-white uppercase">Period</th>
+                            <th class="px-3 py-2 text-left font-black text-white uppercase">G/L Code</th>
                             <th class="px-3 py-2 text-right font-black text-white uppercase">Debit</th>
                             <th class="px-3 py-2 text-right font-black text-white uppercase">Credit</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Period Amount</th>
+                            <th class="px-3 py-2 text-right font-black text-white uppercase">Period Expense</th>
                             <th class="px-3 py-2 text-right font-black text-white uppercase">Accumulated</th>
                             <th class="px-3 py-2 text-right font-black text-white uppercase">Book Value</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">Run Timestamp</th>
+                            <th class="px-3 py-2 text-center font-black text-white uppercase">Type</th>
                         </tr>
                     </thead>
                     <tbody id="ledger-table-body"></tbody>
@@ -87,16 +86,14 @@
                     <thead class="bg-[#ce2216]">
                         <tr>
                             <th class="px-3 py-2 text-left font-black text-white uppercase">Date</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">Period</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">Line</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">Account</th>
+                            <th class="px-3 py-2 text-center font-black text-white uppercase">Period</th>
+                            <th class="px-3 py-2 text-center font-black text-white uppercase">Type</th>
+                            <th class="px-3 py-2 text-left font-black text-white uppercase">G/L Code</th>
                             <th class="px-3 py-2 text-right font-black text-white uppercase">Debit</th>
                             <th class="px-3 py-2 text-right font-black text-white uppercase">Credit</th>
                             <th class="px-3 py-2 text-right font-black text-white uppercase">Period Amount</th>
                             <th class="px-3 py-2 text-right font-black text-white uppercase">Accumulated</th>
                             <th class="px-3 py-2 text-right font-black text-white uppercase">Book Value</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">Description</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">Run Timestamp</th>
                         </tr>
                     </thead>
                     <tbody id="fs-table-body"></tbody>
