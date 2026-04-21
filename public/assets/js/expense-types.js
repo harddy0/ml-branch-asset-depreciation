@@ -90,10 +90,13 @@ function loadExpenseTypes(search, page) {
 
 function renderTable(data) {
     var tbody = document.getElementById('expenseTypeTableBody');
-    tbody.innerHTML = '';
+    var fragment = document.createDocumentFragment();
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 font-bold py-16 text-sm">No expense types found.</td></tr>';
+        var emptyTr = document.createElement('tr');
+        emptyTr.innerHTML = '<td colspan="5" class="text-center text-slate-400 font-bold py-16 text-sm">No expense types found.</td>';
+        fragment.appendChild(emptyTr);
+        tbody.replaceChildren(fragment);
         return;
     }
 
@@ -122,8 +125,10 @@ function renderTable(data) {
                 '</div>' +
             '</td>';
         
-        tbody.appendChild(tr);
+        fragment.appendChild(tr);
     }
+
+    tbody.replaceChildren(fragment);
 }
 
 function renderPagination(pagination) {
