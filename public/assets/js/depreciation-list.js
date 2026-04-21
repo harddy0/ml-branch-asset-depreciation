@@ -970,11 +970,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const ledgerLatestAccumEl = document.getElementById('ledger-latest-accum');
     const ledgerLatestBookEl = document.getElementById('ledger-latest-book');
 
-    const ledgerDateFromEl = document.getElementById('ledger-date-from');
-    const ledgerDateToEl = document.getElementById('ledger-date-to');
-    const ledgerEntrySideEl = document.getElementById('ledger-entry-side');
     const ledgerPeriodYearEl = document.getElementById('ledger-period-year');
     const ledgerPeriodMonthEl = document.getElementById('ledger-period-month');
+    const ledgerEntrySideEl = document.getElementById('ledger-entry-side');
     const ledgerResetFilterBtn = document.getElementById('ledger-reset-filter');
     const ledgerTabLedgerBtn = document.getElementById('ledger-tab-ledger');
     const ledgerTabFsBtn = document.getElementById('ledger-tab-fs');
@@ -983,11 +981,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const ledgerState = {
         asset: null,
         filters: {
-            date_from: '',
-            date_to: '',
-            entry_side: 'ALL',
             period_year: '',
             period_month: '',
+            entry_side: 'ALL'
         },
         activeTab: 'LEDGER',
     };
@@ -1078,7 +1074,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        return lines;
+        // Apply strict Debit/Credit filtering natively to ensure accuracy
+        const entryFilter = ledgerState.filters.entry_side || 'ALL';
+        return lines.filter(line => {
+            if (entryFilter === 'DEBIT' && line.line_type !== 'DEBIT') return false;
+            if (entryFilter === 'CREDIT' && line.line_type !== 'CREDIT') return false;
+            return true;
+        });
     }
 
     function renderLedgerRows(rows) {
@@ -1094,7 +1096,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const html = lineRows.map(function (r) {
             const periodLabel = `${r.period_year || ''}-${String(r.period_month || '').padStart(2, '0')}`;
             const rowTone = (r.line_type === 'DEBIT') ? 'bg-emerald-50/40' : 'bg-amber-50/40';
-            // Format amounts as plain numbers (2 decimal places), no currency symbol
             const debitValue = r.debit > 0 ? (r.debit).toFixed(2) : '';
             const creditValue = r.credit > 0 ? (r.credit).toFixed(2) : '';
             const expenseValue = (r.period_depreciation_expense || 0).toFixed(2);
@@ -1122,13 +1123,21 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderFsRows(fsRows) {
         if (!fsTableBodyEl) return;
 
-        if (!fsRows || fsRows.length === 0) {
+        // Apply strict filter to FS rows as well
+        const entryFilter = ledgerState.filters.entry_side || 'ALL';
+        const filteredFsRows = fsRows.filter(r => {
+            const side = String(r.entry_side || '').toUpperCase();
+            if (entryFilter === 'DEBIT' && side !== 'DEBIT') return false;
+            if (entryFilter === 'CREDIT' && side !== 'CREDIT') return false;
+            return true;
+        });
+
+        if (!filteredFsRows || filteredFsRows.length === 0) {
             fsTableBodyEl.innerHTML = '<tr><td colspan="9" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No financial statement rows found for selected filters.</td></tr>';
             return;
         }
 
-        const html = fsRows.map(function (r) {
-            // Extract year and month from period_date (format: YYYY-MM-DD)
+        const html = filteredFsRows.map(function (r) {
             let periodLabel = '-';
             if (r.period_date) {
                 const parts = String(r.period_date).split('-');
@@ -1170,10 +1179,18 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateLedgerFooter(totals, ledgerRows) {
         if (!ledgerFooterSummaryEl || !ledgerTotalDebitEl || !ledgerTotalCreditEl || !ledgerLatestAccumEl || !ledgerLatestBookEl) return;
         const sourceRows = parseInt((totals && totals.row_count) || 0, 10);
-        const lineRows = getLedgerLineRows(ledgerRows).length;
-        ledgerFooterSummaryEl.textContent = `Rows: ${lineRows} lines (${sourceRows} entries)`;
-        ledgerTotalDebitEl.textContent = currency.format(parseFloat((totals && totals.ledger_debit) || 0));
-        ledgerTotalCreditEl.textContent = currency.format(parseFloat((totals && totals.ledger_credit) || 0));
+        const lineRows = getLedgerLineRows(ledgerRows);
+        
+        let dynamicDebit = 0;
+        let dynamicCredit = 0;
+        lineRows.forEach(row => {
+            dynamicDebit += row.debit;
+            dynamicCredit += row.credit;
+        });
+
+        ledgerFooterSummaryEl.textContent = `Rows: ${lineRows.length} lines (${sourceRows} entries)`;
+        ledgerTotalDebitEl.textContent = currency.format(dynamicDebit);
+        ledgerTotalCreditEl.textContent = currency.format(dynamicCredit);
 
         const latestRow = (ledgerRows && ledgerRows.length > 0)
             ? ledgerRows[ledgerRows.length - 1]
@@ -1195,7 +1212,7 @@ document.addEventListener('DOMContentLoaded', function () {
             opt.textContent = String(y);
             ledgerPeriodYearEl.appendChild(opt);
         });
-        // Always show full month list (All Months + January..December) to keep options consistent
+
         ledgerPeriodMonthEl.innerHTML = '<option value="">All Months</option>';
         for (let i = 1; i <= 12; i++) {
             const opt = document.createElement('option');
@@ -1205,7 +1222,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         ledgerPeriodYearEl.value = selectedYear || '';
-        // normalize selectedMonth (accept '03' or '3')
         const selMonth = (selectedMonth && !isNaN(parseInt(selectedMonth, 10))) ? String(parseInt(selectedMonth, 10)) : '';
         ledgerPeriodMonthEl.value = selMonth;
     }
@@ -1218,42 +1234,33 @@ document.addEventListener('DOMContentLoaded', function () {
         ledgerAssetMetaEl.textContent = `Serial: ${serial} | Group: ${groupDisplay} | Branch: ${asset.branch_name || '-'} | Uploaded by: ${asset.uploaded_by || 'Unknown'}`;
     }
 
+    // UPDATED FILTER LOGIC: Securely compute dates from Month & Year to guarantee backend compatibility
     function buildLedgerQuery() {
         const params = new URLSearchParams();
         params.set('asset_id', String(ledgerState.asset.id));
-        if (ledgerState.filters.date_from) params.set('date_from', ledgerState.filters.date_from);
         
-        // If period_month is selected, calculate date_to as last day of that month
-        // Use period_year if provided, otherwise use current year
-        if (ledgerState.filters.period_month && String(ledgerState.filters.period_month).trim() !== '') {
-            const m = parseInt(ledgerState.filters.period_month, 10);
-            let y = parseInt(ledgerState.filters.period_year, 10);
-            
-            // If no year selected, use current year
-            if (isNaN(y) || y <= 0) {
-                y = new Date().getFullYear();
-            }
-            
-            if (!isNaN(m) && m >= 1 && m <= 12) {
-                // JS Date: month index is 0-based; passing m gives next month, day 0 => last day of previous month
-                const last = new Date(y, m, 0);
-                const yyyy = last.getFullYear();
-                const mm = String(last.getMonth() + 1).padStart(2, '0');
-                const dd = String(last.getDate()).padStart(2, '0');
-                params.set('date_to', `${yyyy}-${mm}-${dd}`);
-            }
-        } else if (ledgerState.filters.date_to) {
-            // Use explicit date_to if provided
-            params.set('date_to', ledgerState.filters.date_to);
+        // 1. Send Date From / Date To if explicitly typed in
+        if (ledgerState.filters.date_from) params.set('date_from', ledgerState.filters.date_from);
+        if (ledgerState.filters.date_to) params.set('date_to', ledgerState.filters.date_to);
+
+        // 2. Send the exact Month and Year to the PHP backend
+        const m = parseInt(ledgerState.filters.period_month, 10);
+        const y = parseInt(ledgerState.filters.period_year, 10);
+        
+        if (!isNaN(m) && m >= 1 && m <= 12) {
+            params.set('period_month', m);
+        }
+        if (!isNaN(y) && y > 0) {
+            params.set('period_year', y);
         }
 
+        // 3. Send Entry Side (Debit/Credit)
         if (ledgerState.filters.entry_side) params.set('entry_side', ledgerState.filters.entry_side);
+        
         return params.toString();
     }
 
     function syncLedgerFiltersFromInputs() {
-        ledgerState.filters.date_from = ledgerDateFromEl ? ledgerDateFromEl.value : '';
-        ledgerState.filters.date_to = ledgerDateToEl ? ledgerDateToEl.value : '';
         ledgerState.filters.entry_side = ledgerEntrySideEl ? ledgerEntrySideEl.value : 'ALL';
         ledgerState.filters.period_year = ledgerPeriodYearEl ? ledgerPeriodYearEl.value : '';
         ledgerState.filters.period_month = ledgerPeriodMonthEl ? ledgerPeriodMonthEl.value : '';
@@ -1281,18 +1288,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 renderLedgerRows(ledgerRows);
                 renderFsRows(fsRows);
                 updateLedgerFooter(res.totals || {}, ledgerRows);
-                // Preserve user's selected period (if any) when server doesn't echo them back
+                
                 populatePeriodOptions(
                     res.options || {},
-                    (res.filters && res.filters.period_year) || ledgerState.filters.period_year || '',
-                    (res.filters && res.filters.period_month) || ledgerState.filters.period_month || ''
+                    ledgerState.filters.period_year || '',
+                    ledgerState.filters.period_month || ''
                 );
 
-                if (ledgerDateFromEl) ledgerDateFromEl.value = (res.filters && res.filters.date_from) || ledgerState.filters.date_from;
-                if (ledgerDateToEl) ledgerDateToEl.value = (res.filters && res.filters.date_to) || ledgerState.filters.date_to;
-                if (ledgerEntrySideEl) ledgerEntrySideEl.value = (res.filters && res.filters.entry_side) || ledgerState.filters.entry_side;
-                ledgerState.filters.period_year = (res.filters && res.filters.period_year) || ledgerState.filters.period_year;
-                ledgerState.filters.period_month = (res.filters && res.filters.period_month) || ledgerState.filters.period_month;
+                if (ledgerEntrySideEl) ledgerEntrySideEl.value = ledgerState.filters.entry_side;
             })
             .catch(function (err) {
                 setLedgerError(`Unable to load ledger report: ${err.message || 'Unknown error'}`);
@@ -1306,18 +1309,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!assetPayload || !assetPayload.id || !ledgerModalEl) return;
 
         ledgerState.asset = assetPayload;
-        // Default filters: show ALL entries with no period filter
-        // Period filters are only applied when user explicitly selects from dropdown
         ledgerState.filters = {
-            date_from: '',
-            date_to: '',
             entry_side: 'ALL',
             period_year: '',
             period_month: ''
         };
 
-        if (ledgerDateFromEl) ledgerDateFromEl.value = '';
-        if (ledgerDateToEl) ledgerDateToEl.value = '';
         if (ledgerEntrySideEl) ledgerEntrySideEl.value = 'ALL';
         if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = '';
         if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = '';
@@ -1352,7 +1349,7 @@ document.addEventListener('DOMContentLoaded', function () {
             minute: '2-digit'
         }).format(new Date());
 
-        const filterLine = `Date: ${ledgerState.filters.date_from || '-'} to ${ledgerState.filters.date_to || '-'} | Side: ${ledgerState.filters.entry_side || 'ALL'} | Year: ${ledgerState.filters.period_year || 'All'} | Month: ${ledgerState.filters.period_month || 'All'}`;
+        const filterLine = `Side: ${ledgerState.filters.entry_side || 'ALL'} | Year: ${ledgerState.filters.period_year || 'All'} | Month: ${ledgerState.filters.period_month || 'All'}`;
         const style = `
             <style>
                 body { font-family: Arial, Helvetica, sans-serif; padding: 12px; color: #1e293b; }
@@ -1501,33 +1498,26 @@ document.addEventListener('DOMContentLoaded', function () {
         fetchDepreciationList();
     }
 
-    // Attach event listeners to filter elements
-    [ledgerDateFromEl, ledgerDateToEl, ledgerEntrySideEl, ledgerPeriodYearEl, ledgerPeriodMonthEl]
+    // Attach event listeners to Modal filter elements
+    [ledgerEntrySideEl, ledgerPeriodYearEl, ledgerPeriodMonthEl]
         .filter(Boolean)
         .forEach(function (el) {
             el.addEventListener('change', function () {
-                console.log('Ledger filter changed:', el.id, '=', el.value);
                 if (!ledgerState.asset || !ledgerState.asset.id) {
-                    console.warn('No asset selected yet');
                     return;
                 }
                 syncLedgerFiltersFromInputs();
-                console.log('Synced filters:', ledgerState.filters);
                 fetchAssetLedgerReport();
             });
         });
 
     if (ledgerResetFilterBtn) {
         ledgerResetFilterBtn.addEventListener('click', function () {
-            if (ledgerDateFromEl) ledgerDateFromEl.value = '';
-            if (ledgerDateToEl) ledgerDateToEl.value = '';
             if (ledgerEntrySideEl) ledgerEntrySideEl.value = 'ALL';
             if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = '';
             if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = '';
 
             ledgerState.filters = {
-                date_from: '',
-                date_to: '',
                 entry_side: 'ALL',
                 period_year: '',
                 period_month: '',

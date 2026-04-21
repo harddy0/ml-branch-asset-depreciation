@@ -378,4 +378,68 @@ class LedgerReportService
             'options' => ['years' => [], 'months' => []],
         ];
     }
+
+    public function getLedgerEntries(array $filters = []): array
+    {
+        $month     = $filters['month'] ?? 'ALL';
+        $year      = $filters['year'] ?? 'ALL';
+        $entryType = strtoupper($filters['entry_type'] ?? 'ALL'); // 'ALL', 'DEBIT', 'CREDIT'
+        $assetId   = (int)($filters['asset_id'] ?? 0); // Optional: if viewing a specific asset modal
+
+        $where = [];
+        $params = [];
+
+        if ($month !== 'ALL' && $month !== '') {
+            $where[] = "period_month = :month";
+            $params[':month'] = (int)$month;
+        }
+
+        if ($year !== 'ALL' && $year !== '') {
+            $where[] = "period_year = :year";
+            $params[':year'] = (int)$year;
+        }
+
+        if ($assetId > 0) {
+            $where[] = "asset_id = :asset_id";
+            $params[':asset_id'] = $assetId;
+        }
+
+        $baseWhere = empty($where) ? '1=1' : implode(' AND ', $where);
+
+        // Unpivot the single ledger row into two distinct journal entry lines (Debit & Credit)
+        $sql = "
+            SELECT * FROM (
+                SELECT 
+                    id, asset_id, system_asset_code, asset_name, branch_name, 
+                    period_date, period_month, period_year,
+                    gl_a_code AS gl_code, gl_a_type AS entry_type, gl_a_amount AS amount
+                FROM depreciation_ledger
+                WHERE {$baseWhere}
+                
+                UNION ALL
+                
+                SELECT 
+                    id, asset_id, system_asset_code, asset_name, branch_name, 
+                    period_date, period_month, period_year,
+                    gl_b_code AS gl_code, gl_b_type AS entry_type, gl_b_amount AS amount
+                FROM depreciation_ledger
+                WHERE {$baseWhere}
+            ) AS combined_ledger
+        ";
+
+        // Apply the Debit/Credit filter on the newly unpivoted data
+        if ($entryType === 'DEBIT') {
+            $sql .= " WHERE entry_type = 'DEBIT'";
+        } elseif ($entryType === 'CREDIT') {
+            $sql .= " WHERE entry_type = 'CREDIT'";
+        }
+
+        // Standard financial sorting: Chronological, then by asset, then Debits before Credits
+        $sql .= " ORDER BY period_date ASC, system_asset_code ASC, entry_type DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
 }
