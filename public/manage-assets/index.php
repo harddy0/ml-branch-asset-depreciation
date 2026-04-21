@@ -181,7 +181,7 @@ $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
                 <tbody id="tableBody" class="divide-y divide-slate-100 font-medium text-slate-700">
                     <?php foreach ($data as $row): ?>
                         <?php $payload = htmlspecialchars(json_encode($row), ENT_QUOTES); ?>
-                        <tr class="asset-row cursor-pointer" data-asset='<?= $payload ?>'>
+                        <tr class="asset-row cursor-pointer" data-id="<?= (int)$row['asset_id'] ?>" data-asset='<?= $payload ?>'>
                             <td class="py-0 pl-5 pr-3 text-xs text-slate-900"><?= htmlspecialchars($row['system_asset_code']) ?></td>
                             <td class="py-0 px-3 text-xs"><?= htmlspecialchars($row['branch_name']) ?></td>
                             <td class="py-0 px-3 text-xs"><?= htmlspecialchars($row['group_code'] ?? '') ?></td>
@@ -222,7 +222,8 @@ $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
     </div>
 </div>
 
-<?php include_once __DIR__ . '/../../src/includes/modals/asset-depreciation-details-manage.php'; ?>
+
+<?php include_once __DIR__ . '/../../src/includes/modals/view-asset-details.php'; ?>
 
 <div id="exportHeaderTemplate" class="hidden">
     <?php include_once __DIR__ . '/../../src/includes/export-header.php'; ?>
