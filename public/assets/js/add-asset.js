@@ -161,9 +161,12 @@
         const container = document.getElementById('finish-summary');
         if(!container) return;
 
+        // cleanup legacy fallback rows from older scripts
+        const prevExtra = container.querySelector('.__extra_summary');
+        if(prevExtra) prevExtra.remove();
+
         // populate existing placeholders (elements with data-key)
         const placeholders = container.querySelectorAll('[data-key]');
-        const usedKeys = new Set();
         placeholders.forEach(ph => {
             const key = ph.getAttribute('data-key');
             if(!key) return;
@@ -192,38 +195,7 @@
             } else {
                 ph.textContent = value ? value : '—';
             }
-            usedKeys.add(key);
         });
-
-        // (moved currency input formatting initialization to module load)
-
-        // append any remaining inputs that don't have placeholders
-        const remaining = document.createElement('div');
-        remaining.className = 'mt-4';
-        const inputs = form.querySelectorAll('input, select, textarea');
-        let any = false;
-        // keys to hide from the preview (kept in the form but not displayed)
-        const excludeKeys = new Set(['depreciation_code']);
-        inputs.forEach(i => {
-            const key = i.name || i.id;
-            if(!key || usedKeys.has(key)) return;
-            if(i.type === 'hidden') return; // don't show hidden inputs
-            if(excludeKeys.has(key)) return; // explicit exclusions
-            any = true;
-            const label = i.getAttribute('data-label') || i.getAttribute('aria-label') || key;
-            const value = (i.type === 'checkbox') ? (i.checked ? 'Yes' : 'No') : i.value;
-            const row = document.createElement('div');
-            row.className = 'flex items-start gap-4 py-1';
-            row.innerHTML = '<div class="text-xs text-slate-500 w-40">' + escapeHtml(label) + '</div><div class="text-sm text-slate-800">' + (value ? escapeHtml(value) : '&ndash;') + '</div>';
-            remaining.appendChild(row);
-        });
-        // replace previous appended extra if present
-        const prevExtra = container.querySelector('.__extra_summary');
-        if(prevExtra) prevExtra.remove();
-        if(any){
-            remaining.classList.add('__extra_summary');
-            container.appendChild(remaining);
-        }
     }
 
     function escapeHtml(str){
