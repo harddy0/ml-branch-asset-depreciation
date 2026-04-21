@@ -51,7 +51,14 @@ require_once __DIR__ . '/../../src/includes/init.php';
 
 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm table-fixed">
+            <colgroup>
+                <col class="w-[10%]">
+                <col class="w-[28%]">
+                <col class="w-[30%]">
+                <col class="w-[17%]">
+                <col class="w-[15%]">
+            </colgroup>
             <thead>
                 <tr class="bg-[#ce2216] border-b border-slate-200">
                     <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2">ID</th>
