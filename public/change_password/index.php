@@ -129,6 +129,6 @@ unset($_SESSION['cp_error']);
         </div>
     </div>
 
-    <script src="change-password.js"></script>
+    <script src="<?= ASSET_URL ?>js/change-password.js"></script>
 </body>
 </html>
