@@ -21,12 +21,17 @@ try {
         exit;
     }
 
+    $dateFrom = trim((string)($_GET['date_from'] ?? ''));
+    $dateTo   = trim((string)($_GET['date_to'] ?? ''));
+    $entrySide = strtoupper(trim((string)($_GET['entry_side'] ?? 'ALL')));
+    if (!in_array($entrySide, ['DEBIT','CREDIT','ALL'], true)) $entrySide = 'ALL';
+
     $filters = [
-        'date_from' => trim((string)($_GET['date_from'] ?? '')),
-        'date_to' => trim((string)($_GET['date_to'] ?? '')),
-        'entry_side' => trim((string)($_GET['entry_side'] ?? 'ALL')),
-        'period_year' => (int)($_GET['period_year'] ?? 0),
-        'period_month' => (int)($_GET['period_month'] ?? 0),
+        'date_from'   => $dateFrom === '' ? null : $dateFrom,
+        'date_to'     => $dateTo === '' ? null : $dateTo,
+        'entry_side'  => $entrySide,
+        'period_year' => max(0, (int)($_GET['period_year'] ?? 0)),
+        'period_month'=> max(0, (int)($_GET['period_month'] ?? 0)),
     ];
 
     $service = new \App\LedgerReportService($pdo);

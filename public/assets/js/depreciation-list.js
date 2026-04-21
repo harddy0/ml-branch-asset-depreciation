@@ -197,10 +197,13 @@ document.addEventListener('DOMContentLoaded', function () {
             setSingle(mainZoneSelect, found.main_zone_code, found.main_zone_code || 'N/A');
             setSingle(zoneSelect,     found.zone_code,      found.zone_code || 'N/A');
 
-            // Use only the `region` column from branch_profile for display
-            const regionCode = found.region || '';
-            const regionLabel = regionCode; // show only branch_profile.region
-            setSingle(regionSelect,   regionCode,    regionLabel || 'N/A');
+            // The value MUST be the short code for the database
+const regionCode = found.region_code || ''; 
+
+// The display text can still be the friendly region name
+const regionLabel = found.region || found.region_code || ''; 
+
+setSingle(regionSelect, regionCode, regionLabel || 'N/A');
         });
     }
 
@@ -681,7 +684,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 system_asset_code: row.system_asset_code || '',
                 serial_number: row.serial_number || '',
                 description: row.description || '',
-                group_code: row.group_code || '',
+                group_code: row.asset_group_id || '',
                 branch_name: row.branch_name || '',
                 uploaded_by: row.uploaded_by || '',
                 created_at: row.created_at || ''
@@ -690,7 +693,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const serialNo = row.serial_number || row.system_asset_code || '-';
             const description = row.description || '-';
             const itemCode = row.item_code || '-';
-            const groupCode = row.group_code || '-';
+            const groupCode = row.asset_group_id || '-';
             const branch = row.branch_name || '-';
             const uploadedBy = row.uploaded_by || 'Unknown';
             const acquisitionCost = currency.format(parseFloat(row.acquisition_cost || 0));
@@ -970,11 +973,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const ledgerLatestAccumEl = document.getElementById('ledger-latest-accum');
     const ledgerLatestBookEl = document.getElementById('ledger-latest-book');
 
-    const ledgerDateFromEl = document.getElementById('ledger-date-from');
-    const ledgerDateToEl = document.getElementById('ledger-date-to');
-    const ledgerEntrySideEl = document.getElementById('ledger-entry-side');
     const ledgerPeriodYearEl = document.getElementById('ledger-period-year');
     const ledgerPeriodMonthEl = document.getElementById('ledger-period-month');
+    const ledgerEntrySideEl = document.getElementById('ledger-entry-side');
     const ledgerResetFilterBtn = document.getElementById('ledger-reset-filter');
     const ledgerTabLedgerBtn = document.getElementById('ledger-tab-ledger');
     const ledgerTabFsBtn = document.getElementById('ledger-tab-fs');
@@ -983,11 +984,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const ledgerState = {
         asset: null,
         filters: {
-            date_from: '',
-            date_to: '',
-            entry_side: 'ALL',
             period_year: '',
             period_month: '',
+            entry_side: 'ALL'
         },
         activeTab: 'LEDGER',
     };
@@ -1041,8 +1040,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         (rows || []).forEach(function (r) {
             const sourceId = parseInt(r.ledger_id || 0, 10) || 0;
-            const debitAmount = parseFloat(r.gl_debit_amount || 0) || 0;
-            const creditAmount = parseFloat(r.gl_credit_amount || 0) || 0;
             const shared = {
                 source_id: sourceId,
                 period_date: r.period_date || '',
@@ -1055,26 +1052,38 @@ document.addEventListener('DOMContentLoaded', function () {
                 created_at: r.created_at || ''
             };
 
-            if (r.gl_debit_code) {
+            // Process GL 1 with its actual type
+            if (r.gl1_code) {
+                const gl1Type = String(r.gl1_type || '').toUpperCase();
+                const gl1Amount = parseFloat(r.gl1_amount || 0) || 0;
                 lines.push(Object.assign({}, shared, {
-                    line_type: 'DEBIT',
-                    gl_code: String(r.gl_debit_code),
-                    debit: debitAmount,
-                    credit: 0
+                    line_type: gl1Type,
+                    gl_code: String(r.gl1_code),
+                    debit: gl1Type === 'DEBIT' ? gl1Amount : 0,
+                    credit: gl1Type === 'CREDIT' ? gl1Amount : 0
                 }));
             }
 
-            if (r.gl_credit_code) {
+            // Process GL 2 with its actual type
+            if (r.gl2_code) {
+                const gl2Type = String(r.gl2_type || '').toUpperCase();
+                const gl2Amount = parseFloat(r.gl2_amount || 0) || 0;
                 lines.push(Object.assign({}, shared, {
-                    line_type: 'CREDIT',
-                    gl_code: String(r.gl_credit_code),
-                    debit: 0,
-                    credit: creditAmount
+                    line_type: gl2Type,
+                    gl_code: String(r.gl2_code),
+                    debit: gl2Type === 'DEBIT' ? gl2Amount : 0,
+                    credit: gl2Type === 'CREDIT' ? gl2Amount : 0
                 }));
             }
         });
 
-        return lines;
+        // Apply strict Debit/Credit filtering natively to ensure accuracy
+        const entryFilter = ledgerState.filters.entry_side || 'ALL';
+        return lines.filter(line => {
+            if (entryFilter === 'DEBIT' && line.line_type !== 'DEBIT') return false;
+            if (entryFilter === 'CREDIT' && line.line_type !== 'CREDIT') return false;
+            return true;
+        });
     }
 
     function renderLedgerRows(rows) {
@@ -1090,21 +1099,23 @@ document.addEventListener('DOMContentLoaded', function () {
         const html = lineRows.map(function (r) {
             const periodLabel = `${r.period_year || ''}-${String(r.period_month || '').padStart(2, '0')}`;
             const rowTone = (r.line_type === 'DEBIT') ? 'bg-emerald-50/40' : 'bg-amber-50/40';
-            const debitValue = r.debit > 0 ? currency.format(r.debit) : '';
-            const creditValue = r.credit > 0 ? currency.format(r.credit) : '';
+            const debitValue = r.debit !== 0 ? (r.debit).toFixed(2) : '';
+            const creditValue = r.credit !== 0 ? (r.credit).toFixed(2) : '';
+            const expenseValue = (r.period_depreciation_expense || 0).toFixed(2);
+            const accumValue = (r.accumulated_depreciation || 0).toFixed(2);
+            const bookVal = (r.book_value || 0).toFixed(2);
 
             return `
                 <tr class="border-b border-slate-100 ${rowTone}">
                     <td class="px-3 py-2 text-slate-700">${escapeHtml(formatDateDisplay(r.period_date))}</td>
-                    <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(periodLabel)}</td>
+                    <td class="px-3 py-2 font-mono text-slate-700 text-center">${escapeHtml(periodLabel)}</td>
                     <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(r.gl_code || '')}</td>
-                    <td class="px-3 py-2 text-slate-700">${escapeHtml(r.description || '')}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${debitValue}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${creditValue}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(r.period_depreciation_expense || 0)}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(r.accumulated_depreciation || 0)}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(r.book_value || 0)}</td>
-                    <td class="px-3 py-2 text-slate-700">${escapeHtml(r.created_at || '')}</td>
+                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${debitValue}</td>
+                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${creditValue}</td>
+                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${expenseValue}</td>
+                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${accumValue}</td>
+                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${bookVal}</td>
+                    <td class="px-3 py-2 text-center text-xs text-slate-600">${escapeHtml(r.line_type || '')}</td>
                 </tr>
             `;
         }).join('');
@@ -1112,72 +1123,56 @@ document.addEventListener('DOMContentLoaded', function () {
         ledgerTableBodyEl.innerHTML = html;
     }
 
-    function renderFsRows(ledgerRows) {
+    function renderFsRows(fsRows) {
         if (!fsTableBodyEl) return;
 
-        if (!ledgerRows || ledgerRows.length === 0) {
-            fsTableBodyEl.innerHTML = '<tr><td colspan="11" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No financial statement rows found for selected filters.</td></tr>';
+        // Apply strict filter to FS rows as well
+        const entryFilter = ledgerState.filters.entry_side || 'ALL';
+        const filteredFsRows = fsRows.filter(r => {
+            const side = String(r.entry_side || '').toUpperCase();
+            if (entryFilter === 'DEBIT' && side !== 'DEBIT') return false;
+            if (entryFilter === 'CREDIT' && side !== 'CREDIT') return false;
+            return true;
+        });
+
+        if (!filteredFsRows || filteredFsRows.length === 0) {
+            fsTableBodyEl.innerHTML = '<tr><td colspan="9" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No financial statement rows found for selected filters.</td></tr>';
             return;
         }
 
-        const html = ledgerRows.map(function (r) {
-            const periodLabel = `${r.period_year || ''}-${String(r.period_month || '').padStart(2, '0')}`;
-            const periodAmount = currency.format(parseFloat(r.period_depreciation_expense || 0));
-            const accumulated = currency.format(parseFloat(r.accumulated_depreciation || 0));
-            const bookValue = currency.format(parseFloat(r.book_value || 0));
-
-            let lines = '';
-
-            if (r.gl_debit_code) {
-                lines += `
-                    <tr class="border-b border-slate-100 bg-emerald-50/40">
-                        <td class="px-3 py-2 text-slate-700">${escapeHtml(formatDateDisplay(r.period_date))}</td>
-                        <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(periodLabel)}</td>
-                        <td class="px-3 py-2"><span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">DEBIT</span></td>
-                        <td class="px-3 py-2 text-slate-700">${escapeHtml((r.gl_debit_code || '') + (r.debit_account_name ? ' - ' + r.debit_account_name : ''))}</td>
-                        <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_debit_amount || 0))}</td>
-                        <td class="px-3 py-2 text-right font-mono text-slate-700">0.00</td>
-                        <td class="px-3 py-2 text-right font-mono text-slate-700">${periodAmount}</td>
-                        <td class="px-3 py-2 text-right font-mono text-slate-700">${accumulated}</td>
-                        <td class="px-3 py-2 text-right font-mono text-slate-700">${bookValue}</td>
-                        <td class="px-3 py-2 text-slate-700">${escapeHtml(r.description || '')}</td>
-                        <td class="px-3 py-2 text-slate-700">${escapeHtml(r.created_at || '')}</td>
-                    </tr>
-                `;
+        const html = filteredFsRows.map(function (r) {
+            let periodLabel = '-';
+            if (r.period_date) {
+                const parts = String(r.period_date).split('-');
+                if (parts.length >= 2) {
+                    periodLabel = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
+                }
             }
-
-            if (r.gl_credit_code) {
-                lines += `
-                    <tr class="border-b border-slate-100 bg-amber-50/40">
-                        <td class="px-3 py-2 text-slate-700">${escapeHtml(formatDateDisplay(r.period_date))}</td>
-                        <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(periodLabel)}</td>
-                        <td class="px-3 py-2"><span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-100 text-amber-700">CREDIT</span></td>
-                        <td class="px-3 py-2 text-slate-700">${escapeHtml((r.gl_credit_code || '') + (r.credit_account_name ? ' - ' + r.credit_account_name : ''))}</td>
-                        <td class="px-3 py-2 text-right font-mono text-slate-700">0.00</td>
-                        <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_credit_amount || 0))}</td>
-                        <td class="px-3 py-2 text-right font-mono text-slate-700">${periodAmount}</td>
-                        <td class="px-3 py-2 text-right font-mono text-slate-700">${accumulated}</td>
-                        <td class="px-3 py-2 text-right font-mono text-slate-700">${bookValue}</td>
-                        <td class="px-3 py-2 text-slate-700">${escapeHtml(r.description || '')}</td>
-                        <td class="px-3 py-2 text-slate-700">${escapeHtml(r.created_at || '')}</td>
-                    </tr>
-                `;
-            }
+            
+            const entryType = String(r.entry_side || '').toUpperCase();
+            const bgColor = (entryType === 'DEBIT') ? 'bg-emerald-50/40' : 'bg-amber-50/40';
+            const badge = (entryType === 'DEBIT') 
+                ? '<span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">DEBIT</span>'
+                : '<span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-700">CREDIT</span>';
+            
+            const periodAmount = (parseFloat(r.period_depreciation_expense || 0)).toFixed(2);
+            const accumulated = (parseFloat(r.accumulated_depreciation || 0)).toFixed(2);
+            const bookValue = (parseFloat(r.book_value || 0)).toFixed(2);
+            const debitValue = (parseFloat(r.debit_amount || 0)).toFixed(2);
+            const creditValue = (parseFloat(r.credit_amount || 0)).toFixed(2);
 
             return `
-                <tr class="bg-slate-100 border-y border-slate-300">
-                    <td class="px-3 py-2 text-slate-800 font-semibold">${escapeHtml(formatDateDisplay(r.period_date))}</td>
-                    <td class="px-3 py-2 font-mono text-slate-800 font-semibold">${escapeHtml(periodLabel)}</td>
-                    <td class="px-3 py-2 text-slate-700 text-[11px]" colspan="2">Grouped Entry (${escapeHtml(monthName(r.period_month))} ${escapeHtml(r.period_year)})</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_debit_amount || 0))}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-700">${currency.format(parseFloat(r.gl_credit_amount || 0))}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-800 font-semibold">${periodAmount}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-800">${accumulated}</td>
-                    <td class="px-3 py-2 text-right font-mono text-slate-800">${bookValue}</td>
-                    <td class="px-3 py-2 text-slate-700">${escapeHtml(r.description || '')}</td>
-                    <td class="px-3 py-2 text-slate-700">${escapeHtml(r.created_at || '')}</td>
+                <tr class="border-b border-slate-100 ${bgColor}">
+                    <td class="px-3 py-2 text-slate-700">${escapeHtml(formatDateDisplay(r.period_date))}</td>
+                    <td class="px-3 py-2 font-mono text-slate-700 text-center">${escapeHtml(periodLabel)}</td>
+                    <td class="px-3 py-2 text-center">${badge}</td>
+                    <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(r.account_code || '')}</td>
+                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${debitValue}</td>
+                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${creditValue}</td>
+                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${periodAmount}</td>
+                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${accumulated}</td>
+                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${bookValue}</td>
                 </tr>
-                ${lines}
             `;
         }).join('');
 
@@ -1187,10 +1182,18 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateLedgerFooter(totals, ledgerRows) {
         if (!ledgerFooterSummaryEl || !ledgerTotalDebitEl || !ledgerTotalCreditEl || !ledgerLatestAccumEl || !ledgerLatestBookEl) return;
         const sourceRows = parseInt((totals && totals.row_count) || 0, 10);
-        const lineRows = getLedgerLineRows(ledgerRows).length;
-        ledgerFooterSummaryEl.textContent = `Rows: ${lineRows} lines (${sourceRows} entries)`;
-        ledgerTotalDebitEl.textContent = currency.format(parseFloat((totals && totals.ledger_debit) || 0));
-        ledgerTotalCreditEl.textContent = currency.format(parseFloat((totals && totals.ledger_credit) || 0));
+        const lineRows = getLedgerLineRows(ledgerRows);
+        
+        let dynamicDebit = 0;
+        let dynamicCredit = 0;
+        lineRows.forEach(row => {
+            dynamicDebit += row.debit;
+            dynamicCredit += row.credit;
+        });
+
+        ledgerFooterSummaryEl.textContent = `Rows: ${lineRows.length} lines (${sourceRows} entries)`;
+        ledgerTotalDebitEl.textContent = currency.format(dynamicDebit);
+        ledgerTotalCreditEl.textContent = currency.format(dynamicCredit);
 
         const latestRow = (ledgerRows && ledgerRows.length > 0)
             ? ledgerRows[ledgerRows.length - 1]
@@ -1212,7 +1215,7 @@ document.addEventListener('DOMContentLoaded', function () {
             opt.textContent = String(y);
             ledgerPeriodYearEl.appendChild(opt);
         });
-        // Always show full month list (All Months + January..December) to keep options consistent
+
         ledgerPeriodMonthEl.innerHTML = '<option value="">All Months</option>';
         for (let i = 1; i <= 12; i++) {
             const opt = document.createElement('option');
@@ -1222,7 +1225,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         ledgerPeriodYearEl.value = selectedYear || '';
-        // normalize selectedMonth (accept '03' or '3')
         const selMonth = (selectedMonth && !isNaN(parseInt(selectedMonth, 10))) ? String(parseInt(selectedMonth, 10)) : '';
         ledgerPeriodMonthEl.value = selMonth;
     }
@@ -1231,40 +1233,37 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!ledgerSubtitleEl || !ledgerAssetMetaEl || !asset) return;
         const serial = asset.serial_number || asset.system_asset_code || '-';
         ledgerSubtitleEl.textContent = `${asset.system_asset_code || ''} • ${asset.description || ''}`;
-        ledgerAssetMetaEl.textContent = `Serial: ${serial} | Group: ${asset.group_code || '-'} | Branch: ${asset.branch_name || '-'} | Uploaded by: ${asset.uploaded_by || 'Unknown'}`;
+        const groupDisplay = asset.asset_group_id ? `${asset.asset_group_id}` : (asset.group_name || '-');
+        ledgerAssetMetaEl.textContent = `Serial: ${serial} | Group: ${groupDisplay} | Branch: ${asset.branch_name || '-'} | Uploaded by: ${asset.uploaded_by || 'Unknown'}`;
     }
 
+    // UPDATED FILTER LOGIC: Securely compute dates from Month & Year to guarantee backend compatibility
     function buildLedgerQuery() {
         const params = new URLSearchParams();
         params.set('asset_id', String(ledgerState.asset.id));
+        
+        // 1. Send Date From / Date To if explicitly typed in
         if (ledgerState.filters.date_from) params.set('date_from', ledgerState.filters.date_from);
-        // If a period (month + year) is selected, treat it as "as of" and set date_to to the last day
-        // of that month. Do NOT send period_year/period_month to avoid server filtering to that single
-        // period (server applies equality filters when those are present).
-        if (ledgerState.filters.period_year && ledgerState.filters.period_month) {
-            const y = parseInt(ledgerState.filters.period_year, 10);
-            const m = parseInt(ledgerState.filters.period_month, 10);
-            if (!isNaN(y) && !isNaN(m) && m >= 1 && m <= 12) {
-                // JS Date: month index is 0-based; passing m gives next month, day 0 => last day of previous month
-                const last = new Date(y, m, 0);
-                const yyyy = last.getFullYear();
-                const mm = String(last.getMonth() + 1).padStart(2, '0');
-                const dd = String(last.getDate()).padStart(2, '0');
-                params.set('date_to', `${yyyy}-${mm}-${dd}`);
-            } else if (ledgerState.filters.date_to) {
-                params.set('date_to', ledgerState.filters.date_to);
-            }
-        } else {
-            if (ledgerState.filters.date_to) params.set('date_to', ledgerState.filters.date_to);
+        if (ledgerState.filters.date_to) params.set('date_to', ledgerState.filters.date_to);
+
+        // 2. Send the exact Month and Year to the PHP backend
+        const m = parseInt(ledgerState.filters.period_month, 10);
+        const y = parseInt(ledgerState.filters.period_year, 10);
+        
+        if (!isNaN(m) && m >= 1 && m <= 12) {
+            params.set('period_month', m);
+        }
+        if (!isNaN(y) && y > 0) {
+            params.set('period_year', y);
         }
 
+        // 3. Send Entry Side (Debit/Credit)
         if (ledgerState.filters.entry_side) params.set('entry_side', ledgerState.filters.entry_side);
+        
         return params.toString();
     }
 
     function syncLedgerFiltersFromInputs() {
-        ledgerState.filters.date_from = ledgerDateFromEl ? ledgerDateFromEl.value : '';
-        ledgerState.filters.date_to = ledgerDateToEl ? ledgerDateToEl.value : '';
         ledgerState.filters.entry_side = ledgerEntrySideEl ? ledgerEntrySideEl.value : 'ALL';
         ledgerState.filters.period_year = ledgerPeriodYearEl ? ledgerPeriodYearEl.value : '';
         ledgerState.filters.period_month = ledgerPeriodMonthEl ? ledgerPeriodMonthEl.value : '';
@@ -1286,23 +1285,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!res.success) throw new Error(res.error || 'Failed to fetch ledger report.');
 
                 const ledgerRows = res.ledger_rows || [];
+                const fsRows = res.fs_rows || [];
 
                 updateLedgerAssetMeta(res.asset);
                 renderLedgerRows(ledgerRows);
-                renderFsRows(ledgerRows);
+                renderFsRows(fsRows);
                 updateLedgerFooter(res.totals || {}, ledgerRows);
-                // Preserve user's selected period (if any) when server doesn't echo them back
+                
                 populatePeriodOptions(
                     res.options || {},
-                    (res.filters && res.filters.period_year) || ledgerState.filters.period_year || '',
-                    (res.filters && res.filters.period_month) || ledgerState.filters.period_month || ''
+                    ledgerState.filters.period_year || '',
+                    ledgerState.filters.period_month || ''
                 );
 
-                if (ledgerDateFromEl) ledgerDateFromEl.value = (res.filters && res.filters.date_from) || ledgerState.filters.date_from;
-                if (ledgerDateToEl) ledgerDateToEl.value = (res.filters && res.filters.date_to) || ledgerState.filters.date_to;
-                if (ledgerEntrySideEl) ledgerEntrySideEl.value = (res.filters && res.filters.entry_side) || ledgerState.filters.entry_side;
-                ledgerState.filters.period_year = (res.filters && res.filters.period_year) || ledgerState.filters.period_year;
-                ledgerState.filters.period_month = (res.filters && res.filters.period_month) || ledgerState.filters.period_month;
+                if (ledgerEntrySideEl) ledgerEntrySideEl.value = ledgerState.filters.entry_side;
             })
             .catch(function (err) {
                 setLedgerError(`Unable to load ledger report: ${err.message || 'Unknown error'}`);
@@ -1316,24 +1312,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!assetPayload || !assetPayload.id || !ledgerModalEl) return;
 
         ledgerState.asset = assetPayload;
-        // default filters; set period to current month/year so modal opens "As of" current period
-        const now = new Date();
-        const curYear = String(now.getFullYear());
-        const curMonth = String(now.getMonth() + 1);
-
         ledgerState.filters = {
-            date_from: '',
-            date_to: '',
             entry_side: 'ALL',
-            period_year: curYear,
-            period_month: curMonth,
+            period_year: '',
+            period_month: ''
         };
 
-        if (ledgerDateFromEl) ledgerDateFromEl.value = '';
-        if (ledgerDateToEl) ledgerDateToEl.value = '';
         if (ledgerEntrySideEl) ledgerEntrySideEl.value = 'ALL';
-        if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = curYear;
-        if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = curMonth;
+        if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = '';
+        if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = '';
 
         setLedgerTab('LEDGER');
         openModal('modal-asset-ledger');
@@ -1365,7 +1352,7 @@ document.addEventListener('DOMContentLoaded', function () {
             minute: '2-digit'
         }).format(new Date());
 
-        const filterLine = `Date: ${ledgerState.filters.date_from || '-'} to ${ledgerState.filters.date_to || '-'} | Side: ${ledgerState.filters.entry_side || 'ALL'} | Year: ${ledgerState.filters.period_year || 'All'} | Month: ${ledgerState.filters.period_month || 'All'}`;
+        const filterLine = `Side: ${ledgerState.filters.entry_side || 'ALL'} | Year: ${ledgerState.filters.period_year || 'All'} | Month: ${ledgerState.filters.period_month || 'All'}`;
         const style = `
             <style>
                 body { font-family: Arial, Helvetica, sans-serif; padding: 12px; color: #1e293b; }
@@ -1514,11 +1501,14 @@ document.addEventListener('DOMContentLoaded', function () {
         fetchDepreciationList();
     }
 
-    [ledgerDateFromEl, ledgerDateToEl, ledgerEntrySideEl, ledgerPeriodYearEl, ledgerPeriodMonthEl]
+    // Attach event listeners to Modal filter elements
+    [ledgerEntrySideEl, ledgerPeriodYearEl, ledgerPeriodMonthEl]
         .filter(Boolean)
         .forEach(function (el) {
             el.addEventListener('change', function () {
-                if (!ledgerState.asset || !ledgerState.asset.id) return;
+                if (!ledgerState.asset || !ledgerState.asset.id) {
+                    return;
+                }
                 syncLedgerFiltersFromInputs();
                 fetchAssetLedgerReport();
             });
@@ -1526,15 +1516,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (ledgerResetFilterBtn) {
         ledgerResetFilterBtn.addEventListener('click', function () {
-            if (ledgerDateFromEl) ledgerDateFromEl.value = '';
-            if (ledgerDateToEl) ledgerDateToEl.value = '';
             if (ledgerEntrySideEl) ledgerEntrySideEl.value = 'ALL';
             if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = '';
             if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = '';
 
             ledgerState.filters = {
-                date_from: '',
-                date_to: '',
                 entry_side: 'ALL',
                 period_year: '',
                 period_month: '',

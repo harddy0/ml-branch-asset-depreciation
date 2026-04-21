@@ -83,15 +83,16 @@
                     <col class="finish-col-value">
                 </colgroup>
                 <thead>
-                    <tr><th colspan="2" class="finish-title">General Ledger</th></tr>
+                    <tr><th colspan="2" class="finish-title">General Ledger Accounts</th></tr>
                 </thead>
                 <tbody>
-                    <tr><td class="finish-label">Group Code</td><td class="finish-value" data-key="group_code">-</td></tr>
-                    <tr><td class="finish-label">Asset Code</td><td class="finish-value" data-key="asset_code">-</td></tr>
-                    <tr><td class="finish-label">Item Code</td><td class="finish-value" data-key="item_code">-</td></tr>
-                    <tr><td class="finish-label">GL Group</td><td class="finish-value" data-key="gl_group_code_display">-</td></tr>
-                    <tr><td class="finish-label">GL Asset</td><td class="finish-value" data-key="gl_asset_name_display">-</td></tr>
-                    <tr><td class="finish-label">GL Depreciation</td><td class="finish-value" data-key="gl_dep_name_display">-</td></tr>
+                    <tr><td class="finish-label">Asset Group</td><td class="finish-value" data-key="asset_group_id">-</td></tr>
+                    <tr><td class="finish-label">GL Asset Code</td><td class="finish-value" data-key="gl_asset_code">-</td></tr>
+                    <tr><td class="finish-label">GL Asset Type</td><td class="finish-value" data-key="gl_asset_type">-</td></tr>
+                    <tr><td class="finish-label">GL Asset Description</td><td class="finish-value" data-key="gl_asset_description">-</td></tr>
+                    <tr><td class="finish-label">GL Depreciation Code</td><td class="finish-value" data-key="gl_depreciation_code">-</td></tr>
+                    <tr><td class="finish-label">GL Depreciation Type</td><td class="finish-value" data-key="gl_depreciation_type">-</td></tr>
+                    <tr><td class="finish-label">GL Depreciation Description</td><td class="finish-value" data-key="gl_depreciation_description">-</td></tr>
                 </tbody>
             </table>
         </div>

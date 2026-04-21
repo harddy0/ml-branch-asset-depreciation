@@ -315,6 +315,15 @@
         const submitUrl = form.getAttribute('action') || new URL('../actions/asset_store.php', window.location.href).toString();
         const fd = new FormData(form);
 
+        // DEBUG: Log all form data
+        console.log('=== FORM SUBMISSION DEBUG ===');
+        console.log('URL:', submitUrl);
+        console.log('FormData contents:');
+        for (let [key, value] of fd.entries()) {
+            console.log(`  ${key}: ${value}`);
+        }
+        console.log('=============================');
+
         // disable buttons while saving
         if(btnNext) btnNext.disabled = true;
         if(btnPrev) btnPrev.disabled = true;
@@ -514,10 +523,10 @@
                 const regionCode = found.region || '';
                 const regionLabel = regionCode; // show only branch_profile.region
                 setSingleOption(regionEl,   regionCode,    regionLabel);
-                // set hidden inputs for submission
+                // set hidden inputs for submission (Use region_code, NOT region)
                 if(mainZoneHidden) mainZoneHidden.value = found.main_zone_code || '';
                 if(zoneHidden) zoneHidden.value = found.zone_code || '';
-                if(regionHidden) regionHidden.value = found.region || '';
+                if(regionHidden) regionHidden.value = found.region_code || '';
             } else {
                 // clear values if input doesn't match a branch
                 hiddenBranch.value = '';
@@ -670,10 +679,10 @@
                 setSingleOption(mainZoneEl, item.main_zone_code, item.main_zone_code);
                 setSingleOption(zoneEl,     item.zone_code,      item.zone_code);
                 setSingleOption(regionEl,   regionCode,          regionLabel);
-                // set hidden inputs for submission as well
+                // set hidden inputs for submission as well (Use region_code, NOT region)
                 if(typeof mainZoneHidden !== 'undefined' && mainZoneHidden) mainZoneHidden.value = item.main_zone_code || '';
                 if(typeof zoneHidden !== 'undefined' && zoneHidden) zoneHidden.value = item.zone_code || '';
-                if(typeof regionHidden !== 'undefined' && regionHidden) regionHidden.value = item.region || '';
+                if(typeof regionHidden !== 'undefined' && regionHidden) regionHidden.value = item.region_code || '';
                 // hide
                 suggestions.style.display = 'none';
                 highlightedIndex = -1;
@@ -726,6 +735,387 @@
                 }
             });
     })();
+
+    // ==========================================
+    // INITIALIZE ASSET GROUPS SECTION
+    // ==========================================
+    (function initAssetGroupsSection(){
+        const groupSelect = form.querySelector('#asset_group_select');
+        const expenseTypeSelect = form.querySelector('#expense_type_select');
+        if(!groupSelect) return;
+
+        const glAssetCode = form.querySelector('#gl_asset_code');
+        const glAssetType = form.querySelector('#gl_asset_type');
+        const glAssetDescription = form.querySelector('#gl_asset_description');
+        const glDepreciationCode = form.querySelector('#gl_depreciation_code');
+        const glDepreciationType = form.querySelector('#gl_depreciation_type');
+        const glDepreciationDescription = form.querySelector('#gl_depreciation_description');
+        const actualMonths = form.querySelector('#actual_months');
+
+        let groupsData = [];
+        let expenseTypes = [];
+
+        // Compute public base for API calls
+        let appBase = '';
+        if (typeof BASE_URL !== 'undefined' && BASE_URL !== '') {
+            appBase = BASE_URL.replace(/\/+$/, '');
+        }
+        const publicBase = appBase === ''
+            ? '/public'
+            : (appBase.endsWith('/public') ? appBase : appBase + '/public');
+
+        function resetGroupSelection() {
+            if(glAssetCode) glAssetCode.value = '';
+            if(glAssetType) glAssetType.value = '';
+            if(glAssetDescription) glAssetDescription.value = '';
+            if(glDepreciationCode) glDepreciationCode.value = '';
+            if(glDepreciationType) glDepreciationType.value = '';
+            if(glDepreciationDescription) glDepreciationDescription.value = '';
+            if(actualMonths) actualMonths.value = '';
+        }
+
+        function setGroupSelectState(enabled, placeholderText) {
+            groupSelect.disabled = !enabled;
+            groupSelect.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.disabled = true;
+            opt.selected = true;
+            opt.textContent = placeholderText;
+            groupSelect.appendChild(opt);
+        }
+
+        function buildExpenseTypeOptions() {
+            if(!expenseTypeSelect) return;
+            expenseTypeSelect.innerHTML = '';
+            const base = document.createElement('option');
+            base.value = '';
+            base.disabled = true;
+            base.selected = true;
+            base.textContent = 'Select Expense Type...';
+            expenseTypeSelect.appendChild(base);
+
+            expenseTypes.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = String(t.id);
+                opt.textContent = t.label;
+                expenseTypeSelect.appendChild(opt);
+            });
+        }
+
+        function rebuildGroupOptions(filteredGroups) {
+            if(!Array.isArray(filteredGroups) || filteredGroups.length === 0) {
+                setGroupSelectState(true, 'No asset groups available');
+                return;
+            }
+
+            groupSelect.disabled = false;
+            groupSelect.innerHTML = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            placeholder.textContent = 'Select an asset group...';
+            groupSelect.appendChild(placeholder);
+
+            filteredGroups.forEach(group => {
+                const opt = document.createElement('option');
+                opt.value = group.id;
+                const months = Number(group.actual_months || 0);
+                const monthLabel = months > 0 ? ` (${months} months)` : '';
+                opt.textContent = `${group.display}${monthLabel}`;
+                opt.dataset.groupData = JSON.stringify(group);
+                groupSelect.appendChild(opt);
+            });
+        }
+
+        // Fetch asset groups and populate dropdown
+        fetch(publicBase + '/api/get_asset_groups_for_dropdown.php', { credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(json => {
+                if(!(json && json.success && Array.isArray(json.data))) {
+                    if (expenseTypeSelect) {
+                        expenseTypeSelect.innerHTML = '<option value="" disabled selected>No expense types available</option>';
+                    }
+                    setGroupSelectState(false, 'No asset groups available');
+                    return;
+                }
+
+                groupsData = json.data;
+
+                const typeMap = new Map();
+                groupsData.forEach(group => {
+                    const typeId = String(group.expense_type_id || '');
+                    if (!typeId) return;
+                    if (!typeMap.has(typeId)) {
+                        const label = group.expense_name
+                            ? `${group.expense_name} (${group.category_type || 'N/A'})`
+                            : `Type ${typeId}`;
+                        typeMap.set(typeId, { id: typeId, label: label });
+                    }
+                });
+                expenseTypes = Array.from(typeMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+
+                if (expenseTypeSelect) {
+                    buildExpenseTypeOptions();
+                }
+
+                setGroupSelectState(false, 'Select Expense Type first');
+            })
+            .catch(err => {
+                console.error('Failed to fetch asset groups:', err);
+                if (expenseTypeSelect) {
+                    expenseTypeSelect.innerHTML = '<option value="" disabled selected>Failed to load expense types</option>';
+                }
+                setGroupSelectState(false, 'Failed to load groups');
+            });
+
+        if (expenseTypeSelect) {
+            expenseTypeSelect.addEventListener('change', function(){
+                const selectedType = String(this.value || '');
+                resetGroupSelection();
+                if (!selectedType) {
+                    setGroupSelectState(false, 'Select Expense Type first');
+                    return;
+                }
+
+                const filtered = groupsData.filter(g => String(g.expense_type_id || '') === selectedType);
+                rebuildGroupOptions(filtered);
+                form.dispatchEvent(new Event('change', { bubbles: true }));
+                if(typeof refreshProgressStates === 'function') refreshProgressStates();
+            });
+        }
+
+        // On group selection change, auto-fill GL fields
+        groupSelect.addEventListener('change', function(){
+            if(!this.value){
+                // Clear GL fields if no selection
+                resetGroupSelection();
+                return;
+            }
+
+            // Find selected group data
+            const selectedOption = this.options[this.selectedIndex];
+            let groupData = null;
+
+            try {
+                if(selectedOption.dataset.groupData){
+                    groupData = JSON.parse(selectedOption.dataset.groupData);
+                }
+            } catch(e){
+                console.error('Error parsing group data:', e);
+            }
+
+            if(!groupData){
+                // Fallback: search in groupsData array
+                groupData = groupsData.find(g => String(g.id) === String(this.value));
+            }
+
+            if(!groupData){
+                console.warn('Could not find group data for ID:', this.value);
+                return;
+            }
+
+            // Auto-fill GL fields
+            if(glAssetCode) glAssetCode.value = groupData.asset_gl_code || '';
+            if(glAssetType) glAssetType.value = groupData.asset_gl_type || '';
+            if(glAssetDescription) glAssetDescription.value = groupData.asset_gl_description || '';
+            if(glDepreciationCode) glDepreciationCode.value = groupData.expense_gl_code || '';
+            if(glDepreciationType) glDepreciationType.value = groupData.expense_gl_type || '';
+            if(glDepreciationDescription) glDepreciationDescription.value = groupData.expense_gl_description || '';
+            if(actualMonths) actualMonths.value = groupData.actual_months || '';
+
+            // NEW: Trigger auto-calculations on group selection
+            computeDates();
+            computeMonthlyDepreciation();
+            updateDepreciationDayState();
+
+            // Trigger change event so that validation/progress updates
+            form.dispatchEvent(new Event('change', { bubbles: true }));
+            if(typeof refreshProgressStates === 'function') refreshProgressStates();
+        });
+    })();
+
+    // ─────────────────────────────────────────────────────────
+    // CALCULATION FUNCTIONS FOR DEPRECIATION
+    // ─────────────────────────────────────────────────────────
+
+    /** Helper: Format date to YYYY-MM-DD */
+    function formatDate(date) {
+        if (!(date instanceof Date) || isNaN(date)) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    /** Helper: Add months to a date */
+    function addMonths(date, months) {
+        const result = new Date(date);
+        result.setMonth(result.getMonth() + months);
+        return result;
+    }
+
+    /** 
+     * computeMonthlyDepreciation()
+     * Calculate: monthly_depreciation = acquisition_cost / actual_months
+     */
+    function computeMonthlyDepreciation(){
+        const costInput = form.querySelector('#asset_acquisition_cost');
+        const monthsInput = form.querySelector('#actual_months');
+        const monthlyDepInput = form.querySelector('#monthly_depreciation');
+
+        if(!costInput || !monthsInput || !monthlyDepInput) return;
+
+        // Parse cost: remove commas and convert to number
+        const costStr = String(costInput.value || '0').replace(/,/g, '');
+        const cost = parseFloat(costStr) || 0;
+        const months = parseInt(monthsInput.value) || 0;
+
+        if(months <= 0 || cost <= 0){
+            monthlyDepInput.value = '0.00';
+            return;
+        }
+
+        const monthlyDep = cost / months;
+        monthlyDepInput.value = monthlyDep.toFixed(2);
+    }
+
+    /**
+     * computeDates()
+     * Calculate depreciation_start_date and depreciation_end_date
+     * based on: date_received, depreciation_on, depreciation_day, actual_months
+     */
+    function computeDates(){
+        const dateReceivedInput = form.querySelector('input[name="date_received"]') || form.querySelector('#date_received');
+        const depOnSelect = form.querySelector('select[name="depreciation_on"]') || form.querySelector('#depreciation_on');
+        const depDayInput = form.querySelector('input[name="depreciation_day"]') || form.querySelector('#depreciation_day');
+        const monthsInput = form.querySelector('#actual_months');
+        const startDateInput = form.querySelector('input[name="depreciation_start_date"]') || form.querySelector('#depreciation_start_date');
+        const endDateInput = form.querySelector('input[name="depreciation_end_date"]') || form.querySelector('#depreciation_end_date');
+
+        if(!dateReceivedInput || !depOnSelect || !monthsInput) return;
+
+        const dateReceivedStr = dateReceivedInput.value || '';
+        const depOn = depOnSelect.value || '';
+        const months = parseInt(monthsInput.value) || 0;
+
+        if(!dateReceivedStr || !depOn || months <= 0){
+            if(startDateInput) startDateInput.value = '';
+            if(endDateInput) endDateInput.value = '';
+            return;
+        }
+
+        // Parse received date
+        const dateReceived = new Date(dateReceivedStr);
+        if(isNaN(dateReceived.getTime())){
+            if(startDateInput) startDateInput.value = '';
+            if(endDateInput) endDateInput.value = '';
+            return;
+        }
+
+        let startDate = null;
+
+        if(depOn === 'LAST_DAY'){
+            // Last day of the month received
+            startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth() + 1, 0);
+        } else if(depOn === 'FIRST_DAY'){
+            // First day of the month received
+            startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth(), 1);
+        } else if(depOn === 'SPECIFIC_DATE'){
+            // Specific day of the month received
+            const dayStr = depDayInput ? (depDayInput.value || '') : '';
+            const day = parseInt(dayStr) || 1;
+            startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth(), day);
+            // If day is greater than max day in month, use last day of month
+            const lastDayOfMonth = new Date(dateReceived.getFullYear(), dateReceived.getMonth() + 1, 0).getDate();
+            if(day > lastDayOfMonth){
+                startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth() + 1, 0);
+            }
+        }
+
+        if(!startDate || isNaN(startDate.getTime())){
+            if(startDateInput) startDateInput.value = '';
+            if(endDateInput) endDateInput.value = '';
+            return;
+        }
+
+        // Calculate end date = start + months
+        const endDate = addMonths(startDate, months);
+
+        // Set form fields
+        if(startDateInput) startDateInput.value = formatDate(startDate);
+        if(endDateInput) endDateInput.value = formatDate(endDate);
+    }
+
+    /**
+     * updateDepreciationDayState()
+     * Enable/disable depreciation_day input based on depreciation_on value
+     */
+    function updateDepreciationDayState(){
+        const depOnSelect = form.querySelector('select[name="depreciation_on"]') || form.querySelector('#depreciation_on');
+        const depDayInput = form.querySelector('input[name="depreciation_day"]') || form.querySelector('#depreciation_day');
+
+        if(!depOnSelect || !depDayInput) return;
+
+        const depOn = depOnSelect.value || '';
+
+        if(depOn === 'SPECIFIC_DATE'){
+            depDayInput.disabled = false;
+            depDayInput.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400');
+        } else {
+            depDayInput.disabled = true;
+            depDayInput.value = '';
+            depDayInput.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400');
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // ATTACH EVENT LISTENERS FOR AUTO-CALCULATIONS
+    // ─────────────────────────────────────────────────────────
+
+    const dateReceivedInput = form.querySelector('input[name="date_received"]') || form.querySelector('#date_received');
+    const depOnSelect = form.querySelector('select[name="depreciation_on"]') || form.querySelector('#depreciation_on');
+    const depDayInput = form.querySelector('input[name="depreciation_day"]') || form.querySelector('#depreciation_day');
+    const costInput = form.querySelector('#asset_acquisition_cost');
+
+    // When date_received changes → recalculate dates
+    if(dateReceivedInput){
+        dateReceivedInput.addEventListener('change', () => {
+            console.log('date_received changed');
+            computeDates();
+        });
+    }
+
+    // When depreciation_on changes → recalculate dates + update day state
+    if(depOnSelect){
+        depOnSelect.addEventListener('change', () => {
+            console.log('depreciation_on changed to:', depOnSelect.value);
+            computeDates();
+            updateDepreciationDayState();
+        });
+    }
+
+    // When depreciation_day changes OR input (for real-time) → recalculate dates
+    if(depDayInput){
+        depDayInput.addEventListener('change', () => {
+            console.log('depreciation_day changed to:', depDayInput.value);
+            computeDates();
+        });
+        // Also listen to input for real-time updates
+        depDayInput.addEventListener('input', () => {
+            console.log('depreciation_day input:', depDayInput.value);
+            computeDates();
+        });
+    }
+
+    // When acquisition cost changes → recalculate monthly depreciation
+    if(costInput){
+        costInput.addEventListener('change', () => {
+            console.log('acquisition_cost changed');
+            computeMonthlyDepreciation();
+        });
+    }
 
     showStep(0);
 })();

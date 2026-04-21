@@ -14,8 +14,7 @@ $filters = [
     'zone'        => $_GET['zone'] ?? '',
     'region'      => $_GET['region'] ?? '',
     'branch_name' => $_GET['branch_name'] ?? '',
-    'date_from'   => $_GET['date_from'] ?? '',
-    'date_to'     => $_GET['date_to'] ?? ''
+    'as_of_date'  => $_GET['as_of_date'] ?? ''
 ];
 
 foreach (['zone', 'region', 'branch_name'] as $k) {
@@ -24,8 +23,8 @@ foreach (['zone', 'region', 'branch_name'] as $k) {
     }
 }
 
-if (empty($filters['date_from']) || empty($filters['date_to'])) {
-    die("Error: Date range is required for export.");
+if (empty($filters['as_of_date'])) {
+    die("Error: As of date is required for export.");
 }
 
 // Clear any accidental whitespace or notices from the output buffer before generating Excel

@@ -18,24 +18,29 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 try {
     $reportService = new \App\AssetReportService($pdo, $pdo2);
 
-    // Normalize __ALL__ sentinel → ''
-    $rawZone   = $_GET['zone']        ?? '';
-    $rawRegion = $_GET['region']      ?? '';
-    $rawBranch = $_GET['branch_name'] ?? '';
+    // Normalize inputs; treat '__ALL__' and empty strings as null
+    $rawZone   = trim((string)($_GET['zone'] ?? ''));
+    $rawRegion = trim((string)($_GET['region'] ?? ''));
+    $rawBranch = trim((string)($_GET['branch_name'] ?? ''));
+
+    $zone   = ($rawZone === '__ALL__' || $rawZone === '') ? null : $rawZone;
+    $region = ($rawRegion === '__ALL__' || $rawRegion === '') ? null : $rawRegion;
+    $branch = ($rawBranch === '__ALL__' || $rawBranch === '') ? null : $rawBranch;
+
+    $asOfDate = trim((string)($_GET['as_of_date'] ?? ''));
+    $dateFrom = trim((string)($_GET['date_from'] ?? ''));
+    $dateTo   = trim((string)($_GET['date_to'] ?? ''));
+
+    if ($asOfDate === '') {
+        $asOfDate = $dateTo !== '' ? $dateTo : ($dateFrom !== '' ? $dateFrom : date('Y-m-d'));
+    }
 
     $filters = [
-        'zone'        => ($rawZone   === '__ALL__') ? '' : $rawZone,
-        'region'      => ($rawRegion === '__ALL__') ? '' : $rawRegion,
-        'branch_name' => ($rawBranch === '__ALL__') ? '' : $rawBranch,
-        'date_from'   => $_GET['date_from'] ?? date('Y-m-01'),
-        'date_to'     => $_GET['date_to']   ?? date('Y-m-t'),
+        'zone'        => $zone,
+        'region'      => $region,
+        'branch_name' => $branch,
+        'as_of_date'  => $asOfDate,
     ];
-
-    foreach (['zone', 'region', 'branch_name'] as $k) {
-        if (($filters[$k] ?? '') === '__ALL__') {
-            $filters[$k] = '';
-        }
-    }
 
     $reportData = $reportService->getFilteredAssets($filters);
     $regions  = $reportService->getRegions($filters['zone']);

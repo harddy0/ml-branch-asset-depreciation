@@ -248,4 +248,71 @@ class AssetGroupService {
             'current_page' => $page
         ];
     }
+
+    /**
+     * Fetches all asset groups with GL account details for dropdown population.
+     * Returns array formatted for frontend consumption with auto-fill data.
+     * 
+     * @return array Array of asset groups with GL details:
+     *   [
+     *     {
+     *       "id": 1,
+     *       "group_name": "Office Equipment",
+     *       "display": "1 - Office Equipment",
+     *       "asset_gl_code": "1231101",
+     *       "asset_gl_type": "DEBIT",
+     *       "asset_gl_description": "Equipment - Office",
+     *       "expense_gl_code": "5101100",
+     *       "expense_gl_type": "DEBIT",
+     *       "expense_gl_description": "Depreciation Expense - Office",
+     *       "actual_months": 60
+     *     },
+     *     ...
+     *   ]
+     */
+    public function getGroupsForDropdown(): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT 
+                ag.id,
+                ag.group_name,
+                ag.expense_type_id,
+                et.expense_name,
+                et.category_type,
+                ag.asset_gl_code,
+                ag.asset_gl_type,
+                ag.expense_gl_code,
+                ag.expense_gl_type,
+                ag.actual_months,
+                gl_asset.description AS asset_gl_description,
+                gl_expense.description AS expense_gl_description
+            FROM asset_groups ag
+            LEFT JOIN expense_types et ON et.id = ag.expense_type_id
+            LEFT JOIN gl_codes gl_asset ON gl_asset.gl_code = ag.asset_gl_code
+            LEFT JOIN gl_codes gl_expense ON gl_expense.gl_code = ag.expense_gl_code
+            ORDER BY ag.id ASC
+        ");
+        
+        $stmt->execute();
+        $groups = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        // Format each group with display string for dropdown
+        return array_map(function($group) {
+            return [
+                'id' => (int)$group['id'],
+                'group_name' => $group['group_name'],
+                'display' => $group['id'] . ' - ' . $group['group_name'],
+                'expense_type_id' => (int)$group['expense_type_id'],
+                'expense_name' => $group['expense_name'] ?? '',
+                'category_type' => $group['category_type'] ?? '',
+                'asset_gl_code' => $group['asset_gl_code'],
+                'asset_gl_type' => $group['asset_gl_type'],
+                'asset_gl_description' => $group['asset_gl_description'] ?? '',
+                'expense_gl_code' => $group['expense_gl_code'],
+                'expense_gl_type' => $group['expense_gl_type'],
+                'expense_gl_description' => $group['expense_gl_description'] ?? '',
+                'actual_months' => (int)$group['actual_months']
+            ];
+        }, $groups);
+    }
 }

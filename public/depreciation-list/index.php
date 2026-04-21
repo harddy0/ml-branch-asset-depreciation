@@ -3,11 +3,11 @@ $pageTitle   = 'Depreciation List';
 $currentPage = 'depreciation-list';
 require_once __DIR__ . '/../../src/includes/init.php';
 
-require_once __DIR__ . '/../../src/classes/AssetClassificationService.php';
-
-$classService  = new \App\AssetClassificationService($pdo);
-$assetGroups   = $classService->getDropdownOptions();
-// getDropdownOptions() returns: [['group_code' => '...', 'group_name' => '...'], ...]
+/**
+ * Load page initialization data
+ * Returns: $assetGroups (array of asset groups for dropdown)
+ */
+require_once __DIR__ . '/../../public/actions/load_depreciation_list_page.php';
 ?>
 
 <!-- Page Header -->
@@ -52,7 +52,7 @@ $assetGroups   = $classService->getDropdownOptions();
                     <input
                         type="text"
                         id="depr-search"
-                        placeholder="Search "
+                        placeholder="Search by description"
                         class="w-full border border-slate-300 rounded-md px-3 py-1 text-sm font-mono text-slate-700 min-w-0"
                     >
                 </div>
