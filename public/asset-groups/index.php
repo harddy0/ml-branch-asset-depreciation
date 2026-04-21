@@ -41,10 +41,8 @@ require_once __DIR__ . '/../../src/includes/init.php';
                     placeholder="Type (e.g. Building)"
                     class="w-full font-mono  placeholder:text-slate-300 placeholder:font-mono placeholder:text-sm pr-9 px-3 py-1.5 border-2 border-slate-100 focus:border-slate-300 rounded-xl text-sm text-slate-700 bg-white">
                 <button type="button" id="filter-category-clear" aria-label="Clear filter"
-                    class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 inline-flex items-center justify-center text-slate-400 hover:text-slate-700 rounded-md">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6l12 12M18 6L6 18" />
-                    </svg>
+                    class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-2xl inline-flex items-center justify-center text-slate-400 hover:text-slate-700 rounded-md">
+                    &times;
                 </button>
                 <div id="filter-category-suggestions"
                     class="hidden font-mono absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-56 overflow-auto"></div>
