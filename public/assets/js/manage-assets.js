@@ -263,7 +263,7 @@ document.addEventListener("DOMContentLoaded", function() {
             let html = '';
             data.forEach(r => {
                 const payload = JSON.stringify(r).replace(/'/g, "&#039;");
-                html += `<tr class="asset-row cursor-pointer hover:bg-red-50/40 transition-colors" data-asset='${payload}'>
+                html += `<tr class="asset-row cursor-pointer hover:bg-red-50/40 transition-colors" data-id="${r.asset_id}" data-asset='${payload}'>
                     <td class="py-2 pl-5 pr-3 font-mono text-xs text-slate-900">${r.system_asset_code}</td>
                     <td class="py-2 px-3 font-mono text-xs">${r.branch_name}</td>
                     <td class="py-2 px-3 font-mono text-xs">${r.group_code || ''}</td>
@@ -291,6 +291,12 @@ document.addEventListener("DOMContentLoaded", function() {
         const tr = e.target.closest && e.target.closest('tr.asset-row');
         if (!tr) return;
 
+        const assetId = tr.dataset.id || tr.dataset.asset_id || tr.getAttribute('data-id');
+        if (assetId) {
+            openViewModal(assetId);
+            return;
+        }
+
         let raw = tr.dataset && tr.dataset.asset ? tr.dataset.asset : tr.getAttribute('data-asset');
         if (!raw) return;
 
@@ -302,34 +308,129 @@ document.addEventListener("DOMContentLoaded", function() {
                 .replace(/&lt;/g, '<')
                 .replace(/&gt;/g, '>');
             let parsed = JSON.parse(decoded);
+            const parsedId = parsed && (parsed.id || parsed.asset_id || parsed.assetId);
 
-            parsed.category_name = parsed.category_name || parsed.group_code || '';
-            parsed.category_code = parsed.category_code || parsed.group_code || '';
-            parsed.depreciation_start   = parsed.depreciation_start_date || parsed.depreciation_start;
-            parsed.monthly_depreciation = parsed.period_depreciation_expense || parsed.monthly_depreciation;
-
-            if (!parsed.retirement_date || String(parsed.retirement_date).startsWith('0000-00-00')) {
-                if (parsed.depreciation_start && parsed.asset_life_months) {
-                    const safeDepr = String(parsed.depreciation_start).replace(/-/g, '/');
-                    const dDate    = new Date(safeDepr);
-                    if (!isNaN(dDate.getTime())) {
-                        const targetMonth = dDate.getMonth() + parseInt(parsed.asset_life_months);
-                        const calcRet     = new Date(dDate.getFullYear(), targetMonth + 1, 0);
-                        parsed.retirement_date = `${calcRet.getFullYear()}-${String(calcRet.getMonth()+1).padStart(2,'0')}-${String(calcRet.getDate()).padStart(2,'0')}`;
-                    }
-                }
-            }
-
-            if (typeof renderDeprDetails === 'function') {
-                renderDeprDetails(parsed, false);
-                if (typeof setDeprEditMode === 'function') setDeprEditMode(false);
-                const editBtn = document.getElementById('depr-btn-edit');
-                if (editBtn) editBtn.style.display = 'none';
-                openModal('modal-asset-depr-details');
+            if (parsedId) {
+                openViewModal(parsedId);
             }
         } catch (err) {
             console.error('Failed to parse asset row:', err);
         }
+    }
+
+    function openViewModal(id) {
+        openModal('modal-view-asset');
+        document.getElementById('view-asset-loading').classList.remove('hidden');
+        document.getElementById('view-asset-content').classList.add('hidden');
+        document.getElementById('view-system-code').textContent = 'LOADING...';
+
+        const badge = document.getElementById('view-status-badge');
+        if (badge) badge.classList.add('hidden');
+
+        const appBase = (typeof BASE_URL !== 'undefined' && BASE_URL !== '') ? BASE_URL.replace(/\/+$/, '') : '';
+        const publicBase = appBase === '' ? '/public' : (appBase.endsWith('/public') ? appBase : appBase + '/public');
+        const apiUrl = `${publicBase}/api/get_asset_by_id.php?id=${id}`;
+
+        fetch(apiUrl)
+            .then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(res => {
+                if (!res.success || !res.data) throw new Error(res.error || 'Failed to fetch asset details');
+                populateViewModal(res.data);
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Could not load asset details: ' + err.message);
+                closeModal('modal-view-asset');
+            });
+    }
+
+    function populateViewModal(data) {
+        const formatMoney = new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        const parseAssetDate = (value) => {
+            if (!value) return null;
+            const normalized = String(value).trim().replace(/\s+/g, 'T');
+            const date = new Date(normalized);
+            return Number.isNaN(date.getTime()) ? null : date;
+        };
+
+        const formatFullDate = (value) => {
+            const date = parseAssetDate(value);
+            if (!date) return 'N/A';
+            return new Intl.DateTimeFormat('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            }).format(date);
+        };
+
+        const formatFullDateTime = (value) => {
+            const date = parseAssetDate(value);
+            if (!date) return 'N/A';
+            return new Intl.DateTimeFormat('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            }).format(date);
+        };
+
+        // Identity & Classification
+        document.getElementById('view-system-code').textContent = data.system_asset_code || 'N/A';
+        document.getElementById('view-description').textContent = data.description || 'N/A';
+        document.getElementById('view-serial').textContent = data.serial_number || 'N/A';
+        document.getElementById('view-item-code').textContent = data.item_code || 'N/A';
+        document.getElementById('view-group').textContent = data.group_name || 'N/A';
+        document.getElementById('view-property-type').textContent = data.property_type || 'PURCHASED';
+
+        // Location Info
+        document.getElementById('view-branch').textContent = data.branch_name || 'N/A';
+        document.getElementById('view-cost-center').textContent = data.cost_center_code || 'N/A';
+        document.getElementById('view-region').textContent = data.region_code || 'N/A';
+        document.getElementById('view-zone').textContent = data.zone_code || 'N/A';
+        document.getElementById('view-main-zone').textContent = data.main_zone_code || 'N/A';
+
+        // Financials
+        document.getElementById('view-acq-cost').textContent = formatMoney.format(data.acquisition_cost || 0);
+        document.getElementById('view-monthly-dep').textContent = formatMoney.format(data.monthly_depreciation || 0);
+        document.getElementById('view-accum-dep').textContent = formatMoney.format(data.accumulated_depreciation || 0);
+        document.getElementById('view-book-value').textContent = formatMoney.format(data.book_value || 0);
+        
+        // Dates & Audit
+        document.getElementById('view-date-received').textContent = formatFullDate(data.date_received);
+        document.getElementById('view-start-date').textContent = formatFullDate(data.depreciation_start_date);
+        document.getElementById('view-end-date').textContent = formatFullDate(data.depreciation_end_date);
+        document.getElementById('view-months').textContent = data.months || '0';
+        document.getElementById('view-uploaded-by').textContent = data.created_by_username || 'System';
+        document.getElementById('view-created-at').textContent = formatFullDateTime(data.created_at);
+
+
+        // Badge styling
+        const badge = document.getElementById('view-status-badge');
+        if (badge) {
+            const status = (data.status || 'ACTIVE').toUpperCase();
+            badge.textContent = status;
+            badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider'; 
+            
+            if (status === 'ACTIVE') {
+                badge.classList.add('bg-red-50', 'text-red-700');
+            } else {
+                badge.classList.add('bg-slate-100', 'text-slate-700');
+            }
+            badge.classList.remove('hidden');
+        }
+
+        // Hide loading state and display grid
+        document.getElementById('view-asset-loading').classList.add('hidden');
+        document.getElementById('view-asset-content').classList.remove('hidden');
     }
 
     // ─── 6. Export / Print ──────────────────────────────────────────────
@@ -561,5 +662,4 @@ document.addEventListener("DOMContentLoaded", function() {
         return tbody.querySelectorAll('tr').length > 0;
     })();
     setExportAvailability(initialHasData);
-
 });

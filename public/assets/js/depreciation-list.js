@@ -1247,9 +1247,17 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
         if (ledgerState.filters.date_to) params.set('date_to', ledgerState.filters.date_to);
 
         // 2. Send the exact Month and Year to the PHP backend
-        const m = parseInt(ledgerState.filters.period_month, 10);
-        const y = parseInt(ledgerState.filters.period_year, 10);
+        let m = parseInt(ledgerState.filters.period_month, 10);
+        let y = parseInt(ledgerState.filters.period_year, 10);
         
+        // CUMULATIVE UX FIX: If user picks a Month but no Year, default to Current Year
+        if (!isNaN(m) && m >= 1 && m <= 12 && isNaN(y)) {
+            y = new Date().getFullYear();
+            // Visually update the dropdown so the user knows what happened
+            if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = String(y);
+            ledgerState.filters.period_year = String(y);
+        }
+
         if (!isNaN(m) && m >= 1 && m <= 12) {
             params.set('period_month', m);
         }

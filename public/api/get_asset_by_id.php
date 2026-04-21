@@ -1,7 +1,9 @@
 <?php
 $noLayout = true;
 require_once __DIR__ . '/../../src/includes/init.php';
+require_once __DIR__ . '/../../src/classes/AssetService.php';
 
+// Clear buffers to prevent HTML bleeding into JSON
 while (ob_get_level()) { ob_end_clean(); }
 header('Content-Type: application/json; charset=utf-8');
 
@@ -10,44 +12,28 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit;
 }
 
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-if ($id <= 0) {
-    echo json_encode(['success' => false, 'error' => 'Missing or invalid id.']);
-    exit;
-}
-
 try {
-    global $pdo;
-    $assetService = new \App\AssetService($pdo);
-    $row = $assetService->getAssetById($id);
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    
+    if ($id <= 0) {
+        echo json_encode(['success' => false, 'error' => 'Invalid Asset ID provided.']);
+        exit;
+    }
 
-    if (!$row) {
+    $service = new \App\AssetService($pdo);
+    $asset = $service->getAssetById($id);
+
+    if (!$asset) {
         echo json_encode(['success' => false, 'error' => 'Asset not found.']);
         exit;
     }
 
-    // Ensure consistent keys expected by the frontend
-    $assetMonths = (int)($row['months'] ?? $row['policy_months'] ?? 0);
-    if ($assetMonths <= 0 && !empty($row['policy_months'])) {
-        $assetMonths = (int)$row['policy_months'];
-    }
-    $row['asset_life_months'] = $assetMonths;
-
-    $row['period_depreciation_expense'] = (isset($row['acquisition_cost']) && $assetMonths > 0)
-        ? round($row['acquisition_cost'] / max(1, $assetMonths), 2)
-        : 0.00;
-
-    if (empty($row['monthly_depreciation'])) {
-        $row['monthly_depreciation'] = $row['period_depreciation_expense'];
-    }
-
-    if (!isset($row['remaining_life']) && isset($row['accumulated_depreciation']) && isset($row['acquisition_cost']) && $assetMonths > 0) {
-        $per = $row['acquisition_cost'] / max(1, $assetMonths);
-        $row['remaining_life'] = ($per > 0) ? max(0, $assetMonths - (int)round($row['accumulated_depreciation'] / $per)) : 0;
-    }
-
-    echo json_encode(['success' => true, 'row' => $row]);
+    echo json_encode([
+        'success' => true,
+        'data' => $asset
+    ]);
     exit;
+
 } catch (\Throwable $e) {
     echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
     exit;
