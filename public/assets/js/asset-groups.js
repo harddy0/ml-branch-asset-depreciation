@@ -64,6 +64,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // In-memory cache of asset groups keyed by id for quick lookup when editing
     let assetGroupsCache = {};
+    let expenseTypeOptions = [];
+    let selectedExpenseFilterId = '';
 
     // Fetch asset groups from API and render into the table
     async function loadAssetGroups() {
@@ -198,52 +200,126 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial load of asset groups
     loadAssetGroups();
 
-    // --- Search / Filter ---
+    // --- Search + Type Filter ---
     const searchInput = document.getElementById('search-input');
+    const expenseFilter = document.getElementById('filter-category-type');
+    const expenseFilterClear = document.getElementById('filter-category-clear');
+    const suggestionBox = document.getElementById('filter-category-suggestions');
+
+    function updateFilterClearVisibility() {
+        if (!expenseFilterClear || !expenseFilter) return;
+        const hasValue = (expenseFilter.value || '').trim().length > 0;
+        expenseFilterClear.classList.toggle('hidden', !hasValue);
+    }
+
+    function filterRows() {
+        const allRows = Object.values(assetGroupsCache || {});
+        const searchQ = (searchInput ? searchInput.value : '').trim().toLowerCase();
+        const filterQ = (expenseFilter ? expenseFilter.value : '').trim().toLowerCase();
+
+        const filtered = allRows.filter(r => {
+            const group = (r.group_name || '').toString().toLowerCase();
+            const assetGl = (r.asset_gl_code || '').toString().toLowerCase();
+            const expenseGl = (r.expense_gl_code || '').toString().toLowerCase();
+            const expenseName = (r.expense_name || '').toString().toLowerCase();
+
+            const matchSearch = !searchQ || group.includes(searchQ) || assetGl.includes(searchQ) || expenseGl.includes(searchQ);
+            const matchFilter = selectedExpenseFilterId
+                ? String(r.expense_type_id) === String(selectedExpenseFilterId)
+                : (!filterQ || expenseName.startsWith(filterQ));
+
+            return matchSearch && matchFilter;
+        });
+
+        if (filtered.length === 0) {
+            const tbody = document.getElementById('assetGroupsTbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-slate-500">No matching asset groups.</td></tr>';
+            return;
+        }
+
+        renderAssetGroups(filtered);
+    }
+
+    function getRankedExpenseOptions(query) {
+        const q = (query || '').trim().toLowerCase();
+        if (!q) return expenseTypeOptions.slice(0, 30);
+
+        const startsWithMatches = expenseTypeOptions.filter(opt => opt.nameLower.startsWith(q));
+        const containsMatches = expenseTypeOptions.filter(opt => !opt.nameLower.startsWith(q) && opt.nameLower.includes(q));
+        return startsWithMatches.concat(containsMatches).slice(0, 30);
+    }
+
+    function hideSuggestions() {
+        if (!suggestionBox) return;
+        suggestionBox.classList.add('hidden');
+        suggestionBox.innerHTML = '';
+    }
+
+    function showSuggestions(query) {
+        if (!suggestionBox) return;
+        const ranked = getRankedExpenseOptions(query);
+        if (ranked.length === 0) {
+            hideSuggestions();
+            return;
+        }
+
+        const html = ranked.map(opt => {
+            const label = escapeHtml(opt.label);
+            return '<button type="button" class="filter-option w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50" data-id="' + opt.id + '">' + label + '</button>';
+        }).join('');
+
+        suggestionBox.innerHTML = html;
+        suggestionBox.classList.remove('hidden');
+    }
+
     if (searchInput) {
         searchInput.addEventListener('input', function() {
-            const q = this.value.trim().toLowerCase();
-            // If no query, render all cached rows
-            const allRows = Object.values(assetGroupsCache || {});
-            if (!q) {
-                renderAssetGroups(allRows);
-                return;
-            }
-
-            // Filter by group_name, asset_gl_code, expense_gl_code
-            const filtered = allRows.filter(r => {
-                const group = (r.group_name || '').toString().toLowerCase();
-                const assetGl = (r.asset_gl_code || '').toString().toLowerCase();
-                const expenseGl = (r.expense_gl_code || '').toString().toLowerCase();
-                return group.includes(q) || assetGl.includes(q) || expenseGl.includes(q);
-            });
-
-            if (filtered.length === 0) {
-                const tbody = document.getElementById('assetGroupsTbody');
-                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-slate-500">No matching asset groups.</td></tr>';
-            } else {
-                renderAssetGroups(filtered);
-            }
+            filterRows();
         });
     }
 
-    // Expense Type filter on Asset Groups page
-    const expenseFilter = document.getElementById('filter-category-type');
     if (expenseFilter) {
-        expenseFilter.addEventListener('change', function () {
-            const v = this.value;
-            const allRows = Object.values(assetGroupsCache || {});
-            if (!v) {
-                renderAssetGroups(allRows);
-                return;
-            }
-            const filtered = allRows.filter(r => String(r.expense_type_id) === String(v));
-            if (filtered.length === 0) {
-                const tbody = document.getElementById('assetGroupsTbody');
-                tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-slate-500">No matching asset groups.</td></tr>';
-            } else {
-                renderAssetGroups(filtered);
-            }
+        expenseFilter.addEventListener('input', function () {
+            selectedExpenseFilterId = '';
+            showSuggestions(this.value);
+            updateFilterClearVisibility();
+            filterRows();
+        });
+
+        expenseFilter.addEventListener('focus', function () {
+            showSuggestions(this.value);
+        });
+
+        expenseFilter.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') hideSuggestions();
+        });
+
+        expenseFilter.addEventListener('blur', function () {
+            setTimeout(hideSuggestions, 120);
+        });
+    }
+
+    if (suggestionBox) {
+        suggestionBox.addEventListener('click', function (e) {
+            const btn = e.target.closest('.filter-option');
+            if (!btn || !expenseFilter) return;
+            selectedExpenseFilterId = btn.getAttribute('data-id') || '';
+            const selectedOpt = expenseTypeOptions.find(opt => String(opt.id) === String(selectedExpenseFilterId));
+            expenseFilter.value = selectedOpt ? selectedOpt.name : '';
+            hideSuggestions();
+            updateFilterClearVisibility();
+            filterRows();
+        });
+    }
+
+    if (expenseFilterClear && expenseFilter) {
+        expenseFilterClear.addEventListener('click', function () {
+            selectedExpenseFilterId = '';
+            expenseFilter.value = '';
+            hideSuggestions();
+            updateFilterClearVisibility();
+            filterRows();
+            expenseFilter.focus();
         });
     }
 
@@ -287,13 +363,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const editExpenseSelect = document.getElementById('edit_expense_type_id');
         if (editExpenseSelect) editExpenseSelect.innerHTML = optionsHTML;
 
-        // Also populate the filter on the Asset Groups page so the same expense types are available
-        const filterSelect = document.getElementById('filter-category-type');
-        if (filterSelect) {
-            const filterOptions = `<option value="">-- All --</option>` +
-                expenses.map(ex => `<option value="${ex.id}">${ex.expense_name} (${ex.policy_months} months)</option>`).join('');
-            filterSelect.innerHTML = filterOptions;
-        }
+        // Build searchable expense options for the type-filter input
+        expenseTypeOptions = expenses
+            .map(ex => {
+                const name = (ex.expense_name || '').toString();
+                const label = `${name} (${ex.policy_months} months)`;
+                return {
+                    id: ex.id,
+                    name: name,
+                    nameLower: name.toLowerCase(),
+                    label: label
+                };
+            })
+            .sort((a, b) => a.name.localeCompare(b.name));
     }
 
     function populateGLDropdowns(glCodes) {
@@ -313,6 +395,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Trigger the load immediately and keep its promise so we can retry setting selects after options load
     const dropdownsLoaded = loadDropdownData();
+
+    // Initialize filter clear button state
+    updateFilterClearVisibility();
 
     // Click outside to close modal
     window.addEventListener('click', function(e) {
