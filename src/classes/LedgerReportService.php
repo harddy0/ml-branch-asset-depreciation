@@ -261,13 +261,22 @@ class LedgerReportService
             $where[]            = 'l.period_date <= :date_to';
             $params[':date_to'] = $dateTo;
         }
-        if ($periodYear > 0) {
-            $where[]               = 'l.period_year = :period_year';
-            $params[':period_year'] = $periodYear;
-        }
-        if ($periodMonth >= 1 && $periodMonth <= 12) {
-            $where[]                = 'l.period_month = :period_month';
-            $params[':period_month'] = $periodMonth;
+        // CUMULATIVE "AS OF" FILTER LOGIC
+        if ($periodYear > 0 && $periodMonth >= 1 && $periodMonth <= 12) {
+            // "As of Month Year" -> Everything up to the last day of the selected month
+            $lastDay = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $periodYear, $periodMonth)));
+            $where[] = 'l.period_date <= :as_of_date';
+            $params[':as_of_date'] = $lastDay;
+        } elseif ($periodYear > 0) {
+            // "As of Year" (All months) -> Everything up to the end of the selected year
+            $where[] = 'l.period_date <= :as_of_date';
+            $params[':as_of_date'] = sprintf('%04d-12-31', $periodYear);
+        } elseif ($periodMonth >= 1 && $periodMonth <= 12) {
+            // "As of Month" (No year given) -> Fallback to the current year
+            $currentYear = (int)date('Y');
+            $lastDay = date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $currentYear, $periodMonth)));
+            $where[] = 'l.period_date <= :as_of_date';
+            $params[':as_of_date'] = $lastDay;
         }
 
         // Add entry_side filter to WHERE clause if not 'ALL'
