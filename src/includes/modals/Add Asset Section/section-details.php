@@ -10,17 +10,31 @@
     <!-- ═══ GROUP SELECTION SECTION ═══ -->
     <div class="mb-6 p-4 border border-slate-200 rounded-lg bg-slate-50">
         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
-            Step 1: Select Asset Group
+            Step 1: Select Expense Type and Asset Group
         </p>
+
+        <div class="mb-4">
+            <label class="block text-sm font-mono font-bold text-slate-700 mb-2">
+                Expense Type <span class="text-red-500">*</span>
+            </label>
+            <select name="expense_type_id" id="expense_type_select" required
+                class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
+                       focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white">
+                <option value="" disabled selected>Loading expense types...</option>
+            </select>
+            <p class="text-xs text-slate-500 mt-1 font-mono">
+                Select an expense type to filter available asset groups
+            </p>
+        </div>
 
         <div class="mb-4">
             <label class="block text-sm font-mono font-bold text-slate-700 mb-2">
                 Asset Group <span class="text-red-500">*</span>
             </label>
-            <select name="asset_group_id" id="asset_group_select" required
+            <select name="asset_group_id" id="asset_group_select" required disabled
                 class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
                        focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white">
-                <option value="" disabled selected>Loading asset groups...</option>
+                <option value="" disabled selected>Select Expense Type first</option>
             </select>
             <p class="text-xs text-slate-500 mt-1 font-mono">
                 Select a group to auto-populate GL account information

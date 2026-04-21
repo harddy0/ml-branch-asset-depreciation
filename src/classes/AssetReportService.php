@@ -75,26 +75,33 @@ class AssetReportService
     // ==========================================
 
     /**
-     * Returns running depreciation report data filtered by date range, zone, region, branch.
-     * Joins asset_groups and expense_types for category/group labels (no amortization_depreciation).
+     * Returns depreciation report data filtered by as-of date, zone, region, branch.
+     * Joins depreciation_ledger for period values and uses the latest entry per asset.
      */
     public function getFilteredAssets(array $filters): array
     {
-        if (empty($filters['date_from']) || empty($filters['date_to'])) {
+        $asOfDate = trim((string)($filters['as_of_date'] ?? ''));
+        if ($asOfDate === '') {
+            $fallbackTo = trim((string)($filters['date_to'] ?? ''));
+            $fallbackFrom = trim((string)($filters['date_from'] ?? ''));
+            $asOfDate = $fallbackTo !== '' ? $fallbackTo : $fallbackFrom;
+        }
+
+        if ($asOfDate === '') {
             return ['data' => [], 'totals' => ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0]];
         }
 
         $sql = '
             SELECT
                 a.id                                                          AS asset_id,
-                a.system_asset_code,
+                dl.system_asset_code,
                 a.reference_no,
-                a.main_zone_code                                              AS zone,
-                a.region_code                                                 AS region,
-                a.cost_center_code                                            AS cost_center,
-                a.branch_name,
+                COALESCE(dl.main_zone_code, a.main_zone_code)                 AS zone,
+                COALESCE(dl.region_code, a.region_code)                       AS region,
+                COALESCE(dl.cost_center_code, a.cost_center_code)             AS cost_center,
+                COALESCE(dl.branch_name, a.branch_name)                       AS branch_name,
                 a.asset_group_id,
-                ag.group_name,
+                COALESCE(dl.group_name, ag.group_name)                        AS group_name,
                 et.expense_name                                               AS category_name,
                 et.category_type,
                 a.months                                                      AS asset_life_months,
@@ -104,40 +111,46 @@ class AssetReportService
                 a.depreciation_start_date,
                 a.retirement_date,
                 a.acquisition_cost,
-                a.monthly_depreciation                                        AS period_depreciation_expense,
-                rd.accumulated_depreciation,
-                rd.periods_remaining                                          AS remaining_life,
-                rd.book_value,
-                COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) AS period_date,
+                dl.period_depreciation_expense,
+                dl.accumulated_depreciation,
+                dl.periods_remaining                                          AS remaining_life,
+                dl.book_value,
+                dl.period_date,
                 a.monthly_depreciation
             FROM assets a
-            JOIN running_depreciation rd ON rd.asset_id = a.id
+            JOIN (
+                SELECT d1.*
+                FROM depreciation_ledger d1
+                JOIN (
+                    SELECT asset_id, MAX(period_date) AS period_date
+                    FROM depreciation_ledger
+                    WHERE period_date <= :as_of_date
+                    GROUP BY asset_id
+                ) d2 ON d1.asset_id = d2.asset_id AND d1.period_date = d2.period_date
+            ) dl ON dl.asset_id = a.id
             LEFT JOIN asset_groups ag ON ag.id = a.asset_group_id
             LEFT JOIN expense_types et ON et.id = ag.expense_type_id
             WHERE a.status = \'ACTIVE\'
-              AND COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) >= :date_from
-              AND COALESCE(rd.last_depreciation_date, a.depreciation_start_date, a.date_received) <= :date_to
         ';
 
         $params = [
-            ':date_from' => $filters['date_from'],
-            ':date_to'   => $filters['date_to'],
+            ':as_of_date' => $asOfDate,
         ];
 
         if (!empty($filters['zone'])) {
-            $sql            .= ' AND a.main_zone_code = :zone';
+            $sql            .= ' AND COALESCE(dl.main_zone_code, a.main_zone_code) = :zone';
             $params[':zone'] = $filters['zone'];
         }
         if (!empty($filters['region'])) {
-            $sql              .= ' AND a.region_code = :region';
+            $sql              .= ' AND COALESCE(dl.region_code, a.region_code) = :region';
             $params[':region'] = $filters['region'];
         }
         if (!empty($filters['branch_name'])) {
-            $sql                    .= ' AND a.branch_name = :branch_name';
+            $sql                    .= ' AND COALESCE(dl.branch_name, a.branch_name) = :branch_name';
             $params[':branch_name'] = $filters['branch_name'];
         }
 
-        $sql .= ' ORDER BY period_date DESC, a.branch_name ASC';
+        $sql .= ' ORDER BY dl.period_date DESC, COALESCE(dl.branch_name, a.branch_name) ASC';
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

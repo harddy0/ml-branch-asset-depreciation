@@ -275,6 +275,9 @@ class AssetGroupService {
             SELECT 
                 ag.id,
                 ag.group_name,
+                ag.expense_type_id,
+                et.expense_name,
+                et.category_type,
                 ag.asset_gl_code,
                 ag.asset_gl_type,
                 ag.expense_gl_code,
@@ -283,6 +286,7 @@ class AssetGroupService {
                 gl_asset.description AS asset_gl_description,
                 gl_expense.description AS expense_gl_description
             FROM asset_groups ag
+            LEFT JOIN expense_types et ON et.id = ag.expense_type_id
             LEFT JOIN gl_codes gl_asset ON gl_asset.gl_code = ag.asset_gl_code
             LEFT JOIN gl_codes gl_expense ON gl_expense.gl_code = ag.expense_gl_code
             ORDER BY ag.id ASC
@@ -297,6 +301,9 @@ class AssetGroupService {
                 'id' => (int)$group['id'],
                 'group_name' => $group['group_name'],
                 'display' => $group['id'] . ' - ' . $group['group_name'],
+                'expense_type_id' => (int)$group['expense_type_id'],
+                'expense_name' => $group['expense_name'] ?? '',
+                'category_type' => $group['category_type'] ?? '',
                 'asset_gl_code' => $group['asset_gl_code'],
                 'asset_gl_type' => $group['asset_gl_type'],
                 'asset_gl_description' => $group['asset_gl_description'] ?? '',

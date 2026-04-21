@@ -135,6 +135,11 @@ document.addEventListener("DOMContentLoaded", function() {
         onChange: function() { fetchData('date'); }
     });
 
+    const asOfInput = form.querySelector('input[name="as_of_date"]');
+    if (asOfInput && asOfInput.value) {
+        fetchData('init');
+    }
+
     // ─── 2. Fetch ────────────────────────────────────────────────────────
     function fetchData(source) {
         const rawParams   = new URLSearchParams(new FormData(form));

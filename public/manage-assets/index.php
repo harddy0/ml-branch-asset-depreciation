@@ -2,44 +2,10 @@
 $pageTitle   = 'Asset Overview';
 $currentPage = 'manage-assets';
 require_once __DIR__ . '/../../src/includes/init.php';
-require_once __DIR__ . '/../../src/classes/AssetReportService.php';
+require_once __DIR__ . '/../actions/load_depreciation_list_page.php';
 
-$reportService = new \App\AssetReportService($pdo, $pdo2);
-
-$hasFiltersApplied = !empty($_GET);
-
-$rawFilters = [
-    'zone'        => $_GET['zone'] ?? '',
-    'region'      => $_GET['region'] ?? '',
-    'branch_name' => $_GET['branch_name'] ?? '',
-    'date_from'   => $_GET['date_from'] ?? '',
-    'date_to'     => $_GET['date_to'] ?? ''
-];
-
-// Normalize explicit "all" sentinels so backend queries stay unfiltered
-$filters = $rawFilters;
-foreach (['zone', 'region', 'branch_name'] as $k) {
-    if (($filters[$k] ?? '') === '__ALL__') {
-        $filters[$k] = '';
-    }
-}
-
-$zones    = $reportService->getZones();
-$regions  = $reportService->getRegions($filters['zone']);
-$branches = $reportService->getBranches($filters['zone'], $filters['region']);
-
-if ($hasFiltersApplied) {
-    $queryFilters = $filters;
-    if (empty($queryFilters['date_from'])) $queryFilters['date_from'] = date('Y-m-01');
-    if (empty($queryFilters['date_to'])) $queryFilters['date_to'] = date('Y-m-t');
-
-    $reportData = $reportService->getFilteredAssets($queryFilters);
-    $data   = $reportData['data'];
-    $totals = $reportData['totals'];
-} else {
-    $data   = [];
-    $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
-}
+$data   = [];
+$totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
 ?>
 
 <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
@@ -142,7 +108,7 @@ if ($hasFiltersApplied) {
 </div>
 
 <div class="mb-1 mr-6 text-right">
-    <p class="text-[11px] font-mono text-slate-500">Filtered by date added</p>
+    <p class="text-[11px] font-mono text-slate-500">Filtered as of date</p>
 </div>
 
 <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
@@ -181,9 +147,7 @@ if ($hasFiltersApplied) {
             </div>
             
             <div class="flex items-center gap-2 border border-slate-300 rounded px-2 py-1 bg-white focus-within:border-[#ce2216] focus-within:ring-1 focus-within:ring-[#ce2216] transition-all">
-                <input type="text" name="date_from" value="<?= htmlspecialchars($rawFilters['date_from']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="Select From">
-                <span class="text-slate-300 font-bold">-</span>
-                <input type="text" name="date_to" value="<?= htmlspecialchars($rawFilters['date_to']) ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="Select To">
+                <input type="text" name="as_of_date" value="<?= htmlspecialchars($filters['as_of_date'] ?? '') ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="As of">
             </div>
         </form>
     </div>
@@ -195,7 +159,7 @@ if ($hasFiltersApplied) {
         </div>
 
         <div id="noDataWrapper" class="<?= ($hasFiltersApplied && empty($data)) ? '' : 'hidden' ?> text-center py-16 text-slate-500 font-bold text-sm bg-white">
-            No assets records found. Please check the date range.
+            No asset records found. Please check the as of date.
         </div>
         
         <div id="tableWrapper" class="<?= empty($data) ? 'hidden' : '' ?>">

@@ -27,15 +27,19 @@ try {
     $region = ($rawRegion === '__ALL__' || $rawRegion === '') ? null : $rawRegion;
     $branch = ($rawBranch === '__ALL__' || $rawBranch === '') ? null : $rawBranch;
 
+    $asOfDate = trim((string)($_GET['as_of_date'] ?? ''));
     $dateFrom = trim((string)($_GET['date_from'] ?? ''));
     $dateTo   = trim((string)($_GET['date_to'] ?? ''));
+
+    if ($asOfDate === '') {
+        $asOfDate = $dateTo !== '' ? $dateTo : ($dateFrom !== '' ? $dateFrom : date('Y-m-d'));
+    }
 
     $filters = [
         'zone'        => $zone,
         'region'      => $region,
         'branch_name' => $branch,
-        'date_from'   => $dateFrom === '' ? date('Y-m-01') : $dateFrom,
-        'date_to'     => $dateTo === '' ? date('Y-m-t') : $dateTo,
+        'as_of_date'  => $asOfDate,
     ];
 
     $reportData = $reportService->getFilteredAssets($filters);

@@ -741,6 +741,7 @@
     // ==========================================
     (function initAssetGroupsSection(){
         const groupSelect = form.querySelector('#asset_group_select');
+        const expenseTypeSelect = form.querySelector('#expense_type_select');
         if(!groupSelect) return;
 
         const glAssetCode = form.querySelector('#gl_asset_code');
@@ -752,6 +753,7 @@
         const actualMonths = form.querySelector('#actual_months');
 
         let groupsData = [];
+        let expenseTypes = [];
 
         // Compute public base for API calls
         let appBase = '';
@@ -762,43 +764,133 @@
             ? '/public'
             : (appBase.endsWith('/public') ? appBase : appBase + '/public');
 
+        function resetGroupSelection() {
+            if(glAssetCode) glAssetCode.value = '';
+            if(glAssetType) glAssetType.value = '';
+            if(glAssetDescription) glAssetDescription.value = '';
+            if(glDepreciationCode) glDepreciationCode.value = '';
+            if(glDepreciationType) glDepreciationType.value = '';
+            if(glDepreciationDescription) glDepreciationDescription.value = '';
+            if(actualMonths) actualMonths.value = '';
+        }
+
+        function setGroupSelectState(enabled, placeholderText) {
+            groupSelect.disabled = !enabled;
+            groupSelect.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.disabled = true;
+            opt.selected = true;
+            opt.textContent = placeholderText;
+            groupSelect.appendChild(opt);
+        }
+
+        function buildExpenseTypeOptions() {
+            if(!expenseTypeSelect) return;
+            expenseTypeSelect.innerHTML = '';
+            const base = document.createElement('option');
+            base.value = '';
+            base.disabled = true;
+            base.selected = true;
+            base.textContent = 'Select Expense Type...';
+            expenseTypeSelect.appendChild(base);
+
+            expenseTypes.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = String(t.id);
+                opt.textContent = t.label;
+                expenseTypeSelect.appendChild(opt);
+            });
+        }
+
+        function rebuildGroupOptions(filteredGroups) {
+            if(!Array.isArray(filteredGroups) || filteredGroups.length === 0) {
+                setGroupSelectState(true, 'No asset groups available');
+                return;
+            }
+
+            groupSelect.disabled = false;
+            groupSelect.innerHTML = '';
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            placeholder.textContent = 'Select an asset group...';
+            groupSelect.appendChild(placeholder);
+
+            filteredGroups.forEach(group => {
+                const opt = document.createElement('option');
+                opt.value = group.id;
+                const months = Number(group.actual_months || 0);
+                const monthLabel = months > 0 ? ` (${months} months)` : '';
+                opt.textContent = `${group.display}${monthLabel}`;
+                opt.dataset.groupData = JSON.stringify(group);
+                groupSelect.appendChild(opt);
+            });
+        }
+
         // Fetch asset groups and populate dropdown
         fetch(publicBase + '/api/get_asset_groups_for_dropdown.php', { credentials: 'same-origin' })
             .then(r => r.json())
             .then(json => {
                 if(!(json && json.success && Array.isArray(json.data))) {
-                    groupSelect.innerHTML = '<option value="" disabled selected>No asset groups available</option>';
+                    if (expenseTypeSelect) {
+                        expenseTypeSelect.innerHTML = '<option value="" disabled selected>No expense types available</option>';
+                    }
+                    setGroupSelectState(false, 'No asset groups available');
                     return;
                 }
 
                 groupsData = json.data;
 
-                // Populate dropdown
-                groupSelect.innerHTML = '<option value="" disabled selected>Select an asset group...</option>';
+                const typeMap = new Map();
                 groupsData.forEach(group => {
-                    const opt = document.createElement('option');
-                    opt.value = group.id;
-                    opt.textContent = group.display; // "1 - Office Equipment"
-                    opt.dataset.groupData = JSON.stringify(group); // Store full group data
-                    groupSelect.appendChild(opt);
+                    const typeId = String(group.expense_type_id || '');
+                    if (!typeId) return;
+                    if (!typeMap.has(typeId)) {
+                        const label = group.expense_name
+                            ? `${group.expense_name} (${group.category_type || 'N/A'})`
+                            : `Type ${typeId}`;
+                        typeMap.set(typeId, { id: typeId, label: label });
+                    }
                 });
+                expenseTypes = Array.from(typeMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+
+                if (expenseTypeSelect) {
+                    buildExpenseTypeOptions();
+                }
+
+                setGroupSelectState(false, 'Select Expense Type first');
             })
             .catch(err => {
                 console.error('Failed to fetch asset groups:', err);
-                groupSelect.innerHTML = '<option value="" disabled selected>Failed to load groups</option>';
+                if (expenseTypeSelect) {
+                    expenseTypeSelect.innerHTML = '<option value="" disabled selected>Failed to load expense types</option>';
+                }
+                setGroupSelectState(false, 'Failed to load groups');
             });
+
+        if (expenseTypeSelect) {
+            expenseTypeSelect.addEventListener('change', function(){
+                const selectedType = String(this.value || '');
+                resetGroupSelection();
+                if (!selectedType) {
+                    setGroupSelectState(false, 'Select Expense Type first');
+                    return;
+                }
+
+                const filtered = groupsData.filter(g => String(g.expense_type_id || '') === selectedType);
+                rebuildGroupOptions(filtered);
+                form.dispatchEvent(new Event('change', { bubbles: true }));
+                if(typeof refreshProgressStates === 'function') refreshProgressStates();
+            });
+        }
 
         // On group selection change, auto-fill GL fields
         groupSelect.addEventListener('change', function(){
             if(!this.value){
                 // Clear GL fields if no selection
-                if(glAssetCode) glAssetCode.value = '';
-                if(glAssetType) glAssetType.value = '';
-                if(glAssetDescription) glAssetDescription.value = '';
-                if(glDepreciationCode) glDepreciationCode.value = '';
-                if(glDepreciationType) glDepreciationType.value = '';
-                if(glDepreciationDescription) glDepreciationDescription.value = '';
-                if(actualMonths) actualMonths.value = '';
+                resetGroupSelection();
                 return;
             }
 
