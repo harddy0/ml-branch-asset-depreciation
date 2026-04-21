@@ -3,71 +3,65 @@
 <!-- Complete rewrite: Asset Group selection + GL auto-fill + User inputs -->
 <!-- ══════════════════════════════════════════════════ -->
 <section>
-    <h3 class="text-xs font-black text-[#ce1126] uppercase tracking-widest border-b border-slate-200 pb-2 mb-4">
+    <h3 class="text-xs font-black text-[#ce1126] uppercase tracking-widest border-b border-slate-200 pb-2 mb-0">
         Asset Details &amp; Classification
     </h3>
 
     <!-- ═══ GROUP SELECTION SECTION ═══ -->
-    <div class="mb-6 p-4 border border-slate-200 rounded-lg bg-slate-50">
-        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
-            Step 1: Select Expense Type and Asset Group
-        </p>
+    <div class="mb-0 p-4 rounded-lg">
 
-        <div class="mb-4">
-            <label class="block text-sm font-mono font-bold text-slate-700 mb-2">
-                Expense Type <span class="text-red-500">*</span>
-            </label>
-            <select name="expense_type_id" id="expense_type_select" required
-                class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
-                       focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white">
-                <option value="" disabled selected>Loading expense types...</option>
-            </select>
-            <p class="text-xs text-slate-500 mt-1 font-mono">
-                Select an expense type to filter available asset groups
-            </p>
-        </div>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-2">
+                    Expense Type <span class="text-red-500">*</span>
+                </label>
+                <select name="expense_type_id" id="expense_type_select" required
+                    class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
+                           focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white">
+                    <option value="" disabled selected>Loading expense types...</option>
+                </select>
+            </div>
 
-        <div class="mb-4">
-            <label class="block text-sm font-mono font-bold text-slate-700 mb-2">
-                Asset Group <span class="text-red-500">*</span>
-            </label>
-            <select name="asset_group_id" id="asset_group_select" required disabled
-                class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
-                       focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white">
-                <option value="" disabled selected>Select Expense Type first</option>
-            </select>
-            <p class="text-xs text-slate-500 mt-1 font-mono">
-                Select a group to auto-populate GL account information
-            </p>
+            <div>
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-2">
+                    Asset Group <span class="text-red-500">*</span>
+                </label>
+                <select name="asset_group_id" id="asset_group_select" required disabled
+                    class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
+                           focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white">
+                    <option value="" disabled selected>Select Expense Type first</option>
+                </select>
+            </div>
         </div>
 
         <!-- GL ACCOUNT AUTO-FILL GRID (2 columns: Asset GL | Depreciation GL) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-3">
             <!-- LEFT COLUMN: Asset GL -->
             <div class="border border-slate-200 rounded-lg p-4 bg-white">
                 <label class="block text-xs font-mono font-bold text-slate-600 mb-3 uppercase tracking-wide">GL Asset Account</label>
                 
-                <div class="mb-3">
-                    <label class="block text-xs font-mono font-bold text-slate-500 mb-1">Code</label>
-                    <input type="text" id="gl_asset_code" readonly
-                        placeholder="—"
-                        class="w-full text-sm font-mono font-bold border border-slate-200 rounded px-3 py-2
-                               bg-slate-100 text-slate-700 outline-none cursor-default">
+                <div class="grid grid-cols-2 gap-4 mb-2">
+                    <div>
+                        <label class="block text-xs font-mono font-bold text-slate-500 mb-1">Code</label>
+                        <input type="text" id="gl_asset_code" readonly
+                            placeholder="—"
+                            class="w-full text-sm font-mono font-bold border border-slate-200 rounded px-3 py-2
+                                bg-slate-100 text-slate-700 outline-none cursor-default">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-mono font-bold text-slate-500 mb-1">Normal balance</label>
+                        <input type="text" id="gl_asset_type" readonly
+                            placeholder="—"
+                            class="w-full text-sm font-mono font-bold border border-slate-200 rounded px-3 py-2
+                                bg-slate-100 text-slate-700 outline-none cursor-default">
+                    </div>
                 </div>
-
-                <div class="mb-3">
-                    <label class="block text-xs font-mono font-bold text-slate-500 mb-1">Type</label>
-                    <input type="text" id="gl_asset_type" readonly
-                        placeholder="—"
-                        class="w-full text-sm font-mono font-bold border border-slate-200 rounded px-3 py-2
-                               bg-slate-100 text-slate-700 outline-none cursor-default">
-                </div>
-
+                
                 <div>
                     <label class="block text-xs font-mono font-bold text-slate-500 mb-1">Description</label>
                     <textarea id="gl_asset_description" readonly
                         placeholder="—"
-                        class="w-full text-sm font-mono border border-slate-200 rounded px-3 py-2
+                        class="w-full text-sm font-mono border border-slate-200 rounded px-3 py-1
                                bg-slate-100 text-slate-700 outline-none cursor-default resize-none"
                         rows="3"></textarea>
                 </div>
@@ -77,27 +71,29 @@
             <div class="border border-slate-200 rounded-lg p-4 bg-white">
                 <label class="block text-xs font-mono font-bold text-slate-600 mb-3 uppercase tracking-wide">GL Depreciation (P&L)</label>
                 
-                <div class="mb-3">
-                    <label class="block text-xs font-mono font-bold text-slate-500 mb-1">Code</label>
-                    <input type="text" id="gl_depreciation_code" readonly
-                        placeholder="—"
-                        class="w-full text-sm font-mono font-bold border border-slate-200 rounded px-3 py-2
-                               bg-slate-100 text-slate-700 outline-none cursor-default">
-                </div>
+                <div class="grid grid-cols-2 gap-4 mb-2">
+                     <div>
+                        <label class="block text-xs font-mono font-bold text-slate-500 mb-1">Code</label>
+                        <input type="text" id="gl_depreciation_code" readonly
+                            placeholder="—"
+                            class="w-full text-sm font-mono font-bold border border-slate-200 rounded px-3 py-2
+                                bg-slate-100 text-slate-700 outline-none cursor-default">
+                    </div>
 
-                <div class="mb-3">
-                    <label class="block text-xs font-mono font-bold text-slate-500 mb-1">Type</label>
-                    <input type="text" id="gl_depreciation_type" readonly
-                        placeholder="—"
-                        class="w-full text-sm font-mono font-bold border border-slate-200 rounded px-3 py-2
-                               bg-slate-100 text-slate-700 outline-none cursor-default">
+                    <div>
+                        <label class="block text-xs font-mono font-bold text-slate-500 mb-1">Normal Balance</label>
+                        <input type="text" id="gl_depreciation_type" readonly
+                            placeholder="—"
+                            class="w-full text-sm font-mono font-bold border border-slate-200 rounded px-3 py-2
+                                bg-slate-100 text-slate-700 outline-none cursor-default">
+                    </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-mono font-bold text-slate-500 mb-1">Description</label>
                     <textarea id="gl_depreciation_description" readonly
                         placeholder="—"
-                        class="w-full text-sm font-mono border border-slate-200 rounded px-3 py-2
+                        class="w-full text-sm font-mono border border-slate-200 rounded px-3 py-1
                                bg-slate-100 text-slate-700 outline-none cursor-default resize-none"
                         rows="3"></textarea>
                 </div>
@@ -105,11 +101,10 @@
         </div>
     </div>
 
+    <div class="border-t border-slate-200 mb-3"></div>
+
     <!-- ═══ ASSET DETAILS INPUT SECTION ═══ -->
-    <div class="p-4 border border-slate-200 rounded-lg">
-        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
-            Step 2: Enter Asset Details
-        </p>
+    <div class="p-4 rounded-lg -mb-4">
 
         <!-- Row 1: Description + Serial Number -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

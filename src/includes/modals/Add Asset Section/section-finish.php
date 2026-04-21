@@ -11,11 +11,12 @@
                     <tr><th colspan="2" class="finish-title">Location</th></tr>
                 </thead>
                 <tbody>
+                    <tr><td class="finish-label">Branch</td><td class="finish-value" data-key="branch_name">-</td></tr>
+                    <tr><td class="finish-label">Branch ID</td><td class="finish-value" data-key="cost_center_code">-</td></tr>
                     <tr><td class="finish-label">Main Zone</td><td class="finish-value" data-key="main_zone_code">-</td></tr>
                     <tr><td class="finish-label">Sub-Zone</td><td class="finish-value" data-key="zone_code">-</td></tr>
                     <tr><td class="finish-label">Region</td><td class="finish-value" data-key="region_code">-</td></tr>
-                    <tr><td class="finish-label">Branch</td><td class="finish-value" data-key="branch_name">-</td></tr>
-                    <tr><td class="finish-label">Cost Center</td><td class="finish-value" data-key="cost_center_code">-</td></tr>
+                    
                 </tbody>
             </table>
         </div>

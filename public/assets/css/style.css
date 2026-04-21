@@ -75,12 +75,6 @@
 #finish-summary .flex > .text-xs { display: block; }
 #finish-summary .flex > .text-sm { margin-top: 0.25rem; font-weight: 700; }
 
-/* Extra summary appended by JS */
-#finish-summary .__extra_summary { border-top: 1px solid #eef2f6; padding-top: 1rem; margin-top: 1rem; }
-#finish-summary .__extra_summary .text-xs { color: #6b7280; }
-#finish-summary .__extra_summary .text-sm { color: #111827; }
-#finish-summary .__extra_summary .w-40 { color: #6b7280; font-weight:600; }
-
 /* Polished finish preview cards */
 .finish-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 1rem; margin: 0.5rem 0; }
 .finish-card { background: #ffffff; border: 1px solid #e6e9ef; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 2px rgba(16,24,40,0.04); }
@@ -96,7 +90,7 @@
 /* Currency formatting in finish values: peso sign left, amount right */
 .finish-value.currency { display: flex; align-items: center; gap: 0.5rem; }
 .finish-value.currency .currency-symbol { color: #6b7280; font-weight: 600; margin-right: 0.25rem; }
-.finish-value.currency .amount { margin-left: auto; text-align: right; display: inline-block; min-width: 2ch; }
+.finish-value.currency .amount { margin-left: auto; text-align: right; display: inline-block; min-width: 0ch; }
 
 /* Right-align currency form inputs and make room for left peso sign */
 .currency-input { text-align: right; }
