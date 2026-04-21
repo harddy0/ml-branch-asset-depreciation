@@ -325,22 +325,11 @@ class AssetService
                 $bookValue   = 0.00;
             }
 
-            // Calculate GL amounts based on GL type direction (DEBIT vs CREDIT)
-            // In double-entry bookkeeping, DEBIT amount + CREDIT amount must balance
-            // Assign the expense amount to the appropriate GL leg based on its TYPE
-            $glAAmount = 0.0;
-            $glBAmount = 0.0;
+// --- STRICT SIGN CONVENTION LOGIC ---
+            // Universal Rule: ALL Debits are Negative, ALL Credits are Positive.
+            $glAAmount = (strtoupper($glAType) === 'DEBIT') ? -$periodDepExpense : $periodDepExpense;
             
-            // Both sides of the entry must equal the period expense
-            // The TYPE determines which GL gets the amount (DEBIT GL gets the debit side, etc.)
-            if (strtoupper($glAType) === 'DEBIT') {
-                $glAAmount = $periodDepExpense;
-                $glBAmount = $periodDepExpense;
-            } else {
-                // glAType is CREDIT or other
-                $glAAmount = $periodDepExpense;
-                $glBAmount = $periodDepExpense;
-            }
+            $glBAmount = (strtoupper($glBType) === 'DEBIT') ? -$periodDepExpense : $periodDepExpense;
 
             $stmt->execute([
                 ':asset_id'                   => $assetId,
@@ -374,6 +363,7 @@ class AssetService
             ]);
         }
     }
+    
 
     /**
      * Computes the exact period date for a given iteration offset,

@@ -197,10 +197,13 @@ document.addEventListener('DOMContentLoaded', function () {
             setSingle(mainZoneSelect, found.main_zone_code, found.main_zone_code || 'N/A');
             setSingle(zoneSelect,     found.zone_code,      found.zone_code || 'N/A');
 
-            // Use only the `region` column from branch_profile for display
-            const regionCode = found.region || '';
-            const regionLabel = regionCode; // show only branch_profile.region
-            setSingle(regionSelect,   regionCode,    regionLabel || 'N/A');
+            // The value MUST be the short code for the database
+const regionCode = found.region_code || ''; 
+
+// The display text can still be the friendly region name
+const regionLabel = found.region || found.region_code || ''; 
+
+setSingle(regionSelect, regionCode, regionLabel || 'N/A');
         });
     }
 
@@ -1096,8 +1099,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const html = lineRows.map(function (r) {
             const periodLabel = `${r.period_year || ''}-${String(r.period_month || '').padStart(2, '0')}`;
             const rowTone = (r.line_type === 'DEBIT') ? 'bg-emerald-50/40' : 'bg-amber-50/40';
-            const debitValue = r.debit > 0 ? (r.debit).toFixed(2) : '';
-            const creditValue = r.credit > 0 ? (r.credit).toFixed(2) : '';
+            const debitValue = r.debit !== 0 ? (r.debit).toFixed(2) : '';
+            const creditValue = r.credit !== 0 ? (r.credit).toFixed(2) : '';
             const expenseValue = (r.period_depreciation_expense || 0).toFixed(2);
             const accumValue = (r.accumulated_depreciation || 0).toFixed(2);
             const bookVal = (r.book_value || 0).toFixed(2);

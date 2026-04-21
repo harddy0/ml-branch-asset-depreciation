@@ -523,10 +523,10 @@
                 const regionCode = found.region || '';
                 const regionLabel = regionCode; // show only branch_profile.region
                 setSingleOption(regionEl,   regionCode,    regionLabel);
-                // set hidden inputs for submission
+                // set hidden inputs for submission (Use region_code, NOT region)
                 if(mainZoneHidden) mainZoneHidden.value = found.main_zone_code || '';
                 if(zoneHidden) zoneHidden.value = found.zone_code || '';
-                if(regionHidden) regionHidden.value = found.region || '';
+                if(regionHidden) regionHidden.value = found.region_code || '';
             } else {
                 // clear values if input doesn't match a branch
                 hiddenBranch.value = '';
@@ -679,10 +679,10 @@
                 setSingleOption(mainZoneEl, item.main_zone_code, item.main_zone_code);
                 setSingleOption(zoneEl,     item.zone_code,      item.zone_code);
                 setSingleOption(regionEl,   regionCode,          regionLabel);
-                // set hidden inputs for submission as well
+                // set hidden inputs for submission as well (Use region_code, NOT region)
                 if(typeof mainZoneHidden !== 'undefined' && mainZoneHidden) mainZoneHidden.value = item.main_zone_code || '';
                 if(typeof zoneHidden !== 'undefined' && zoneHidden) zoneHidden.value = item.zone_code || '';
-                if(typeof regionHidden !== 'undefined' && regionHidden) regionHidden.value = item.region || '';
+                if(typeof regionHidden !== 'undefined' && regionHidden) regionHidden.value = item.region_code || '';
                 // hide
                 suggestions.style.display = 'none';
                 highlightedIndex = -1;
