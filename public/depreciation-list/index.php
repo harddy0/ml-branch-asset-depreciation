@@ -139,7 +139,7 @@ require_once __DIR__ . '/../../public/actions/load_depreciation_list_page.php';
                         <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="item_code">Item <span class="depr-sort-indicator opacity-70">↕</span></button>
                     </th>
                     <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
-                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="group_code">Group code <span class="depr-sort-indicator opacity-70">↕</span></button>
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="group_name">Asset group <span class="depr-sort-indicator opacity-70">↕</span></button>
                     </th>
                     <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
                         <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="branch_name">Branch <span class="depr-sort-indicator opacity-70">↕</span></button>

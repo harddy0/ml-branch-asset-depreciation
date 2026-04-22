@@ -318,9 +318,9 @@ class AssetGroupService {
 
     /**
      * Fetches the asset group dropdown options used by the depreciation list filter.
-     * Uses asset_groups joined with gl_codes and formats labels as "GL_CODE - Description".
+     * Uses asset_groups joined with gl_codes and formats labels as "GL_CODE - Group Name".
      *
-     * @return array<int,array{id:int,label:string}>
+     * @return array<int,array{id:int,label:string,group_name:string}>
      */
     public function getFilterOptions(): array
     {
@@ -340,20 +340,25 @@ class AssetGroupService {
 
         return array_map(function ($row) {
             $code = trim((string)($row['asset_gl_code'] ?? ''));
-            $description = trim((string)($row['gl_description'] ?? ''));
             $groupName = trim((string)($row['group_name'] ?? ''));
 
-            $label = $code;
-            if ($description !== '') {
-                $label = $code !== '' ? $code . ' - ' . $description : $description;
+            $labelParts = [];
+            if ($code !== '') {
+                $labelParts[] = $code;
             }
+            if ($groupName !== '') {
+                $labelParts[] = $groupName;
+            }
+
+            $label = implode(' - ', $labelParts);
             if ($label === '') {
-                $label = $groupName !== '' ? $groupName : 'Group ' . ((int)$row['id']);
+                $label = 'Group ' . ((int)$row['id']);
             }
 
             return [
                 'id' => (int)$row['id'],
                 'label' => $label,
+                'group_name' => $groupName,
             ];
         }, $options);
     }
