@@ -63,7 +63,7 @@ require_once __DIR__ . '/../../public/actions/load_depreciation_list_page.php';
                         class="flex-1 min-w-0 max-w-full truncate border border-slate-300 rounded-md px-3 py-1 text-sm font-mono text-slate-700"
                         style="min-width:0; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"
                     >
-                        <option value="">All Group Codes</option>
+                        <option value="">All Groups</option>
                     </select>
 
                     <select

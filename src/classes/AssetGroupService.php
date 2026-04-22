@@ -315,4 +315,46 @@ class AssetGroupService {
             ];
         }, $groups);
     }
+
+    /**
+     * Fetches the asset group dropdown options used by the depreciation list filter.
+     * Uses asset_groups joined with gl_codes and formats labels as "GL_CODE - Description".
+     *
+     * @return array<int,array{id:int,label:string}>
+     */
+    public function getFilterOptions(): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                ag.id,
+                ag.group_name,
+                ag.asset_gl_code,
+                gc.description AS gl_description
+            FROM asset_groups ag
+            LEFT JOIN gl_codes gc ON ag.asset_gl_code = gc.gl_code
+            ORDER BY ag.asset_gl_code ASC, ag.id ASC
+        ");
+
+        $stmt->execute();
+        $options = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        return array_map(function ($row) {
+            $code = trim((string)($row['asset_gl_code'] ?? ''));
+            $description = trim((string)($row['gl_description'] ?? ''));
+            $groupName = trim((string)($row['group_name'] ?? ''));
+
+            $label = $code;
+            if ($description !== '') {
+                $label = $code !== '' ? $code . ' - ' . $description : $description;
+            }
+            if ($label === '') {
+                $label = $groupName !== '' ? $groupName : 'Group ' . ((int)$row['id']);
+            }
+
+            return [
+                'id' => (int)$row['id'],
+                'label' => $label,
+            ];
+        }, $options);
+    }
 }
