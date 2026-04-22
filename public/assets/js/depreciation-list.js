@@ -556,6 +556,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const listApiUrl = (listConfigEl && listConfigEl.dataset.apiUrl)
         ? listConfigEl.dataset.apiUrl
         : (publicBase + '/api/get_depreciation_list.php');
+    const groupFilterApiUrl = publicBase + '/api/get_asset_group_filter_options.php';
 
     const listPerPage = (listConfigEl && parseInt(listConfigEl.dataset.perPage, 10))
         ? parseInt(listConfigEl.dataset.perPage, 10)
@@ -579,7 +580,7 @@ document.addEventListener('DOMContentLoaded', function () {
         page: 1,
         perPage: listPerPage,
         search: '',
-        group_code: '',
+        asset_group_id: '',
         branch_name: '',
         date_from: '',
         date_to: '',
@@ -800,7 +801,7 @@ document.addEventListener('DOMContentLoaded', function () {
         params.set('sort_dir', listState.sort_dir);
 
         if (listState.search) params.set('search', listState.search);
-        if (listState.group_code) params.set('group_code', listState.group_code);
+        if (listState.asset_group_id) params.set('asset_group_id', listState.asset_group_id);
         if (listState.branch_name) params.set('branch_name', listState.branch_name);
         if (listState.date_from) params.set('date_from', listState.date_from);
         if (listState.date_to) params.set('date_to', listState.date_to);
@@ -873,7 +874,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    function populateListGroupFilter() {
+    function renderGroupFilterOptions(groups) {
         if (!groupFilter) return;
 
         // FIX: Ensure options are reset and we extract the exact ID from the backend object.
@@ -886,6 +887,35 @@ document.addEventListener('DOMContentLoaded', function () {
             opt.textContent = `${group.group_name}`; 
             groupFilter.appendChild(opt);
         });
+
+        if (listState.asset_group_id) {
+            groupFilter.value = String(listState.asset_group_id);
+        }
+    }
+
+    function populateListGroupFilter() {
+        if (!groupFilter) return;
+
+        const fallbackGroups = Array.isArray(window.__assetGroups) ? window.__assetGroups : [];
+        renderGroupFilterOptions(fallbackGroups);
+
+        fetch(groupFilterApiUrl)
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            })
+            .then(function (text) {
+                const res = JSON.parse(text.replace(/^\uFEFF/, '').trim());
+                if (!res.success || !Array.isArray(res.data)) {
+                    throw new Error(res.error || 'Invalid response from group filter API');
+                }
+
+                renderGroupFilterOptions(res.data);
+            })
+            .catch(function (err) {
+                console.warn('Failed to load asset group filter options, using fallback injection if available:', err);
+                renderGroupFilterOptions(fallbackGroups);
+            });
     }
 
     function populateBranchFilter(branches) {
@@ -1386,7 +1416,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (groupFilter) {
             groupFilter.addEventListener('change', function () {
-                listState.group_code = groupFilter.value;
+                listState.asset_group_id = groupFilter.value || '';
                 listState.branch_name = '';
                 if (branchFilter) branchFilter.value = '';
                 listState.page = 1;
@@ -1413,7 +1443,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 listState.page = 1;
                 listState.search = '';
-                listState.group_code = '';
+                listState.asset_group_id = '';
                 listState.branch_name = '';
                 listState.date_from = '';
                 listState.date_to = '';

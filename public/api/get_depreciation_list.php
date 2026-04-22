@@ -15,14 +15,15 @@ try {
     $page = max(1, (int)($_GET['page'] ?? 1));
     $perPage = max(1, min(100, (int)($_GET['per_page'] ?? 50)));
 
-    $search     = trim((string)($_GET['search'] ?? ''));
-    $groupCode  = trim((string)($_GET['group_code'] ?? ''));
-    $branchName = trim((string)($_GET['branch_name'] ?? ''));
-    $dateFrom   = trim((string)($_GET['date_from'] ?? ''));
-    $dateTo     = trim((string)($_GET['date_to'] ?? ''));
-    $status     = trim((string)($_GET['status'] ?? ''));
-    $sortBy     = (string)($_GET['sort_by'] ?? 'created_at');
-    $sortDir    = strtoupper((string)($_GET['sort_dir'] ?? 'DESC'));
+    $search        = trim((string)($_GET['search'] ?? ''));
+    $assetGroupId  = max(0, (int)($_GET['asset_group_id'] ?? 0));
+    $groupCode     = trim((string)($_GET['group_code'] ?? ''));
+    $branchName    = trim((string)($_GET['branch_name'] ?? ''));
+    $dateFrom      = trim((string)($_GET['date_from'] ?? ''));
+    $dateTo        = trim((string)($_GET['date_to'] ?? ''));
+    $status        = trim((string)($_GET['status'] ?? ''));
+    $sortBy        = (string)($_GET['sort_by'] ?? 'created_at');
+    $sortDir       = strtoupper((string)($_GET['sort_dir'] ?? 'DESC'));
 
     // Resolve group_code -> asset_group_id when provided
     $assetGroupId = 0;

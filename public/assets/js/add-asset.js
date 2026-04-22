@@ -1090,4 +1090,63 @@
     }
 
     showStep(0);
+
+    // Reset routine for Add Asset modal: restore form to defaults and show first step
+    function resetAddAssetModal(){
+        if(!form) return;
+        try{ form.reset(); } catch(e){}
+
+        // Reset selects to first option where possible
+        form.querySelectorAll('select').forEach(s => {
+            try{ if(s.options && s.options.length > 0) s.selectedIndex = 0; } catch(e){}
+        });
+
+        // Hide branch suggestions if present
+        const suggestions = document.querySelector('.__branch_suggestions');
+        if(suggestions) suggestions.style.display = 'none';
+
+        // Clear finish summary placeholders if present
+        const finishContainer = document.getElementById('finish-summary');
+        if(finishContainer){
+            finishContainer.querySelectorAll('[data-key]').forEach(ph => { ph.textContent = '—'; });
+            finishContainer.querySelectorAll('.amount').forEach(a => { a.textContent = '—'; });
+        }
+
+        // Ensure UI shows step 1 and progress state resets
+        if(typeof showStep === 'function') showStep(0);
+        if(typeof refreshProgressStates === 'function') refreshProgressStates();
+
+        // Trigger input/change so dependent UI updates
+        form.querySelectorAll('input,select,textarea').forEach(el => {
+            try{ el.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){}
+            try{ el.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
+        });
+    }
+
+    // Observe the modal element and reset when it's hidden
+    const modalEl = document.getElementById('modal-add-asset');
+    if(modalEl){
+        const mo = new MutationObserver(mutations => {
+            for(const m of mutations){
+                if(m.attributeName === 'class'){
+                    if(modalEl.classList.contains('hidden')){
+                        // run reset asynchronously after hide animation
+                        setTimeout(() => resetAddAssetModal(), 0);
+                    }
+                }
+            }
+        });
+        mo.observe(modalEl, { attributes: true, attributeFilter: ['class'] });
+
+        // Also intercept clicks on buttons that call closeModal(...) and schedule a reset
+        modalEl.addEventListener('click', function(e){
+            const t = e.target && e.target.closest ? e.target.closest('button[onclick], a[onclick]') : null;
+            if(!t) return;
+            const onclick = t.getAttribute('onclick') || '';
+            if(onclick.indexOf('closeModal') !== -1 && onclick.indexOf('modal-add-asset') !== -1){
+                // schedule reset after animation; observer will also catch hidden state
+                setTimeout(() => resetAddAssetModal(), 250);
+            }
+        }, true);
+    }
 })();

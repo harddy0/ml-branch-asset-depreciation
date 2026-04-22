@@ -15,6 +15,8 @@ require_once __DIR__ . '/../../src/classes/AssetReportService.php';
 require_once __DIR__ . '/../../src/classes/AssetGroupService.php';
 
 try {
+    $groupService = new \App\AssetGroupService($pdo);
+    $assetGroups = $groupService->getFilterOptions();
     $reportService = new \App\AssetReportService($pdo, $pdo2);
     // ADDED: Initialize the group service
     $groupService  = new \App\AssetGroupService($pdo);
