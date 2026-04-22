@@ -12,8 +12,13 @@
 
 require_once __DIR__ . '/../../src/includes/init.php';
 require_once __DIR__ . '/../../src/classes/AssetReportService.php';
+require_once __DIR__ . '/../../src/classes/AssetGroupService.php';
+
+$assetGroups = [];
 
 try {
+    $groupService = new \App\AssetGroupService($pdo);
+    $assetGroups = $groupService->getFilterOptions();
     $reportService = new \App\AssetReportService($pdo, $pdo2);
 
     $hasFiltersApplied = !empty($_GET);
