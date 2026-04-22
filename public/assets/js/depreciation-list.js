@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function () {
-    console.log("System: Asset Management JS Initialized");
 
     // ==========================================
     // 1. DYNAMIC FORM UI LOGIC (Specific Date)
@@ -58,13 +57,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 populateDropdown(mainZoneSelect,   [], 'Enter branch name or branch code...');
                 populateDropdown(zoneSelect,     [], 'Enter branch name or branch code...');
                 populateDropdown(regionSelect,   [], 'Enter branch name or branch code...');
-                // Allow selecting branch first: populate with all branches immediately
                 populateBranchDropdown(allBranches);
             }
         })
         .catch(err => console.error('Location fetch error:', err));
 
-    // --- Location Helper Functions ---
     function getUniqueValues(array, key) {
         return [...new Set(array.map(i => i[key]).filter(Boolean))].sort();
     }
@@ -105,7 +102,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function populateBranchDropdown(branchesArray) {
-        // If visible element is a SELECT
         if (branchSelect && branchSelect.tagName === 'SELECT') {
             branchSelect.innerHTML = `<option value="" disabled selected>${branchesArray.length === 0 ? 'Waiting for Region...' : 'Select Branch...'}</option>`;
             if (branchesArray.length === 0) {
@@ -127,17 +123,14 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // If the UI uses an input + datalist (searchable), populate datalist
         const branchInput = document.getElementById('branch_name_input');
         const branchList = document.getElementById('branch_list');
         if (branchInput && branchList) {
-                // Populate only the input placeholder and disable state; do not add native datalist options
                 branchInput.placeholder = branchesArray.length === 0 ? 'Waiting for Region...' : 'Type to search branches...';
                 branchInput.disabled = branchesArray.length === 0;
         }
     }
 
-    // --- Strict top-down cascade ---
     if (mainZoneSelect) {
         mainZoneSelect.addEventListener('change', function () {
             let filtered = allBranches.filter(b => b.main_zone_code === this.value);
@@ -173,10 +166,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const found = allBranches.find(b => b.branch_name === this.value);
             if (!found) return;
 
-            // Display branch code (prefer explicit branch_code, fallback to cost_center_code)
             if (found && costCenterInput) costCenterInput.value = found.branch_code || found.cost_center_code || '';
 
-            // Autofill the location selects to reflect the branch's main/sub/region
             function setSingle(selectEl, val, displayText) {
                 if (!selectEl) return;
                 selectEl.innerHTML = `<option value="" disabled>${displayText || 'N/A'}</option>`;
@@ -197,17 +188,13 @@ document.addEventListener('DOMContentLoaded', function () {
             setSingle(mainZoneSelect, found.main_zone_code, found.main_zone_code || 'N/A');
             setSingle(zoneSelect,     found.zone_code,      found.zone_code || 'N/A');
 
-            // The value MUST be the short code for the database
-const regionCode = found.region_code || ''; 
+            const regionCode = found.region_code || ''; 
+            const regionLabel = found.region || found.region_code || ''; 
 
-// The display text can still be the friendly region name
-const regionLabel = found.region || found.region_code || ''; 
-
-setSingle(regionSelect, regionCode, regionLabel || 'N/A');
+            setSingle(regionSelect, regionCode, regionLabel || 'N/A');
         });
     }
 
-    // If UI uses input + datalist for branch search, wire input -> autofill
     const branchInputEl = document.getElementById('branch_name_input');
     const branchListEl = document.getElementById('branch_list');
     if (branchInputEl && branchListEl) {
@@ -243,7 +230,7 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
             setSingle(mainZoneSelect, found.main_zone_code, found.main_zone_code || 'N/A');
             setSingle(zoneSelect,     found.zone_code,      found.zone_code || 'N/A');
             const regionCode = found.region || '';
-            const regionLabel = regionCode; // show only branch_profile.region
+            const regionLabel = regionCode; 
             setSingle(regionSelect,   regionCode,    regionLabel || 'N/A');
         });
     }
@@ -252,14 +239,13 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
     // 3. GL GROUP SELECT — Load options + Auto-fill
     // ==========================================
 
-    const glGroupSelect      = document.getElementById('gl_group_select');     // <select name="group_code">
-    const glGroupCodeDisplay = document.getElementById('gl_group_code_display'); // read-only code box on the RIGHT
-    const glAssetCodeDisplay = document.getElementById('gl_asset_code_display'); // name="asset_code"
+    const glGroupSelect      = document.getElementById('gl_group_select');     
+    const glGroupCodeDisplay = document.getElementById('gl_group_code_display'); 
+    const glAssetCodeDisplay = document.getElementById('gl_asset_code_display'); 
     const glAssetNameDisplay = document.getElementById('gl_asset_name_display');
-    const glDepCodeDisplay   = document.getElementById('gl_dep_code_display');   // name="depreciation_code"
+    const glDepCodeDisplay   = document.getElementById('gl_dep_code_display');   
     const glDepNameDisplay   = document.getElementById('gl_dep_name_display');
 
-    /** Clears all auto-fill GL fields back to empty/placeholder state. */
     function clearGlFields() {
         if (glGroupCodeDisplay) glGroupCodeDisplay.value = '';
         if (glAssetCodeDisplay) glAssetCodeDisplay.value = '';
@@ -268,35 +254,29 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
         if (glDepNameDisplay)   glDepNameDisplay.value   = '';
     }
 
-    /**
-     * Populate the Group <select> from window.__assetGroups injected by PHP.
-     */
     function initGroupDropdown() {
         if (!glGroupSelect) return;
 
         const groups = window.__assetGroups || [];
 
-        // Always reset first
         glGroupSelect.innerHTML = '<option value="" disabled selected>Select Group...</option>';
 
         if (groups.length === 0) {
             glGroupSelect.innerHTML = '<option value="" disabled selected>No groups configured</option>';
-            console.warn('GL groups: window.__assetGroups is empty. Check inject_asset_groups_snippet.php is loaded before depreciation-list.js.');
             return;
         }
 
         groups.forEach(function (g) {
             const opt       = document.createElement('option');
-            opt.value       = g.group_code;
+            // FIX: The database table 'asset_groups' uses 'id', not 'group_code'.
+            opt.value       = g.id;
             opt.textContent = g.group_name;
             glGroupSelect.appendChild(opt);
         });
     }
 
-    // Run immediately
     initGroupDropdown();
 
-    /** On group change: show code on right, fetch chain, fill Asset + Dep rows. */
     if (glGroupSelect) {
         glGroupSelect.addEventListener('change', function () {
             const selectedCode = this.value;
@@ -306,10 +286,8 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
                 return;
             }
 
-            // Show selected group_code in the right-side read-only box immediately
             if (glGroupCodeDisplay) glGroupCodeDisplay.value = selectedCode;
 
-            // Fetch the full classification chain from the API
             fetch(`${groupDetailsApiUrl}?group_code=${encodeURIComponent(selectedCode)}`)
                 .then(function (r) {
                     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -317,7 +295,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
                 })
                 .then(function (res) {
                     if (!res.success || !res.data) {
-                        console.error('GL auto-fill failed:', res.error);
                         clearGlFields();
                         if (glGroupCodeDisplay) glGroupCodeDisplay.value = selectedCode;
                         return;
@@ -325,13 +302,12 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
 
                     const d = res.data;
 
-                    if (glGroupCodeDisplay) glGroupCodeDisplay.value = d.group_code;
+                    if (glGroupCodeDisplay) glGroupCodeDisplay.value = d.group_code || selectedCode;
                     if (glAssetCodeDisplay) glAssetCodeDisplay.value = d.asset_code;
                     if (glAssetNameDisplay) glAssetNameDisplay.value = d.asset_name;
                     if (glDepCodeDisplay) glDepCodeDisplay.value = d.depreciation_code;
                     if (glDepNameDisplay) glDepNameDisplay.value = d.depreciation_description;
 
-                    // Feed actual_months into the end date auto-compute
                     if (typeof window.__setActualMonths === 'function') {
                         window.__setActualMonths(d.actual_months);
                     }
@@ -347,11 +323,10 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
     // ==========================================
 
     const dateReceivedInput   = document.getElementById('date_received');
-    const startDateInput      = document.getElementById('depreciation_start_date'); // Now a hidden field
+    const startDateInput      = document.getElementById('depreciation_start_date'); 
     const endDateInput        = document.getElementById('depreciation_end_date');
     const endDateAutoBadge    = document.getElementById('end_date_auto_badge');
     
-    // Schedule Setting Selectors
     const depOnSelect         = document.getElementById('depreciation_on');
     const depDayInput         = document.getElementById('depreciation_day');
 
@@ -371,7 +346,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
         let startMonth = recvDate.getMonth();
         let startDateObj;
 
-        // 1. Determine exact Start Date dynamically based on rules
         if (depOn === 'LAST_DAY') {
             startDateObj = new Date(startYear, startMonth + 1, 0); 
         } else if (depOn === 'FIRST_DAY') {
@@ -382,12 +356,10 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
             startDateObj = new Date(startYear, startMonth, clampedDay);
         }
 
-        // Set the hidden field so it reaches the database properly
         if (startDateInput) {
             startDateInput.value = formatDate(startDateObj);
         }
 
-        // 2. Compute End Date if group months are loaded
         if (!endDateManuallySet && currentActualMonths > 0) {
             let endYear = startDateObj.getFullYear();
             let endMonth = startDateObj.getMonth() + currentActualMonths;
@@ -419,7 +391,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
         return `${y}-${m}-${d}`;
     }
 
-    // Stop auto-computing if user manually overrides end date
     if (endDateInput) {
         endDateInput.addEventListener('input', function () {
             endDateManuallySet = true;
@@ -429,11 +400,9 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
         });
     }
 
-    // Trigger dates calculation on any schedule input change
     if (dateReceivedInput) dateReceivedInput.addEventListener('change', computeDates);
     if (depOnSelect) depOnSelect.addEventListener('change', computeDates);
     if (depDayInput) depDayInput.addEventListener('input', computeDates);
-
 
     // ==========================================
     // 5. RESET FORM when modal is closed
@@ -441,7 +410,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
     const form = document.getElementById('addAssetForm');
     const modalEl = document.getElementById('modal-add-asset');
     if (modalEl) {
-        // Watch for when the modal becomes hidden (close button / cancel)
         const observer = new MutationObserver(function (mutations) {
             mutations.forEach(m => {
                 if (m.attributeName === 'class' && modalEl.classList.contains('hidden')) {
@@ -466,7 +434,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
     function computeMonthlyDepreciation() {
         if (!acqCostInput || !monthlyDepInput) return;
         const raw = String(acqCostInput.value || '');
-        // Normalize input: remove currency symbols, spaces, commas — keep digits, dot and minus
         const normalized = raw.replace(/[^\d.\-]/g, '');
         const cost = parseFloat(normalized) || 0;
 
@@ -480,7 +447,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
 
     if (acqCostInput) acqCostInput.addEventListener('input', computeMonthlyDepreciation);
 
-    // Recompute dates AND costs when Asset Group is selected 
     window.__setActualMonths = function (months) {
         currentActualMonths = parseInt(months) || 0;
         endDateManuallySet  = false; 
@@ -545,7 +511,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
                 try {
                     return JSON.parse(cleaned);
                 } catch (parseErr) {
-                    console.error('Invalid JSON response:', text);
                     throw parseErr;
                 }
             })
@@ -563,14 +528,12 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
                     clearGlFields();
                     if (glGroupSelect) glGroupSelect.value = '';
 
-                    // Reload page to show new asset
                     window.location.reload(); 
                 } else {
                     alert('Failed to save asset: ' + res.error);
                 }
             })
             .catch(err => {
-                console.error('Submit Error:', err);
                 alert('Failed to save asset: ' + (err.message || 'Unknown error'));
             })
             .finally(() => {
@@ -642,15 +605,12 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
     function formatDateDisplay(value) {
         if (!value) return '-';
         const s = String(value).trim();
-        // Try direct parse first (handles ISO with time)
         let dt = new Date(s);
         if (isNaN(dt)) {
-            // Replace space between date and time with 'T' (common MySQL format)
             const replaced = s.replace(' ', 'T');
             dt = new Date(replaced);
         }
         if (isNaN(dt)) {
-            // Fallback: take only the date portion YYYY-MM-DD
             const datePart = s.split(' ')[0].split('T')[0];
             if (!datePart) return '-';
             dt = new Date(datePart + 'T00:00:00');
@@ -881,7 +841,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
                 }
 
                 populateBranchFilter(branches);
-                // Restore applied filters back to inputs
                 if (dateFromInput) {
                     const v = (res.filters && res.filters.date_from) ? res.filters.date_from : (listState.date_from || '');
                     dateFromInput.value = v || '';
@@ -902,7 +861,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
                 updateSortIndicators();
             })
             .catch(function (err) {
-                console.error('Depreciation list fetch error:', err);
                 if (tableBody) {
                     tableBody.innerHTML = `
                         <tr>
@@ -918,11 +876,14 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
     function populateListGroupFilter() {
         if (!groupFilter) return;
 
+        // FIX: Ensure options are reset and we extract the exact ID from the backend object.
+        groupFilter.innerHTML = '<option value="">All Group Codes</option>';
+
         const groups = Array.isArray(window.__assetGroups) ? window.__assetGroups : [];
         groups.forEach(function (group) {
             const opt = document.createElement('option');
-            opt.value = group.group_code;
-            opt.textContent = `${group.group_code} - ${group.group_name}`;
+            opt.value = group.id; 
+            opt.textContent = `${group.group_name}`; 
             groupFilter.appendChild(opt);
         });
     }
@@ -1052,7 +1013,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
                 created_at: r.created_at || ''
             };
 
-            // Process GL 1 with its actual type
             if (r.gl1_code) {
                 const gl1Type = String(r.gl1_type || '').toUpperCase();
                 const gl1Amount = parseFloat(r.gl1_amount || 0) || 0;
@@ -1064,7 +1024,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
                 }));
             }
 
-            // Process GL 2 with its actual type
             if (r.gl2_code) {
                 const gl2Type = String(r.gl2_type || '').toUpperCase();
                 const gl2Amount = parseFloat(r.gl2_amount || 0) || 0;
@@ -1077,7 +1036,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
             }
         });
 
-        // Apply strict Debit/Credit filtering natively to ensure accuracy
         const entryFilter = ledgerState.filters.entry_side || 'ALL';
         return lines.filter(line => {
             if (entryFilter === 'DEBIT' && line.line_type !== 'DEBIT') return false;
@@ -1126,7 +1084,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
     function renderFsRows(fsRows) {
         if (!fsTableBodyEl) return;
 
-        // Apply strict filter to FS rows as well
         const entryFilter = ledgerState.filters.entry_side || 'ALL';
         const filteredFsRows = fsRows.filter(r => {
             const side = String(r.entry_side || '').toUpperCase();
@@ -1237,23 +1194,18 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
         ledgerAssetMetaEl.textContent = `Serial: ${serial} | Group: ${groupDisplay} | Branch: ${asset.branch_name || '-'} | Uploaded by: ${asset.uploaded_by || 'Unknown'}`;
     }
 
-    // UPDATED FILTER LOGIC: Securely compute dates from Month & Year to guarantee backend compatibility
     function buildLedgerQuery() {
         const params = new URLSearchParams();
         params.set('asset_id', String(ledgerState.asset.id));
         
-        // 1. Send Date From / Date To if explicitly typed in
         if (ledgerState.filters.date_from) params.set('date_from', ledgerState.filters.date_from);
         if (ledgerState.filters.date_to) params.set('date_to', ledgerState.filters.date_to);
 
-        // 2. Send the exact Month and Year to the PHP backend
         let m = parseInt(ledgerState.filters.period_month, 10);
         let y = parseInt(ledgerState.filters.period_year, 10);
         
-        // CUMULATIVE UX FIX: If user picks a Month but no Year, default to Current Year
         if (!isNaN(m) && m >= 1 && m <= 12 && isNaN(y)) {
             y = new Date().getFullYear();
-            // Visually update the dropdown so the user knows what happened
             if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = String(y);
             ledgerState.filters.period_year = String(y);
         }
@@ -1265,7 +1217,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
             params.set('period_year', y);
         }
 
-        // 3. Send Entry Side (Debit/Credit)
         if (ledgerState.filters.entry_side) params.set('entry_side', ledgerState.filters.entry_side);
         
         return params.toString();
@@ -1509,7 +1460,6 @@ setSingle(regionSelect, regionCode, regionLabel || 'N/A');
         fetchDepreciationList();
     }
 
-    // Attach event listeners to Modal filter elements
     [ledgerEntrySideEl, ledgerPeriodYearEl, ledgerPeriodMonthEl]
         .filter(Boolean)
         .forEach(function (el) {

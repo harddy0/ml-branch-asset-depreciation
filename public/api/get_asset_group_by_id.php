@@ -1,4 +1,6 @@
 <?php
+use App\AssetGroupService;
+
 $noLayout = true;
 require_once __DIR__ . '/../../src/includes/init.php';
 header('Content-Type: application/json');
@@ -8,7 +10,7 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
     exit;
 }
 
-$assetGroupService = new AssetGroupService($db);
+$assetGroupService = new AssetGroupService($pdo);
 
 $id = (int)$_GET['id'];
 $result = $assetGroupService->getById($id);
