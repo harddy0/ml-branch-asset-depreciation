@@ -223,10 +223,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const expenseGl = (r.expense_gl_code || '').toString().toLowerCase();
             const expenseName = (r.expense_name || '').toString().toLowerCase();
 
-            const matchSearch = !searchQ || group.includes(searchQ) || assetGl.includes(searchQ) || expenseGl.includes(searchQ);
+            // Include expense name in the general search (more intuitive)
+            const matchSearch = !searchQ || group.includes(searchQ) || assetGl.includes(searchQ) || expenseGl.includes(searchQ) || expenseName.includes(searchQ);
+
+            // If a suggestion was explicitly selected, match by id. Otherwise allow substring matches on the expense name.
             const matchFilter = selectedExpenseFilterId
                 ? String(r.expense_type_id) === String(selectedExpenseFilterId)
-                : (!filterQ || expenseName.startsWith(filterQ));
+                : (!filterQ || expenseName.includes(filterQ));
 
             return matchSearch && matchFilter;
         });
@@ -243,9 +246,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function getRankedExpenseOptions(query) {
         const q = (query || '').trim().toLowerCase();
         if (!q) return expenseTypeOptions.slice(0, 30);
-
-        const startsWithMatches = expenseTypeOptions.filter(opt => opt.nameLower.startsWith(q));
-        const containsMatches = expenseTypeOptions.filter(opt => !opt.nameLower.startsWith(q) && opt.nameLower.includes(q));
+        const startsWithMatches = expenseTypeOptions.filter(opt => opt.nameLower.startsWith(q) || (opt.labelLower && opt.labelLower.startsWith(q)));
+        const containsMatches = expenseTypeOptions.filter(opt => !(opt.nameLower.startsWith(q) || (opt.labelLower && opt.labelLower.startsWith(q))) && (opt.nameLower.includes(q) || (opt.labelLower && opt.labelLower.includes(q))));
         return startsWithMatches.concat(containsMatches).slice(0, 30);
     }
 
@@ -372,7 +374,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     id: ex.id,
                     name: name,
                     nameLower: name.toLowerCase(),
-                    label: label
+                    label: label,
+                    labelLower: label.toLowerCase()
                 };
             })
             .sort((a, b) => a.name.localeCompare(b.name));
