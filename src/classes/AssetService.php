@@ -497,12 +497,10 @@ class AssetService
         $where  = [];
         $params = [];
 
-        // Status filter — default ACTIVE if not specified
+        // Status filter — only apply when explicitly selected
         if ($status !== '') {
             $where[]           = 'a.status = :status';
             $params[':status'] = $status;
-        } else {
-            $where[] = "a.status = 'ACTIVE'";
         }
 
         if ($groupId > 0) {
@@ -530,7 +528,10 @@ class AssetService
             $params[':search'] = '%' . $search . '%';
         }
 
-        $whereSql = implode(' AND ', $where);
+        $whereSql = '';
+        if (!empty($where)) {
+            $whereSql = 'WHERE ' . implode(' AND ', $where);
+        }
 
         $baseJoin = '
             FROM assets a
@@ -539,7 +540,7 @@ class AssetService
         ';
 
         // Total count
-        $countStmt = $this->db->prepare("SELECT COUNT(*) {$baseJoin} WHERE {$whereSql}");
+        $countStmt = $this->db->prepare("SELECT COUNT(*) {$baseJoin} {$whereSql}");
         foreach ($params as $k => $v) $countStmt->bindValue($k, $v);
         $countStmt->execute();
         $total      = (int)$countStmt->fetchColumn();
@@ -565,7 +566,7 @@ class AssetService
                 a.created_at,
                 u.username AS uploaded_by
             {$baseJoin}
-            WHERE {$whereSql}
+            {$whereSql}
             ORDER BY {$safeSortCol} {$safeSortDir}, a.id DESC
             LIMIT :limit OFFSET :offset
         ";

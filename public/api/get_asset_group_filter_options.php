@@ -3,7 +3,7 @@
  * get_asset_group_filter_options.php
  *
  * API Endpoint: Fetch asset group options for the depreciation list asset group filter.
- * Response: { success: true, data: [{ id, label }] }
+ * Response: { success: true, data: [{ id, label, group_name }] }
  */
 
 $noLayout = true;

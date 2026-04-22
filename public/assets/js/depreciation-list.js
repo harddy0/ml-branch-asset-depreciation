@@ -631,7 +631,7 @@ document.addEventListener('DOMContentLoaded', function () {
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="11" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">
-                        No active assets found.
+                        No assets found.
                     </td>
                 </tr>
             `;
@@ -654,7 +654,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const serialNo = row.serial_number || row.system_asset_code || '-';
             const description = row.description || '-';
             const itemCode = row.item_code || '-';
-            const groupCode = row.asset_group_id || '-';
+            const groupName = row.group_name || row.asset_group_id || '-';
             const branch = row.branch_name || '-';
             const uploadedBy = row.uploaded_by || 'Unknown';
             const acquisitionCost = currency.format(parseFloat(row.acquisition_cost || 0));
@@ -668,7 +668,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(serialNo)}</td>
                     <td class="px-6 py-1 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">${escapeHtml(description)}</td>
                     <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(itemCode)}</td>
-                    <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(groupCode)}</td>
+                    <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(groupName)}</td>
                     <td class="px-6 py-1 text-left text-xs text-slate-700 whitespace-nowrap">
                         <div class="font-semibold">${escapeHtml(branch)}</div>
                     </td>
@@ -880,11 +880,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // FIX: Ensure options are reset and we extract the exact ID from the backend object.
         groupFilter.innerHTML = '<option value="">All Group Codes</option>';
 
-        const groups = Array.isArray(window.__assetGroups) ? window.__assetGroups : [];
-        groups.forEach(function (group) {
+        const safeGroups = Array.isArray(groups) ? groups : [];
+        safeGroups.forEach(function (group) {
             const opt = document.createElement('option');
-            opt.value = group.id; 
-            opt.textContent = `${group.group_name}`; 
+            opt.value = group.id;
+            const label = (group.label && String(group.label).trim())
+                || (group.group_name && String(group.group_name).trim())
+                || '';
+            opt.textContent = label || String(group.id || '').trim() || 'Unknown';
             groupFilter.appendChild(opt);
         });
 

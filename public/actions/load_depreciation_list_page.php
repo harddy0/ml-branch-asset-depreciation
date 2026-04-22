@@ -18,8 +18,6 @@ try {
     $groupService = new \App\AssetGroupService($pdo);
     $assetGroups = $groupService->getFilterOptions();
     $reportService = new \App\AssetReportService($pdo, $pdo2);
-    // ADDED: Initialize the group service
-    $groupService  = new \App\AssetGroupService($pdo);
 
     $hasFiltersApplied = !empty($_GET);
     $rawFilters = [
@@ -45,8 +43,7 @@ try {
     $regions  = $reportService->getRegions($filters['zone']);
     $branches = $reportService->getBranches($filters['zone'], $filters['region']);
     
-    // FIX: Fetch the actual asset groups so it doesn't crash the JavaScript
-    $assetGroups = $groupService->getGroupsForDropdown();
+    // Asset groups already loaded above for the filter dropdown
 
 } catch (\Throwable $e) {
     $hasFiltersApplied = !empty($_GET);

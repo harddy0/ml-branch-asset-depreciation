@@ -26,8 +26,8 @@ try {
     $sortDir       = strtoupper((string)($_GET['sort_dir'] ?? 'DESC'));
 
     // Resolve group_code -> asset_group_id when provided
-    $assetGroupId = 0;
     if ($groupCode !== '') {
+        $assetGroupId = 0;
         if (is_numeric($groupCode)) {
             // If the frontend sent the exact database ID, use it directly
             $assetGroupId = (int)$groupCode;
