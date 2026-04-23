@@ -98,6 +98,25 @@ class AssetService
                 return ['success' => false, 'error' => 'Asset name is required.'];
             }
 
+            // Require depreciation_start_date to be provided and valid (YYYY-MM-DD)
+            $deprStartRaw = isset($postData['depreciation_start_date']) ? trim((string)$postData['depreciation_start_date']) : '';
+            if ($deprStartRaw === '') {
+                return ['success' => false, 'error' => 'Depreciation start date is required.'];
+            }
+            $deprStartDt = \DateTime::createFromFormat('Y-m-d', $deprStartRaw);
+            if (!$deprStartDt || $deprStartDt->format('Y-m-d') !== $deprStartRaw) {
+                return ['success' => false, 'error' => 'Invalid depreciation start date. Use YYYY-MM-DD.'];
+            }
+
+            // If depreciation_on is SPECIFIC_DATE, ensure depreciation_day is provided and valid
+            $depOn = strtoupper(trim((string)($postData['depreciation_on'] ?? '')));
+            if ($depOn === 'SPECIFIC_DATE') {
+                $day = isset($postData['depreciation_day']) && $postData['depreciation_day'] !== '' ? (int)$postData['depreciation_day'] : 0;
+                if ($day < 1 || $day > 31) {
+                    return ['success' => false, 'error' => 'When Depreciate On is SPECIFIC_DATE, Specific Day (1-31) is required.'];
+                }
+            }
+
             $data = [
                 'system_asset_code'       => $this->generateSystemAssetCode($assetGroupId, $mainZoneCode, $zoneCode),
                 'reference_no'            => $postData['reference_no'] ?? null,

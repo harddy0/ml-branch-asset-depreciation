@@ -6,7 +6,7 @@
         Depreciation Schedule
     </h3>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div class="grid grid-cols-1 gap-4 mb-4">
         <div>
             <label class="block text-sm font-mono font-bold text-slate-700 mb-1">
                 Date Received <span class="text-red-500">*</span>
@@ -15,6 +15,16 @@
                 class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
                        focus:ring-2 focus:ring-red-500 outline-none transition-all">
         </div>
+
+        <div>
+            <label class="block text-sm font-mono font-bold text-slate-700 mb-1">
+                Depreciation Start Date <span class="text-red-500">*</span>
+            </label>
+            <input type="date" name="depreciation_start_date" id="depreciation_start_date" required
+                class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
+                       focus:ring-2 focus:ring-red-500 outline-none transition-all">
+        </div>
+
         <div>
             <label class="block text-sm font-mono font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                 Depreciation End Date <span class="text-red-500">*</span>
@@ -27,12 +37,7 @@
                 class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
                        focus:ring-2 focus:ring-red-500 outline-none transition-all bg-slate-50">
         </div>
-    </div>
-    
-    <input type="hidden" name="depreciation_start_date" id="depreciation_start_date">
 
-    <!-- Row 3: Depreciate On + Specific Day -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <label class="block text-sm font-mono font-bold text-slate-700 mb-1">
                 Depreciate On <span class="text-red-500">*</span>
@@ -45,6 +50,7 @@
                 <option value="SPECIFIC_DATE">Specific Date</option>
             </select>
         </div>
+
         <div>
             <label class="block text-sm font-mono font-bold text-slate-700 mb-1" id="depreciation_day_label">
                 Specific Day

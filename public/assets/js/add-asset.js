@@ -994,68 +994,32 @@
 
     /**
      * computeDates()
-     * Calculate depreciation_start_date and depreciation_end_date
-     * based on: date_received, depreciation_on, depreciation_day, actual_months
+     * Calculate depreciation_end_date based on: depreciation_start_date and actual_months
+     * The user must select `depreciation_start_date`; `date_received` is independent.
      */
     function computeDates(){
-        const dateReceivedInput = form.querySelector('input[name="date_received"]') || form.querySelector('#date_received');
-        const depOnSelect = form.querySelector('select[name="depreciation_on"]') || form.querySelector('#depreciation_on');
-        const depDayInput = form.querySelector('input[name="depreciation_day"]') || form.querySelector('#depreciation_day');
-        const monthsInput = form.querySelector('#actual_months');
         const startDateInput = form.querySelector('input[name="depreciation_start_date"]') || form.querySelector('#depreciation_start_date');
+        const monthsInput = form.querySelector('#actual_months');
         const endDateInput = form.querySelector('input[name="depreciation_end_date"]') || form.querySelector('#depreciation_end_date');
 
-        if(!dateReceivedInput || !depOnSelect || !monthsInput) return;
+        if(!startDateInput || !monthsInput) return;
 
-        const dateReceivedStr = dateReceivedInput.value || '';
-        const depOn = depOnSelect.value || '';
+        const startDateStr = startDateInput.value || '';
         const months = parseInt(monthsInput.value) || 0;
 
-        if(!dateReceivedStr || !depOn || months <= 0){
-            if(startDateInput) startDateInput.value = '';
+        if(!startDateStr || months <= 0){
             if(endDateInput) endDateInput.value = '';
             return;
         }
 
-        // Parse received date
-        const dateReceived = new Date(dateReceivedStr);
-        if(isNaN(dateReceived.getTime())){
-            if(startDateInput) startDateInput.value = '';
+        const startDate = new Date(startDateStr);
+        if(isNaN(startDate.getTime())){
             if(endDateInput) endDateInput.value = '';
             return;
         }
 
-        let startDate = null;
-
-        if(depOn === 'LAST_DAY'){
-            // Last day of the month received
-            startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth() + 1, 0);
-        } else if(depOn === 'FIRST_DAY'){
-            // First day of the month received
-            startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth(), 1);
-        } else if(depOn === 'SPECIFIC_DATE'){
-            // Specific day of the month received
-            const dayStr = depDayInput ? (depDayInput.value || '') : '';
-            const day = parseInt(dayStr) || 1;
-            startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth(), day);
-            // If day is greater than max day in month, use last day of month
-            const lastDayOfMonth = new Date(dateReceived.getFullYear(), dateReceived.getMonth() + 1, 0).getDate();
-            if(day > lastDayOfMonth){
-                startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth() + 1, 0);
-            }
-        }
-
-        if(!startDate || isNaN(startDate.getTime())){
-            if(startDateInput) startDateInput.value = '';
-            if(endDateInput) endDateInput.value = '';
-            return;
-        }
-
-        // Calculate end date = start + months
         const endDate = addMonths(startDate, months);
 
-        // Set form fields
-        if(startDateInput) startDateInput.value = formatDate(startDate);
         if(endDateInput) endDateInput.value = formatDate(endDate);
     }
 
@@ -1089,11 +1053,19 @@
     const depOnSelect = form.querySelector('select[name="depreciation_on"]') || form.querySelector('#depreciation_on');
     const depDayInput = form.querySelector('input[name="depreciation_day"]') || form.querySelector('#depreciation_day');
     const costInput = form.querySelector('#asset_acquisition_cost');
+    const startDateInput = form.querySelector('input[name="depreciation_start_date"]') || form.querySelector('#depreciation_start_date');
+    const monthsInput = form.querySelector('#actual_months');
 
-    // When date_received changes → recalculate dates
-    if(dateReceivedInput){
-        dateReceivedInput.addEventListener('change', () => {
-            console.log('date_received changed');
+    // When depreciation_start_date changes → recalculate dates
+    if(startDateInput){
+        startDateInput.addEventListener('change', () => {
+            computeDates();
+        });
+    }
+
+    // When months change (actual_months) → recalculate dates
+    if(monthsInput){
+        monthsInput.addEventListener('change', () => {
             computeDates();
         });
     }
