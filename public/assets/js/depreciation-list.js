@@ -1083,35 +1083,99 @@ document.addEventListener('DOMContentLoaded', function () {
         const lineRows = getLedgerLineRows(rows);
 
         if (!lineRows || lineRows.length === 0) {
-            ledgerTableBodyEl.innerHTML = '<tr><td colspan="11" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No ledger rows found for selected filters.</td></tr>';
+            ledgerTableBodyEl.innerHTML = '<tr><td colspan="7" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No ledger rows found for selected filters.</td></tr>';
             return;
         }
 
-        const html = lineRows.map(function (r) {
-            const periodLabel = `${r.period_year || ''}-${String(r.period_month || '').padStart(2, '0')}`;
-            const rowTone = (r.line_type === 'DEBIT') ? 'bg-emerald-50/40' : 'bg-amber-50/40';
-            const debitValue = (r.debit !== 0) ? currency.format(Math.abs(r.debit)) : '';
-            const creditValue = (r.credit !== 0) ? currency.format(r.credit) : '';
-            const expenseValue = currency.format(parseFloat(r.period_depreciation_expense || 0));
-            const accumValue = currency.format(parseFloat(r.accumulated_depreciation || 0));
-            const bookVal = currency.format(parseFloat(r.book_value || 0));
+        // Group lines by exact period date (falls back to year-month label)
+        const groups = new Map();
+        lineRows.forEach(function (r) {
+            const monthNum = r.period_month || '';
+            const periodLabel = `${monthName(monthNum)} ${r.period_year || ''}`.trim();
+            const key = r.period_date || (r.period_year ? `${r.period_year}-${String(monthNum).padStart(2, '0')}` : periodLabel);
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    date: r.period_date || '',
+                    periodLabel: periodLabel,
+                    accumulated: parseFloat(r.accumulated_depreciation || 0) || 0,
+                    book: parseFloat(r.book_value || 0) || 0,
+                    lines: []
+                });
+            }
+            groups.get(key).lines.push(r);
+        });
 
-            return `
-                <tr class="border-b border-slate-100 ${rowTone}">
-                    <td class="px-3 py-2 text-slate-700">${escapeHtml(formatDateDisplay(r.period_date))}</td>
-                    <td class="px-3 py-2 font-mono text-slate-700 text-center">${escapeHtml(periodLabel)}</td>
-                    <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(r.gl_code || '')}</td>
-                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${debitValue}</td>
-                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${creditValue}</td>
-                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${expenseValue}</td>
-                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${accumValue}</td>
-                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${bookVal}</td>
-                    <td class="px-3 py-2 text-center text-xs text-slate-600">${escapeHtml(r.line_type || '')}</td>
-                </tr>
-            `;
-        }).join('');
+        const htmlParts = [];
+        // prepare groups array for ordered rendering
+        const renderGroups = Array.from(groups.values());
 
-        ledgerTableBodyEl.innerHTML = html;
+        // If asset has acquisition cost or date_received, inject a synthetic "Invested" group
+        try {
+            const asset = ledgerState.asset || {};
+            const investedRaw = asset.acquisition_cost || asset.acq_cost || asset.invested_amount || 0;
+            const investedAmt = parseFloat(String(investedRaw).replace(/[^0-9.\-]/g, '')) || 0;
+            const recvDate = asset.date_received || asset.depreciation_start_date || asset.created_at || '';
+
+            if (investedAmt || recvDate) {
+                const invPeriodMonth = (recvDate) ? (new Date(String(recvDate))).getMonth() + 1 : '';
+                const invPeriodYear = (recvDate) ? (new Date(String(recvDate))).getFullYear() : (asset.period_year || '');
+                const invPeriodLabel = `${monthName(invPeriodMonth)} ${invPeriodYear}`.trim();
+                const assetGlCode = String(asset.asset_gl_code || asset.asset_gl || '') || '';
+                const expenseGlCode = String(asset.expense_gl_code || asset.expense_gl || '') || '';
+
+                const synthLines = [];
+                if (expenseGlCode) synthLines.push({ gl_code: expenseGlCode, debit: 0, credit: 0 });
+                if (assetGlCode) synthLines.push({ gl_code: assetGlCode, debit: 0, credit: 0 });
+
+                const synthGroup = {
+                    date: recvDate || '',
+                    periodLabel: invPeriodLabel,
+                    accumulated: 0,
+                    book: investedAmt,
+                    lines: synthLines
+                };
+
+                // put invested group at the start
+                renderGroups.unshift(synthGroup);
+            }
+        } catch (e) {
+            // ignore synthetic invested group on errors
+        }
+
+        renderGroups.forEach(function (group, groupIndex) {
+            const rowBgClass = (groupIndex % 2 === 0) ? 'bg-white' : 'bg-slate-100';
+            const rowspan = group.lines.length;
+
+            group.lines.forEach(function (r, idx) {
+                const debitValue = (r.debit !== 0) ? currency.format(Math.abs(r.debit)) : '';
+                const creditValue = (r.credit !== 0) ? currency.format(r.credit) : '';
+                const glCode = escapeHtml(r.gl_code || '');
+
+                if (idx === 0) {
+                    htmlParts.push(`
+                        <tr class="border-b border-slate-100 ${rowBgClass}">
+                            <td class="px-3 py-0 text-slate-700 border-l border-r border-slate-200" rowspan="${rowspan}">${escapeHtml(formatDateDisplay(group.date))}</td>
+                            <td class="px-3 py-0 font-mono text-slate-700 text-center border-l border-r border-slate-200" rowspan="${rowspan}">${escapeHtml(group.periodLabel)}</td>
+                            <td class="px-3 py-0 font-mono text-slate-700 text-center border-l border-r border-slate-200 border-r border-slate-300 border-b border-slate-300">${glCode}</td>
+                            <td class="px-3 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200 border-l border-slate-300 border-t border-slate-300">${debitValue}</td>
+                            <td class="px-3 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200 border-t border-slate-300">${creditValue}</td>
+                            <td class="px-3 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200" rowspan="${rowspan}">${currency.format(group.accumulated)}</td>
+                            <td class="px-3 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200" rowspan="${rowspan}">${currency.format(group.book)}</td>
+                        </tr>
+                    `);
+                } else {
+                    htmlParts.push(`
+                        <tr class="border-b border-slate-100 ${rowBgClass}">
+                            <td class="px-3 py-0 font-mono text-slate-700 text-center border-l border-r border-slate-200 border-r border-slate-300 border-b border-slate-300${rowBgClass === 'bg-slate-100' ? '' : 'border-b border-slate-200'}">${glCode}</td>
+                            <td class="px-3 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200 border-l border-slate-300 border-t border-slate-300">${debitValue}</td>
+                            <td class="px-3 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200 border-t border-slate-300">${creditValue}</td>
+                        </tr>
+                    `);
+                }
+            });
+        });
+
+        ledgerTableBodyEl.innerHTML = htmlParts.join('');
     }
 
     function renderFsRows(fsRows) {
