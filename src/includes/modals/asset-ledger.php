@@ -42,14 +42,14 @@
 
                     <button id="ledger-reset-filter" type="button"
                             class="border border-slate-300 rounded-md px-3 py-1.5 text-xs font-bold uppercase text-slate-700 hover:bg-slate-100">
-                        Reset
+                        Clear
                     </button>
                 </div>
             </div>
 
             <div class="flex items-center justify-between mt-3">
                 <div class="inline-flex rounded-md border border-slate-300 overflow-hidden">
-                    <button id="ledger-tab-ledger" type="button" class="px-3 py-1.5 text-xs font-bold uppercase bg-[#ce1126] text-white">Ledger</button>
+                    <button id="ledger-tab-ledger" type="button" class="px-3 py-1.5 text-xs font-bold uppercase bg-[#ce1126] text-white">Ledger All Entries</button>
                     <button id="ledger-tab-fs" type="button" class="px-3 py-1.5 text-xs font-bold uppercase bg-white text-slate-700">Financial Statement</button>
                 </div>
 
@@ -68,15 +68,13 @@
                 <table class="w-full text-xs whitespace-nowrap bg-white border border-slate-200 table-fixed">
                     <thead class="bg-[#ce2216]">
                         <tr>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">Date</th>
-                            <th class="px-3 py-2 text-center font-black text-white uppercase">Period</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">G/L Code</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Debit</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Credit</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Period Expense</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Accumulated</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Book Value</th>
-                            <th class="px-3 py-2 text-center font-black text-white uppercase">Type</th>
+                            <th class="px-3 py-1 text-left font-black text-white uppercase border-l border-r border-slate-200">Date</th>
+                            <th class="px-3 py-1 text-center font-black text-white uppercase border-l border-r border-slate-200">Period</th>
+                            <th class="px-3 py-1 text-center font-black text-white uppercase border-l border-r border-slate-200">G/L Code</th>
+                            <th class="px-3 py-1 text-right font-black text-white uppercase border-l border-r border-slate-200">Debit</th>
+                            <th class="px-3 py-1 text-right font-black text-white uppercase border-l border-r border-slate-200">Credit</th>
+                            <th class="px-3 py-1 text-right font-black text-white uppercase border-l border-r border-slate-200">Accumulated</th>
+                            <th class="px-3 py-1 text-right font-black text-white uppercase border-l border-r border-slate-200">Book Value</th>
                         </tr>
                     </thead>
                     <tbody id="ledger-table-body"></tbody>
