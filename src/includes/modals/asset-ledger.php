@@ -1,11 +1,17 @@
 <div id="modal-asset-ledger"
      class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl animate-fadeIn flex flex-col" style="max-height:94vh">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl animate-fadeIn flex flex-col" style="max-height:calc(96vh)">
 
-        <div class="flex items-center justify-between px-7 py-3 border-b-2 border-[#ce1126] shrink-0">
+        <style>
+            /* Keep table layout intact and make headers sticky while body scrolls */
+            #ledger-table-wrap, #fs-table-wrap { max-height: 60vh; overflow: auto; }
+            #modal-asset-ledger table { table-layout: fixed; }
+            #modal-asset-ledger table thead { position: sticky; top: 0; z-index: 30; }
+        </style>
+
+        <div class="flex items-center justify-between px-7 py-1 border-b-2 border-[#ce1126] shrink-0">
             <div>
                 <h2 class="text-base font-black text-slate-800 uppercase tracking-tight">Asset Ledger</h2>
-                <p id="ledger-subtitle" class="text-xs text-slate-500 mt-0.5"></p>
             </div>
             <button type="button" onclick="closeModal('modal-asset-ledger')"
                     class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
@@ -54,16 +60,12 @@
             </div>
         </div>
 
-        <div class="px-7 py-2 text-[11px] text-slate-500 border-b border-slate-100 shrink-0">
-            <span id="ledger-asset-meta">No asset selected.</span>
-        </div>
-
-        <div class="overflow-auto flex-1 px-7 py-4 bg-slate-50/40">
+        <div class="flex-1 px-7 py-4 bg-slate-50/40">
             <div id="ledger-loading" class="hidden text-center py-6 text-sm font-semibold text-slate-500">Loading ledger...</div>
             <div id="ledger-error" class="hidden text-center py-6 text-sm font-semibold text-red-600"></div>
 
             <div id="ledger-table-wrap" class="overflow-x-auto">
-                <table class="w-full text-xs whitespace-nowrap bg-white border border-slate-200">
+                <table class="w-full text-xs whitespace-nowrap bg-white border border-slate-200 table-fixed">
                     <thead class="bg-[#ce2216]">
                         <tr>
                             <th class="px-3 py-2 text-left font-black text-white uppercase">Date</th>
@@ -82,18 +84,23 @@
             </div>
 
             <div id="fs-table-wrap" class="hidden overflow-x-auto">
-                <table class="w-full text-xs whitespace-nowrap bg-white border border-slate-200">
+                <table class="w-full table-fixed text-xs whitespace-nowrap bg-white border border-slate-200">
+                    <colgroup>
+                        <col style="width:16.66666666666667%">
+                        <col style="width:16.66666666666667%">
+                        <col style="width:16.66666666666667%">
+                        <col style="width:16.66666666666667%">
+                        <col style="width:16.66666666666667%">
+                        <col style="width:16.66666666666667%">
+                    </colgroup>
                     <thead class="bg-[#ce2216]">
                         <tr>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">Date</th>
-                            <th class="px-3 py-2 text-center font-black text-white uppercase">Period</th>
-                            <th class="px-3 py-2 text-center font-black text-white uppercase">Type</th>
-                            <th class="px-3 py-2 text-left font-black text-white uppercase">G/L Code</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Debit</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Credit</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Period Amount</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Accumulated</th>
-                            <th class="px-3 py-2 text-right font-black text-white uppercase">Book Value</th>
+                            <th class="px-2 py-1 text-left font-black text-white uppercase border-l border-r border-slate-200">GL</th>
+                            <th class="px-2 py-1 text-left font-black text-white uppercase border-l border-r border-slate-200">Description</th>
+                            <th class="px-2 py-1 text-right font-black text-white uppercase border-l border-r border-slate-200">Debit</th>
+                            <th class="px-2 py-1 text-right font-black text-white uppercase border-l border-r border-slate-200">Credit</th>
+                            <th class="px-2 py-1 text-right font-black text-white uppercase border-l border-r border-slate-200">Accumulated</th>
+                            <th class="px-2 py-1 text-right font-black text-white uppercase border-l border-r border-slate-200">Balance / Book Value</th>
                         </tr>
                     </thead>
                     <tbody id="fs-table-body"></tbody>
@@ -101,13 +108,13 @@
             </div>
         </div>
 
-        <div class="px-7 py-3 border-t border-slate-200 bg-white shrink-0 flex items-center justify-between">
+        <div class="px-7 py-3 mr-5 rounded-2xl border-t border-slate-200 bg-white shrink-0 flex items-center justify-between">
             <div id="ledger-footer-summary" class="text-xs font-semibold text-slate-600">Rows: 0</div>
-            <div class="flex items-center gap-4 text-xs font-bold text-slate-700">
+            <div class="flex items-center gap-10 text-xs font-bold text-slate-700">
                 <span>Debit: <span id="ledger-total-debit" class="font-mono">0.00</span></span>
                 <span>Credit: <span id="ledger-total-credit" class="font-mono">0.00</span></span>
-                <span>Latest Accumulated: <span id="ledger-latest-accum" class="font-mono">0.00</span></span>
-                <span>Latest Book: <span id="ledger-latest-book" class="font-mono">0.00</span></span>
+                <span>Accumulated: <span id="ledger-latest-accum" class="font-mono">0.00</span></span>
+                <span>Balance / Book Value: <span id="ledger-latest-book" class="font-mono">0.00</span></span>
             </div>
         </div>
     </div>

@@ -618,7 +618,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (isNaN(dt)) return '-';
         return new Intl.DateTimeFormat('en-US', {
-            month: 'short',
+            month: 'long',
             day: 'numeric',
             year: 'numeric'
         }).format(dt);
@@ -1090,11 +1090,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const html = lineRows.map(function (r) {
             const periodLabel = `${r.period_year || ''}-${String(r.period_month || '').padStart(2, '0')}`;
             const rowTone = (r.line_type === 'DEBIT') ? 'bg-emerald-50/40' : 'bg-amber-50/40';
-            const debitValue = r.debit !== 0 ? (r.debit).toFixed(2) : '';
-            const creditValue = r.credit !== 0 ? (r.credit).toFixed(2) : '';
-            const expenseValue = (r.period_depreciation_expense || 0).toFixed(2);
-            const accumValue = (r.accumulated_depreciation || 0).toFixed(2);
-            const bookVal = (r.book_value || 0).toFixed(2);
+            const debitValue = (r.debit !== 0) ? currency.format(Math.abs(r.debit)) : '';
+            const creditValue = (r.credit !== 0) ? currency.format(r.credit) : '';
+            const expenseValue = currency.format(parseFloat(r.period_depreciation_expense || 0));
+            const accumValue = currency.format(parseFloat(r.accumulated_depreciation || 0));
+            const bookVal = currency.format(parseFloat(r.book_value || 0));
 
             return `
                 <tr class="border-b border-slate-100 ${rowTone}">
@@ -1126,47 +1126,154 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         if (!filteredFsRows || filteredFsRows.length === 0) {
-            fsTableBodyEl.innerHTML = '<tr><td colspan="9" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No financial statement rows found for selected filters.</td></tr>';
+            fsTableBodyEl.innerHTML = '<tr><td colspan="6" class="px-3 py-6 text-center text-sm font-semibold text-slate-500">No financial statement rows found for selected filters.</td></tr>';
             return;
         }
 
-        const html = filteredFsRows.map(function (r) {
-            let periodLabel = '-';
-            if (r.period_date) {
-                const parts = String(r.period_date).split('-');
-                if (parts.length >= 2) {
-                    periodLabel = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
-                }
+        const groups = [];
+        const groupMap = new Map();
+
+        filteredFsRows.forEach(function (row, idx) {
+            const key = String(row.ledger_id || `row-${idx}`);
+            if (!groupMap.has(key)) {
+                const group = {
+                    key,
+                    period_date: row.period_date || '',
+                    accumulated_depreciation: parseFloat(row.accumulated_depreciation || 0) || 0,
+                    book_value: parseFloat(row.book_value || 0) || 0,
+                    lines: []
+                };
+                groupMap.set(key, group);
+                groups.push(group);
             }
-            
-            const entryType = String(r.entry_side || '').toUpperCase();
-            const bgColor = (entryType === 'DEBIT') ? 'bg-emerald-50/40' : 'bg-amber-50/40';
-            const badge = (entryType === 'DEBIT') 
-                ? '<span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">DEBIT</span>'
-                : '<span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-700">CREDIT</span>';
-            
-            const periodAmount = (parseFloat(r.period_depreciation_expense || 0)).toFixed(2);
-            const accumulated = (parseFloat(r.accumulated_depreciation || 0)).toFixed(2);
-            const bookValue = (parseFloat(r.book_value || 0)).toFixed(2);
-            const debitValue = (parseFloat(r.debit_amount || 0)).toFixed(2);
-            const creditValue = (parseFloat(r.credit_amount || 0)).toFixed(2);
 
-            return `
-                <tr class="border-b border-slate-100 ${bgColor}">
-                    <td class="px-3 py-2 text-slate-700">${escapeHtml(formatDateDisplay(r.period_date))}</td>
-                    <td class="px-3 py-2 font-mono text-slate-700 text-center">${escapeHtml(periodLabel)}</td>
-                    <td class="px-3 py-2 text-center">${badge}</td>
-                    <td class="px-3 py-2 font-mono text-slate-700">${escapeHtml(r.account_code || '')}</td>
-                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${debitValue}</td>
-                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${creditValue}</td>
-                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${periodAmount}</td>
-                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${accumulated}</td>
-                    <td class="px-3 py-2 text-right font-mono text-sm text-slate-700">${bookValue}</td>
+            groupMap.get(key).lines.push(row);
+        });
+
+        const lineOrder = { CREDIT: 1, DEBIT: 2 };
+        const htmlParts = [];
+
+        // If asset has an acquisition cost, inject a synthetic "Invested Amount" group
+        try {
+            const asset = ledgerState.asset || {};
+            const investedRaw = asset.acquisition_cost || asset.acq_cost || 0;
+            const investedAmt = parseFloat(String(investedRaw).replace(/[^0-9.\-]/g, '')) || 0;
+            const recvDate = asset.date_received || asset.depreciation_start_date || asset.created_at || '';
+
+            if (investedAmt || recvDate) {
+                // determine GL code and dc values from asset or asset group
+                const assetGlCode = String(asset.asset_gl_code || asset.asset_gl || '') || '';
+                const assetGlType = String((asset.asset_gl_type || '').toUpperCase() || 'DEBIT');
+                const lineDebit = (assetGlType === 'DEBIT') ? investedAmt : 0;
+                const lineCredit = (assetGlType === 'CREDIT') ? investedAmt : 0;
+
+                const expenseGlCode = String(asset.expense_gl_code || asset.expense_gl || '');
+                const expenseGlType = String((asset.expense_gl_type || '').toUpperCase() || 'CREDIT');
+
+                // Build two lines: CREDIT (expense/counterpart) then DEBIT (asset)
+                const synth = {
+                    key: 'invested',
+                    period_date: recvDate,
+                    accumulated_depreciation: 0,
+                    book_value: investedAmt,
+                    lines: [
+                        {
+                            entry_side: expenseGlType,
+                            account_code: expenseGlCode,
+                            account_name: 'Invested Amount',
+                            debit_amount: 0,
+                            credit_amount: 0
+                        },
+                        {
+                            entry_side: assetGlType,
+                            account_code: assetGlCode,
+                            account_name: 'Invested Amount',
+                            debit_amount: 0,
+                            credit_amount: 0
+                        }
+                    ]
+                };
+
+                groups.unshift(synth);
+            }
+        } catch (e) {
+            console.warn('Failed to inject invested group:', e);
+        }
+
+        groups.forEach(function (group, groupIndex) {
+            const dateDisplay = escapeHtml(formatDateDisplay(group.period_date));
+            htmlParts.push(`
+                <tr class="border-b border-slate-200 bg-slate-100/80">
+                    <td class="px-2 py-0 font-semibold text-slate-700 border-l border-r border-slate-200">${dateDisplay}</td>
+                    <td class="px-2 py-0 border-l border-r border-slate-200" colspan="5"></td>
                 </tr>
-            `;
-        }).join('');
+            `);
 
-        fsTableBodyEl.innerHTML = html;
+            const lines = group.lines.slice().sort(function (a, b) {
+                const aType = String(a.entry_side || '').toUpperCase();
+                const bType = String(b.entry_side || '').toUpperCase();
+                const aRank = lineOrder[aType] || 9;
+                const bRank = lineOrder[bType] || 9;
+                return aRank - bRank;
+            });
+
+            if (!lines.length) {
+                return;
+            }
+
+            const accumulated = currency.format(parseFloat(group.accumulated_depreciation || 0));
+            const bookValue = currency.format(parseFloat(group.book_value || 0));
+            const rowspan = lines.length;
+
+            lines.forEach(function (r, index) {
+                const entryType = String(r.entry_side || '').toUpperCase();
+                const debitAmount = parseFloat(r.debit_amount || 0) || 0;
+                const creditAmount = parseFloat(r.credit_amount || 0) || 0;
+                const debitValue = (entryType === 'DEBIT' && debitAmount !== 0) ? currency.format(Math.abs(debitAmount)) : '';
+                const creditValue = (entryType === 'CREDIT' && creditAmount !== 0) ? currency.format(Math.abs(creditAmount)) : '';
+                const description = r.account_name || r.line_description || '';
+                // If this is the synthetic invested group, merge description cell across the two GL lines
+                if (group.key === 'invested') {
+                    if (index === 0) {
+                        htmlParts.push(`
+                            <tr class="border-b border-slate-100">
+                                <td class="px-2 py-0 font-mono text-slate-700 border-l border-r border-slate-200">${escapeHtml(r.account_code || '')}</td>
+                                <td rowspan="${rowspan}" class="px-2 py-0 text-slate-700 border-l border-r border-slate-200">${escapeHtml(description)}</td>
+                                <td class="px-2 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200">${debitValue}</td>
+                                <td class="px-2 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200">${creditValue}</td>
+                                ${index === 0 ? `<td rowspan="${rowspan}" class="px-2 py-0 align-middle text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200">${accumulated}</td>` : ''}
+                                ${index === 0 ? `<td rowspan="${rowspan}" class="px-2 py-0 align-middle text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200">${bookValue}</td>` : ''}
+                            </tr>
+                        `);
+                    } else {
+                        htmlParts.push(`
+                            <tr class="border-b border-slate-100">
+                                <td class="px-2 py-0 font-mono text-slate-700 border-l border-r border-slate-200">${escapeHtml(r.account_code || '')}</td>
+                                <td class="px-2 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200">${debitValue}</td>
+                                <td class="px-2 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200">${creditValue}</td>
+                            </tr>
+                        `);
+                    }
+                } else {
+                    htmlParts.push(`
+                        <tr class="border-b border-slate-100">
+                            <td class="px-2 py-0 font-mono text-slate-700 border-l border-r border-slate-200">${escapeHtml(r.account_code || '')}</td>
+                            <td class="px-2 py-0 text-slate-700 border-l border-r border-slate-200">${escapeHtml(description)}</td>
+                            <td class="px-2 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200">${debitValue}</td>
+                            <td class="px-2 py-0 text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200">${creditValue}</td>
+                            ${index === 0 ? `<td rowspan="${rowspan}" class="px-2 py-0 align-middle text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200">${accumulated}</td>` : ''}
+                            ${index === 0 ? `<td rowspan="${rowspan}" class="px-2 py-0 align-middle text-right font-mono text-sm text-slate-700 border-l border-r border-slate-200">${bookValue}</td>` : ''}
+                        </tr>
+                    `);
+                }
+            });
+
+            if (groupIndex < groups.length - 1) {
+                htmlParts.push('<tr><td colspan="6" class="px-0 py-2 h-2"></td></tr>');
+            }
+        });
+
+        fsTableBodyEl.innerHTML = htmlParts.join('');
     }
 
     function updateLedgerFooter(totals, ledgerRows) {
@@ -1182,8 +1289,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         ledgerFooterSummaryEl.textContent = `Rows: ${lineRows.length} lines (${sourceRows} entries)`;
-        ledgerTotalDebitEl.textContent = currency.format(dynamicDebit);
-        ledgerTotalCreditEl.textContent = currency.format(dynamicCredit);
+        ledgerTotalDebitEl.textContent = currency.format(Math.abs(dynamicDebit));
+        ledgerTotalCreditEl.textContent = currency.format(Math.abs(dynamicCredit));
 
         const latestRow = (ledgerRows && ledgerRows.length > 0)
             ? ledgerRows[ledgerRows.length - 1]
@@ -1279,7 +1386,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const ledgerRows = res.ledger_rows || [];
                 const fsRows = res.fs_rows || [];
 
-                updateLedgerAssetMeta(res.asset);
+                // Ensure we use the enriched asset payload returned by the API
+                ledgerState.asset = res.asset || ledgerState.asset;
+
+                updateLedgerAssetMeta(ledgerState.asset);
                 renderLedgerRows(ledgerRows);
                 renderFsRows(fsRows);
                 updateLedgerFooter(res.totals || {}, ledgerRows);
