@@ -71,7 +71,9 @@
                 <tbody>
                     <tr><td class="finish-label">Quantity</td><td class="finish-value" data-key="quantity">-</td></tr>
                     <tr><td class="finish-label">Acquisition Cost</td><td class="finish-value currency" data-key="acquisition_cost"><span class="currency-symbol">₱</span><span class="amount">-</span></td></tr>
-                    <tr><td class="finish-label">Monthly Depreciation</td><td class="finish-value currency" data-key="monthly_depreciation"><span class="currency-symbol">₱</span><span class="amount">-</span></td></tr>
+                    <!-- monthly depreciation moved to General Ledger Accounts card -->
+                    <tr><td class="finish-label">Debit Amount</td><td class="finish-value currency"><span class="currency-symbol">₱</span><span class="amount" data-key="preview_debit">-</span></td></tr>
+                    <tr><td class="finish-label">Credit Amount</td><td class="finish-value currency"><span class="currency-symbol">₱</span><span class="amount" data-key="preview_credit">-</span></td></tr>
                 </tbody>
             </table>
         </div>
@@ -87,14 +89,34 @@
                 </thead>
                 <tbody>
                     <tr><td class="finish-label">Asset Group</td><td class="finish-value" data-key="asset_group_id">-</td></tr>
-                    <tr><td class="finish-label">GL Asset Code</td><td class="finish-value" data-key="gl_asset_code">-</td></tr>
-                    <tr><td class="finish-label">GL Asset Type</td><td class="finish-value" data-key="gl_asset_type">-</td></tr>
-                    <tr><td class="finish-label">GL Asset Description</td><td class="finish-value" data-key="gl_asset_description">-</td></tr>
-                    <tr><td class="finish-label">GL Depreciation Code</td><td class="finish-value" data-key="gl_depreciation_code">-</td></tr>
-                    <tr><td class="finish-label">GL Depreciation Type</td><td class="finish-value" data-key="gl_depreciation_type">-</td></tr>
-                    <tr><td class="finish-label">GL Depreciation Description</td><td class="finish-value" data-key="gl_depreciation_description">-</td></tr>
                 </tbody>
             </table>
+
+            <!-- GL Account 1 -->
+            <div class="mt-3">
+                <table class="finish-table">
+                    <thead><tr><th class="finish-title" colspan="2">GL Account 1</th></tr></thead>
+                    <tbody>
+                        <tr><td class="finish-label">Code</td><td class="finish-value" data-key="gl_asset_code">-</td></tr>
+                        <tr><td class="finish-label">Type</td><td class="finish-value" data-key="gl_asset_type">-</td></tr>
+                        <tr><td class="finish-label">Description</td><td class="finish-value" data-key="gl_asset_description">-</td></tr>
+                        <tr><td class="finish-label">Monthly Amount</td><td class="finish-value currency"><span class="currency-symbol">₱</span><span class="amount" data-key="gl_asset_monthly">-</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- GL Account 2 -->
+            <div class="mt-3">
+                <table class="finish-table">
+                    <thead><tr><th class="finish-title" colspan="2">GL Account 2</th></tr></thead>
+                    <tbody>
+                        <tr><td class="finish-label">Code</td><td class="finish-value" data-key="gl_depreciation_code">-</td></tr>
+                        <tr><td class="finish-label">Type</td><td class="finish-value" data-key="gl_depreciation_type">-</td></tr>
+                        <tr><td class="finish-label">Description</td><td class="finish-value" data-key="gl_depreciation_description">-</td></tr>
+                        <tr><td class="finish-label">Monthly Amount</td><td class="finish-value currency"><span class="currency-symbol">₱</span><span class="amount" data-key="gl_depr_monthly">-</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

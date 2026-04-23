@@ -146,6 +146,17 @@
             if(firstInvalid) firstInvalid.reportValidity();
             return;
         }
+        // Extra safeguard: ensure auto-calculated depreciation_end_date is present on depreciation step
+        try {
+            const stepEl = steps[current];
+            if(stepEl && stepEl.querySelector && stepEl.querySelector('#depreciation_end_date')){
+                const endDateInput = stepEl.querySelector('#depreciation_end_date');
+                if(endDateInput && !endDateInput.value){
+                    endDateInput.reportValidity();
+                    return;
+                }
+            }
+        } catch(e) {}
         // move to next
         const nextIndex = Math.min(steps.length - 1, current + 1);
         showStep(nextIndex);
@@ -160,6 +171,9 @@
         // target the dedicated finish summary container added via partial
         const container = document.getElementById('finish-summary');
         if(!container) return;
+
+        // Ensure latest calculations are performed before building the preview
+        try { computeMonthlyDepreciation(); } catch(e) { /* ignore */ }
 
         // cleanup legacy fallback rows from older scripts
         const prevExtra = container.querySelector('.__extra_summary');
@@ -203,6 +217,37 @@
                 ph.textContent = value ? value : '—';
             }
         });
+
+        // Compute UI-only Debit/Credit preview amounts and populate them
+        try {
+            const monthlyInput = form.querySelector('#monthly_depreciation');
+            const monthly = monthlyInput ? Number(String(monthlyInput.value || '0').replace(/,/g, '')) : 0;
+            const assetType = (form.querySelector('#gl_asset_type') ? (form.querySelector('#gl_asset_type').value || '') : '').toUpperCase();
+            const deprType = (form.querySelector('#gl_depreciation_type') ? (form.querySelector('#gl_depreciation_type').value || '') : '').toUpperCase();
+
+            let debit = 0, credit = 0;
+            if(assetType === 'DEBIT') debit += monthly; else if(assetType === 'CREDIT') credit += monthly;
+            if(deprType === 'DEBIT') debit += monthly; else if(deprType === 'CREDIT') credit += monthly;
+
+            function fmt(n){
+                const num = Number(n || 0);
+                if(isNaN(num)) return '—';
+                return num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+
+            const debitEl = container.querySelector('[data-key="preview_debit"]');
+            const creditEl = container.querySelector('[data-key="preview_credit"]');
+            if(debitEl) debitEl.textContent = fmt(debit);
+            if(creditEl) creditEl.textContent = fmt(credit);
+            // Populate per-GL monthly amounts in the General Ledger Accounts card
+            const glAssetMonthlyEl = container.querySelector('[data-key="gl_asset_monthly"]');
+            const glDeprMonthlyEl = container.querySelector('[data-key="gl_depr_monthly"]');
+            if(glAssetMonthlyEl) glAssetMonthlyEl.textContent = fmt(monthly);
+            if(glDeprMonthlyEl) glDeprMonthlyEl.textContent = fmt(monthly);
+        } catch (e) {
+            // Fail silently — preview is UI-only
+            console.error('Failed to compute preview debit/credit', e);
+        }
     }
 
     function escapeHtml(str){
@@ -985,11 +1030,52 @@
 
         if(months <= 0 || cost <= 0){
             monthlyDepInput.value = '0.00';
+            // refresh GL table display as zero
+            if(typeof updateGlTable === 'function') updateGlTable(0);
             return;
         }
 
         const monthlyDep = cost / months;
         monthlyDepInput.value = monthlyDep.toFixed(2);
+        if(typeof updateGlTable === 'function') updateGlTable(monthlyDep);
+    }
+
+    /**
+     * updateGlTable(monthlyAmount)
+     * Populate the combined GL accounts table with codes, descriptions, types and formatted monthly amounts.
+     */
+    function updateGlTable(monthlyAmount){
+        const assetCodeEl = form.querySelector('#gl_asset_code');
+        const assetTypeEl = form.querySelector('#gl_asset_type');
+        const assetDescEl = form.querySelector('#gl_asset_description');
+        const deprCodeEl = form.querySelector('#gl_depreciation_code');
+        const deprTypeEl = form.querySelector('#gl_depreciation_type');
+        const deprDescEl = form.querySelector('#gl_depreciation_description');
+
+        const assetCodeTd = document.getElementById('gl-table-asset-code');
+        const assetDescTd = document.getElementById('gl-table-asset-desc');
+        const assetTypeTd = document.getElementById('gl-table-asset-type');
+        const assetAmountTd = document.getElementById('gl-table-asset-amount');
+        const deprCodeTd = document.getElementById('gl-table-depr-code');
+        const deprDescTd = document.getElementById('gl-table-depr-desc');
+        const deprTypeTd = document.getElementById('gl-table-depr-type');
+        const deprAmountTd = document.getElementById('gl-table-depr-amount');
+
+        function fmt(n){
+            const num = Number(n || 0);
+            if(isNaN(num) || num === 0) return '0.00';
+            return num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        if(assetCodeTd) assetCodeTd.textContent = assetCodeEl ? (assetCodeEl.value || '—') : '—';
+        if(assetDescTd) assetDescTd.textContent = assetDescEl ? (assetDescEl.value || '—') : '—';
+        if(assetTypeTd) assetTypeTd.textContent = assetTypeEl ? (assetTypeEl.value || '—') : '—';
+        if(assetAmountTd) assetAmountTd.textContent = '₱ ' + fmt(monthlyAmount);
+
+        if(deprCodeTd) deprCodeTd.textContent = deprCodeEl ? (deprCodeEl.value || '—') : '—';
+        if(deprDescTd) deprDescTd.textContent = deprDescEl ? (deprDescEl.value || '—') : '—';
+        if(deprTypeTd) deprTypeTd.textContent = deprTypeEl ? (deprTypeEl.value || '—') : '—';
+        if(deprAmountTd) deprAmountTd.textContent = '₱ ' + fmt(monthlyAmount);
     }
 
     /**
@@ -1063,10 +1149,27 @@
         });
     }
 
+    // Prevent date_received from auto-populating depreciation_start_date
+    if(dateReceivedInput && startDateInput){
+        dateReceivedInput.addEventListener('change', () => {
+            // do not copy date_received into depreciation_start_date; ensure it's empty so user must choose
+            try {
+                startDateInput.value = '';
+                // trigger validation/UI updates
+                startDateInput.dispatchEvent(new Event('input', { bubbles: true }));
+                startDateInput.dispatchEvent(new Event('change', { bubbles: true }));
+                if(typeof refreshProgressStates === 'function') refreshProgressStates();
+            } catch(e) {
+                // ignore
+            }
+        });
+    }
+
     // When months change (actual_months) → recalculate dates
     if(monthsInput){
         monthsInput.addEventListener('change', () => {
             computeDates();
+            computeMonthlyDepreciation();
         });
     }
 
@@ -1132,6 +1235,7 @@
             try{ el.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){}
             try{ el.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
         });
+        if(typeof updateGlTable === 'function') updateGlTable(0);
     }
 
     // Observe the modal element and reset when it's hidden

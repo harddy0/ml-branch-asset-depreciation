@@ -33,9 +33,9 @@
                     Auto
                 </span>
             </label>
-            <input type="date" name="depreciation_end_date" id="depreciation_end_date" required
+            <input type="date" name="depreciation_end_date" id="depreciation_end_date" required readonly tabindex="-1" aria-readonly="true" title="Auto-calculated - not editable"
                 class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5
-                       focus:ring-2 focus:ring-red-500 outline-none transition-all bg-slate-50">
+                       focus:ring-2 focus:ring-red-500 outline-none transition-all bg-slate-50 cursor-not-allowed">
         </div>
 
         <div>
