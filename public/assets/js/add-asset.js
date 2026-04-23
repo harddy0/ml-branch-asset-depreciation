@@ -129,7 +129,7 @@
         try{ el.setSelectionRange(el.value.length, el.value.length); } catch(e){}
     }
 
-    ['#asset_acquisition_cost', '#asset_cost_unit'].forEach(sel => {
+    ['#asset_acquisition_cost'].forEach(sel => {
         const el = form.querySelector(sel);
         if(!el) return;
         el.addEventListener('input', () => formatCurrencyInput(el, false));
@@ -173,8 +173,15 @@
             const input = form.querySelector('[name="' + key + '"]') || form.querySelector('#' + key);
             let value = '';
             if(input){
-                if(input.type === 'checkbox') value = input.checked ? 'Yes' : 'No';
-                else value = input.value;
+                const tag = (input.tagName || '').toLowerCase();
+                if(tag === 'select'){
+                    const opt = input.options[input.selectedIndex];
+                    value = opt ? opt.text : (input.value || '');
+                } else if(input.type === 'checkbox') {
+                    value = input.checked ? 'Yes' : 'No';
+                } else {
+                    value = input.value;
+                }
             }
             // If the placeholder is a currency container, fill its .amount child instead
             if(ph.classList.contains('currency')){
@@ -364,6 +371,17 @@
         const mainZoneHidden = form.querySelector('#main_zone_code_hidden');
         const zoneHidden = form.querySelector('#zone_code_hidden');
         const regionHidden = form.querySelector('#region_code_hidden');
+        const bosHidden = form.querySelector('#bos_branch_code');
+        const kpxHidden = form.querySelector('#kpx_branch_id');
+        const corpHidden = form.querySelector('#corporate_name');
+        const bosDisplay = form.querySelector('#bos_branch_code_display');
+        const kpxDisplay = form.querySelector('#kpx_branch_id_display');
+        const corpDisplay = form.querySelector('#corporate_name_display');
+
+        // keep corporate display and hidden input in sync when user edits corporate_name manually
+        if(corpDisplay && corpHidden){
+            corpDisplay.addEventListener('input', function(){ corpHidden.value = corpDisplay.value || ''; });
+        }
 
         if(!branchInput || !hiddenBranch) return;
 
@@ -461,6 +479,12 @@
             if(found){
                 hiddenBranch.value = found.value || '';
                 if(costEl) costEl.value = found.branch_code || found.cost_center_code || '';
+                    if(bosHidden) bosHidden.value = found.branch_code || found.zone_code || '';
+                    if(kpxHidden) kpxHidden.value = found.branch_id || '';
+                    if(corpHidden) corpHidden.value = found.corporate_name || '';
+                    if(bosDisplay) bosDisplay.value = found.branch_code || found.zone_code || '';
+                    if(kpxDisplay) kpxDisplay.value = found.branch_id || '';
+                    if(corpDisplay) corpDisplay.value = found.corporate_name || '';
 
                 function setSingleOption(sel, val, label){
                     if(!sel) return;
@@ -526,6 +550,12 @@
                 if(mainZoneHidden) mainZoneHidden.value = found.main_zone_code || '';
                 if(zoneHidden) zoneHidden.value = found.zone_code || '';
                 if(regionHidden) regionHidden.value = found.region || '';
+                if(bosHidden) bosHidden.value = found.branch_code || found.zone_code || '';
+                if(kpxHidden) kpxHidden.value = found.branch_id || '';
+                if(corpHidden) corpHidden.value = found.corporate_name || '';
+                if(bosDisplay) bosDisplay.value = found.branch_code || found.zone_code || '';
+                if(kpxDisplay) kpxDisplay.value = found.branch_id || '';
+                if(corpDisplay) corpDisplay.value = found.corporate_name || '';
                 function setSingleOptionDisplay(sel, val){ if(!sel) return; sel.innerHTML = ''; if(val){ const o = document.createElement('option'); o.value = val; o.textContent = val; sel.appendChild(o); sel.value = val; sel.disabled = false; sel.style.pointerEvents = 'none'; sel.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400'); sel.style.background = 'white'; sel.style.color = ''; } }
                 setSingleOptionDisplay(mainZoneEl, found.main_zone_code);
                 setSingleOptionDisplay(zoneEl, found.zone_code);
@@ -618,6 +648,12 @@
                 branchInput.value = item.value || item.label || '';
                 hiddenBranch.value = item.value || item.label || '';
                 if(costEl) costEl.value = item.branch_code || item.cost_center_code || '';
+                if(bosHidden) bosHidden.value = item.branch_code || item.zone_code || '';
+                if(kpxHidden) kpxHidden.value = item.branch_id || '';
+                if(corpHidden) corpHidden.value = item.corporate_name || '';
+                if(bosDisplay) bosDisplay.value = item.branch_code || item.zone_code || '';
+                if(kpxDisplay) kpxDisplay.value = item.branch_id || '';
+                if(corpDisplay) corpDisplay.value = item.corporate_name || '';
                 // fill selects
                 function setSingleOption(sel, val, label){
                     if(!sel) return;
@@ -655,6 +691,9 @@
                 if(typeof mainZoneHidden !== 'undefined' && mainZoneHidden) mainZoneHidden.value = item.main_zone_code || '';
                 if(typeof zoneHidden !== 'undefined' && zoneHidden) zoneHidden.value = item.zone_code || '';
                 if(typeof regionHidden !== 'undefined' && regionHidden) regionHidden.value = item.region_code || '';
+                if(typeof bosHidden !== 'undefined' && bosHidden) bosHidden.value = item.branch_code || item.zone_code || '';
+                if(typeof kpxHidden !== 'undefined' && kpxHidden) kpxHidden.value = item.branch_id || '';
+                if(typeof corpHidden !== 'undefined' && corpHidden) corpHidden.value = item.corporate_name || '';
                 // hide
                 suggestions.style.display = 'none';
                 highlightedIndex = -1;

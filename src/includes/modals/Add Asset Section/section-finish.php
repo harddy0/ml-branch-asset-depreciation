@@ -71,7 +71,6 @@
                 <tbody>
                     <tr><td class="finish-label">Quantity</td><td class="finish-value" data-key="quantity">-</td></tr>
                     <tr><td class="finish-label">Acquisition Cost</td><td class="finish-value currency" data-key="acquisition_cost"><span class="currency-symbol">₱</span><span class="amount">-</span></td></tr>
-                    <tr><td class="finish-label">Cost Unit</td><td class="finish-value currency" data-key="cost_unit"><span class="currency-symbol">₱</span><span class="amount">-</span></td></tr>
                     <tr><td class="finish-label">Monthly Depreciation</td><td class="finish-value currency" data-key="monthly_depreciation"><span class="currency-symbol">₱</span><span class="amount">-</span></td></tr>
                 </tbody>
             </table>

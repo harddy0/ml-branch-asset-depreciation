@@ -62,5 +62,36 @@
             </div>
         </div>
     </div>
-    
+    <div class="space-y-2 mt-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-1" style="grid-template-columns: 22% 78%;">
+            <div class="flex items-center justify-end pr-2">
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-1">BOS Code</label>
+            </div>
+            <div>
+                <input type="text" id="bos_branch_code_display" class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5 bg-slate-50" placeholder="Auto-populated" readonly>
+                <input type="hidden" name="bos_branch_code" id="bos_branch_code">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-1" style="grid-template-columns: 22% 78%;">
+            <div class="flex items-center justify-end pr-2">
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-1">KPX Branch ID</label>
+            </div>
+            <div>
+                <input type="text" id="kpx_branch_id_display" class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5 bg-slate-50" placeholder="Auto-populated" readonly>
+                <input type="hidden" name="kpx_branch_id" id="kpx_branch_id">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-1" style="grid-template-columns: 22% 78%;">
+            <div class="flex items-center justify-end pr-2">
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-1">Corporate Name</label>
+            </div>
+            <div>
+                <input type="text" id="corporate_name_display" class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5" placeholder="Auto-populated or enter manually">
+                <input type="hidden" name="corporate_name" id="corporate_name">
+            </div>
+        </div>
+    </div>
+
 </section>

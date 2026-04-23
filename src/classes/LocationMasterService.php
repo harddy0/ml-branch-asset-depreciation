@@ -112,7 +112,9 @@ class LocationMasterService {
         // Preferred query: include branch code when available.
             $sqlWithBranchCode = "SELECT DISTINCT
                         b.cost_center AS cost_center_code,
-                        b.code AS branch_code,
+                    b.code AS branch_code,
+                    b.branch_id AS branch_id,
+                    b.corporate_name AS corporate_name,
                         b.branch_name,
                         b.region AS region,
                         r.region_code,
@@ -130,7 +132,9 @@ class LocationMasterService {
         // Fallback query for schemas without branch_profile.code.
             $sqlFallback = "SELECT DISTINCT
                         b.cost_center AS cost_center_code,
-                        '' AS branch_code,
+                    '' AS branch_code,
+                    '' AS branch_id,
+                    '' AS corporate_name,
                         b.branch_name,
                         b.region AS region,
                         r.region_code,

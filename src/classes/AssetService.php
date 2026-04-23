@@ -106,6 +106,9 @@ class AssetService
                 'region_code'             => trim((string)($postData['region_code'] ?? '')),
                 'cost_center_code'        => trim((string)($postData['cost_center_code'] ?? '')),
                 'branch_name'             => trim((string)($postData['branch_name'] ?? '')),
+                'bos_branch_code'         => trim((string)($postData['bos_branch_code'] ?? '')) ?: null,
+                'kpx_branch_id'           => trim((string)($postData['kpx_branch_id'] ?? '')) ?: null,
+                'corporate_name'          => trim((string)($postData['corporate_name'] ?? '')) ?: null,
                 'asset_name'              => $assetName,
                 'asset_group_id'          => $assetGroupId,
                 'months'                  => $months,
@@ -120,7 +123,6 @@ class AssetService
                 'depreciation_on'         => $postData['depreciation_on'] ?? 'LAST_DAY',
                 'depreciation_day'        => !empty($postData['depreciation_day']) ? (int)$postData['depreciation_day'] : null,
                 'acquisition_cost'        => $acquisitionCost,
-                'cost_unit'               => $this->normalizeNumber($postData['cost_unit'] ?? $acquisitionCost),
                 'monthly_depreciation'    => round($acquisitionCost / $months, 2),
                 'status'                  => $postData['status'] ?? 'ACTIVE',
                 // Pass group data through so createAsset() can use it for the ledger
@@ -176,20 +178,22 @@ class AssetService
                 INSERT INTO assets (
                     system_asset_code, reference_no,
                     main_zone_code, zone_code, region_code, cost_center_code, branch_name,
+                    bos_branch_code, kpx_branch_id, corporate_name,
                     asset_name, asset_group_id, months,
                     description, serial_number, item_code, quantity, property_type,
                     date_received, depreciation_start_date, depreciation_end_date,
                     depreciation_on, depreciation_day,
-                    acquisition_cost, cost_unit, monthly_depreciation,
+                    acquisition_cost, monthly_depreciation,
                     status, created_by
                 ) VALUES (
                     :system_asset_code, :reference_no,
                     :main_zone_code, :zone_code, :region_code, :cost_center_code, :branch_name,
+                    :bos_branch_code, :kpx_branch_id, :corporate_name,
                     :asset_name, :asset_group_id, :months,
                     :description, :serial_number, :item_code, :quantity, :property_type,
                     :date_received, :depreciation_start_date, :depreciation_end_date,
                     :depreciation_on, :depreciation_day,
-                    :acquisition_cost, :cost_unit, :monthly_depreciation,
+                    :acquisition_cost, :monthly_depreciation,
                     :status, :created_by
                 )
             ');
@@ -208,6 +212,9 @@ class AssetService
                 ':region_code'             => $data['region_code'] ?? '',
                 ':cost_center_code'        => $data['cost_center_code'] ?? '',
                 ':branch_name'             => $data['branch_name'] ?? '',
+                ':bos_branch_code'         => $data['bos_branch_code'] ?? null,
+                ':kpx_branch_id'           => $data['kpx_branch_id'] ?? null,
+                ':corporate_name'          => $data['corporate_name'] ?? null,
                 ':asset_name'              => $data['asset_name'],
                 ':asset_group_id'          => $assetGroupId,
                 ':months'                  => $months,
@@ -222,7 +229,6 @@ class AssetService
                 ':depreciation_on'         => $data['depreciation_on'] ?? 'LAST_DAY',
                 ':depreciation_day'        => $deprDay,
                 ':acquisition_cost'        => $acquisitionCost,
-                ':cost_unit'               => round((float)($data['cost_unit'] ?? $acquisitionCost), 2),
                 ':monthly_depreciation'    => $monthlyDepreciation,
                 ':status'                  => $data['status'] ?? 'ACTIVE',
                 ':created_by'              => $userId,
@@ -283,6 +289,7 @@ class AssetService
             INSERT INTO depreciation_ledger (
                 asset_id, system_asset_code,
                 main_zone_code, zone_code, region_code, cost_center_code, branch_name,
+                bos_branch_code, kpx_branch_id, corporate_name,
                 asset_name, asset_group_id, group_name, months, property_type,
                 acquisition_cost, monthly_depreciation,
                 period_date, period_month, period_year,
@@ -293,6 +300,7 @@ class AssetService
             ) VALUES (
                 :asset_id, :system_asset_code,
                 :main_zone_code, :zone_code, :region_code, :cost_center_code, :branch_name,
+                :bos_branch_code, :kpx_branch_id, :corporate_name,
                 :asset_name, :asset_group_id, :group_name, :months, :property_type,
                 :acquisition_cost, :monthly_depreciation,
                 :period_date, :period_month, :period_year,
@@ -339,6 +347,9 @@ class AssetService
                 ':region_code'                => !empty($data['region_code']) ? $data['region_code'] : null,
                 ':cost_center_code'           => !empty($data['cost_center_code']) ? $data['cost_center_code'] : null,
                 ':branch_name'                => !empty($data['branch_name']) ? $data['branch_name'] : null,
+                ':bos_branch_code'            => !empty($data['bos_branch_code']) ? $data['bos_branch_code'] : null,
+                ':kpx_branch_id'              => !empty($data['kpx_branch_id']) ? $data['kpx_branch_id'] : null,
+                ':corporate_name'             => !empty($data['corporate_name']) ? $data['corporate_name'] : null,
                 ':asset_name'                 => $data['asset_name'],
                 ':asset_group_id'             => (int)$group['id'],
                 ':group_name'                 => $group['group_name'],
@@ -412,7 +423,10 @@ class AssetService
                    rd.periods_remaining,
                    rd.last_depreciation_date,
                    rd.is_fully_depreciated,
-                   u.username AS created_by_username
+                   u.username AS created_by_username,
+                   a.bos_branch_code,
+                   a.kpx_branch_id,
+                   a.corporate_name
             FROM assets a
             LEFT JOIN asset_groups ag ON ag.id = a.asset_group_id
             LEFT JOIN expense_types et ON et.id = ag.expense_type_id
@@ -445,7 +459,10 @@ class AssetService
                    rd.periods_remaining,
                    rd.last_depreciation_date,
                    rd.is_fully_depreciated,
-                   u.username AS created_by_username
+                   u.username AS created_by_username,
+                   a.bos_branch_code,
+                   a.kpx_branch_id,
+                   a.corporate_name
             FROM assets a
             LEFT JOIN asset_groups ag ON ag.id = a.asset_group_id
             LEFT JOIN expense_types et ON et.id = ag.expense_type_id
@@ -559,6 +576,9 @@ class AssetService
                 a.asset_group_id,
                 ag.group_name,
                 a.branch_name,
+                a.bos_branch_code,
+                a.kpx_branch_id,
+                a.corporate_name,
                 a.acquisition_cost,
                 a.monthly_depreciation,
                 a.status,
@@ -631,7 +651,11 @@ class AssetService
                 UPDATE assets
                 SET reference_no  = :reference_no,
                     description   = :description,
-                    serial_number = :serial_number
+                    serial_number = :serial_number,
+                    branch_name   = :branch_name,
+                    bos_branch_code = :bos_branch_code,
+                    kpx_branch_id   = :kpx_branch_id,
+                    corporate_name  = :corporate_name
                 WHERE id = :id
             ');
             $stmt->execute([
@@ -639,6 +663,10 @@ class AssetService
                 ':reference_no' => $data['reference_no'] ?? null,
                 ':description'  => $data['description'] ?? '',
                 ':serial_number'=> $data['serial_number'] ?? null,
+                ':branch_name'  => $data['branch_name'] ?? null,
+                ':bos_branch_code' => $data['bos_branch_code'] ?? null,
+                ':kpx_branch_id'   => $data['kpx_branch_id'] ?? null,
+                ':corporate_name'  => $data['corporate_name'] ?? null,
             ]);
             return ['success' => true];
         } catch (\Exception $e) {

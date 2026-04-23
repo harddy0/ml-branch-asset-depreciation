@@ -94,7 +94,7 @@
 
 /* Right-align currency form inputs and make room for left peso sign */
 .currency-input { text-align: right; }
-#asset_acquisition_cost, #asset_cost_unit { text-align: right; }
+#asset_acquisition_cost { text-align: right; }
 
 @media (max-width: 640px) {
     .finish-grid { grid-template-columns: 1fr; }

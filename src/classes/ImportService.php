@@ -251,7 +251,7 @@ class ImportService {
             $costCenter   = trim((string)($row[11] ?? ''));
             $excelBranch  = strtoupper(trim((string)($row[12] ?? '')));
             $itemCode     = trim((string)($row[13] ?? ''));
-            $costUnit     = $this->normalizeNumber($row[14] ?? 0);
+            // cost_unit column removed from import format; ignore column 15 if present
             $deprStartVal = $row[15] ?? null;
             $deprOn       = strtoupper(trim((string)($row[16] ?? 'LAST_DAY')));
             $deprDay      = (int)($row[17] ?? 1);
@@ -387,7 +387,6 @@ class ImportService {
                 'depreciation_start_date'  => $depreciationStartDate,
                 // Financial
                 'acquisition_cost'         => $acqCost,
-                'cost_unit'                => $costUnit > 0 ? $costUnit : $acqCost,
                 'monthly_depreciation'     => ($groupEntry && $groupEntry['actual_months'] > 0)
                                                 ? round($acqCost / $groupEntry['actual_months'], 2)
                                                 : 0,
@@ -500,7 +499,7 @@ class ImportService {
                 $editableFields = [
                     'reference_no', 'serial_number', 'item_code', 'description',
                     'date_received', 'depreciation_start_date',
-                    'acquisition_cost', 'cost_unit', 'monthly_depreciation',
+                    'acquisition_cost', 'monthly_depreciation',
                     'group_name', 'group_code', 'asset_code', 'depreciation_code', 'actual_months',
                     'property_type', 'depreciation_on', 'depreciation_day',
                     'quantity', 'status',
@@ -614,8 +613,6 @@ class ImportService {
             $row['quantity'] = $quantity;
             $row['acquisition_cost'] = $acqCost;
 
-            $costUnit = (float)($row['cost_unit'] ?? 0);
-            $row['cost_unit'] = $costUnit > 0 ? $costUnit : $acqCost;
             $row['monthly_depreciation'] = ($actualMonths > 0)
                 ? round($acqCost / $actualMonths, 2)
                 : 0;
@@ -733,7 +730,6 @@ class ImportService {
                 'depreciation_on'         => $r['depreciation_on']  ?? 'LAST_DAY',
                 'depreciation_day'        => (int)($r['depreciation_day'] ?? 1),
                 'acquisition_cost'        => $acqCost,
-                'cost_unit'               => $this->normalizeNumber($r['cost_unit'] ?? $acqCost),
                 'monthly_depreciation'    => $monthlyDep,
                 'status'                  => $r['status']           ?? 'ACTIVE',
             ];
