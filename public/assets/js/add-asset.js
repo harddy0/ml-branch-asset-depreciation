@@ -886,7 +886,7 @@
             base.value = '';
             base.disabled = true;
             base.selected = true;
-            base.textContent = 'Select Expense Type...';
+            base.textContent = 'Select...';
             expenseTypeSelect.appendChild(base);
 
             expenseTypes.forEach(t => {

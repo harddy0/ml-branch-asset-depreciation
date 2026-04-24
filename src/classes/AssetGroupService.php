@@ -296,12 +296,12 @@ class AssetGroupService {
         $stmt->execute();
         $groups = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         
-        // Format each group with display string for dropdown
+        // Format each group with display string for dropdown (use only group name)
         return array_map(function($group) {
             return [
                 'id' => (int)$group['id'],
                 'group_name' => $group['group_name'],
-                'display' => $group['id'] . ' - ' . $group['group_name'],
+                'display' => $group['group_name'],
                 'expense_type_id' => (int)$group['expense_type_id'],
                 'expense_name' => $group['expense_name'] ?? '',
                 'category_type' => $group['category_type'] ?? '',
