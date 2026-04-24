@@ -18,7 +18,7 @@
             <form id="addAssetForm" class="space-y-8" action="<?= BASE_URL ?>/public/actions/asset_store.php" data-submit-managed="add-asset-js">
 
                 <!-- Step progress (full-width track with positioned circles) -->
-                <div id="step-progress" class="relative mb-6 mr-12 ml-12 px-6 translate-y-5">
+                <div id="step-progress" class="relative mb-6 mr-12 ml-12 px-6 translate-y-0">
                     <div class="relative flex items-center justify-between">
                         <div class="flex flex-col items-center z-10">
                             <div class="w-8 h-8 rounded-full bg-[#ce1126] text-white flex items-center justify-center font-bold" data-step-index="0">1</div>
@@ -49,7 +49,7 @@
                 </div>
 
                 <!-- Step 1 -->
-                <div class="step translate-y-10 m-[15%] p-[2%] border border-slate-200 shadow-md rounded-md" data-step="1">
+                <div class="step translate-y-0 m-[10%] border border-slate-200 shadow-md rounded-md" data-step="1">
                     <?php include __DIR__ . '/Add Asset Section/section-location.php'; ?>
                 </div>
 

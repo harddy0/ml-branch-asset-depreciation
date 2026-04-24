@@ -608,9 +608,9 @@
                 hiddenBranch.value = '';
                 if(costEl) costEl.value = '';
                 function clearSel(sel, placeholder){ if(!sel) return; sel.innerHTML = `<option value="" disabled selected>${placeholder || 'N/A'}</option>`; sel.disabled = true; sel.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400'); sel.style.pointerEvents = ''; sel.style.background = ''; }
-                clearSel(mainZoneEl, 'Enter branch name or branch code...');
-                clearSel(zoneEl, 'Enter branch name or branch code...');
-                clearSel(regionEl, 'Enter branch name or branch code...');
+                clearSel(mainZoneEl, 'Auto');
+                clearSel(zoneEl, 'Auto');
+                clearSel(regionEl, 'Auto');
                 if(mainZoneHidden) mainZoneHidden.value = '';
                 if(zoneHidden) zoneHidden.value = '';
                 if(regionHidden) regionHidden.value = '';
