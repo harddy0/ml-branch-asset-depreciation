@@ -984,7 +984,7 @@
             // NEW: Trigger auto-calculations on group selection
             computeDates();
             computeMonthlyDepreciation();
-            updateDepreciationDayState();
+            
 
             // Trigger change event so that validation/progress updates
             form.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1108,64 +1108,35 @@
 
         if(endDateInput) endDateInput.value = formatDate(endDate);
     }
-
-    /**
-     * updateDepreciationDayState()
-     * Enable/disable depreciation_day input based on depreciation_on value
-     */
-    function updateDepreciationDayState(){
-        const depOnSelect = form.querySelector('select[name="depreciation_on"]') || form.querySelector('#depreciation_on');
-        const depDayInput = form.querySelector('input[name="depreciation_day"]') || form.querySelector('#depreciation_day');
-
-        if(!depOnSelect || !depDayInput) return;
-
-        const depOn = depOnSelect.value || '';
-
-        if(depOn === 'SPECIFIC_DATE'){
-            depDayInput.disabled = false;
-            depDayInput.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400');
-        } else {
-            depDayInput.disabled = true;
-            depDayInput.value = '';
-            depDayInput.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400');
-        }
-    }
-
+    
     // ─────────────────────────────────────────────────────────
     // ATTACH EVENT LISTENERS FOR AUTO-CALCULATIONS
     // ─────────────────────────────────────────────────────────
 
-    const dateReceivedInput = form.querySelector('input[name="date_received"]') || form.querySelector('#date_received');
-    const depOnSelect = form.querySelector('select[name="depreciation_on"]') || form.querySelector('#depreciation_on');
-    const depDayInput = form.querySelector('input[name="depreciation_day"]') || form.querySelector('#depreciation_day');
+    const dateReceivedInput = form.querySelector('#date_received');
     const costInput = form.querySelector('#asset_acquisition_cost');
-    const startDateInput = form.querySelector('input[name="depreciation_start_date"]') || form.querySelector('#depreciation_start_date');
+    const startDateInput = form.querySelector('#depreciation_start_date');
     const monthsInput = form.querySelector('#actual_months');
+    const depDayHidden = form.querySelector('#depreciation_day');
+    const depOnHidden = form.querySelector('#depreciation_on');
 
-    // When depreciation_start_date changes → recalculate dates
+    // 1. ONLY listen to Start Date to calculate the End Date and hidden backend values
     if(startDateInput){
         startDateInput.addEventListener('change', () => {
             computeDates();
-        });
-    }
-
-    // Prevent date_received from auto-populating depreciation_start_date
-    if(dateReceivedInput && startDateInput){
-        dateReceivedInput.addEventListener('change', () => {
-            // do not copy date_received into depreciation_start_date; ensure it's empty so user must choose
-            try {
-                startDateInput.value = '';
-                // trigger validation/UI updates
-                startDateInput.dispatchEvent(new Event('input', { bubbles: true }));
-                startDateInput.dispatchEvent(new Event('change', { bubbles: true }));
-                if(typeof refreshProgressStates === 'function') refreshProgressStates();
-            } catch(e) {
-                // ignore
+            
+            const dateStr = startDateInput.value;
+            if (dateStr && depDayHidden && depOnHidden) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    depDayHidden.value = parseInt(parts[2], 10);
+                    depOnHidden.value = 'SPECIFIC_DATE';
+                }
             }
         });
     }
 
-    // When months change (actual_months) → recalculate dates
+    // 2. When actual_months change → recalculate dates and monthly amounts
     if(monthsInput){
         monthsInput.addEventListener('change', () => {
             computeDates();
@@ -1173,35 +1144,15 @@
         });
     }
 
-    // When depreciation_on changes → recalculate dates + update day state
-    if(depOnSelect){
-        depOnSelect.addEventListener('change', () => {
-            console.log('depreciation_on changed to:', depOnSelect.value);
-            computeDates();
-            updateDepreciationDayState();
-        });
-    }
-
-    // When depreciation_day changes OR input (for real-time) → recalculate dates
-    if(depDayInput){
-        depDayInput.addEventListener('change', () => {
-            console.log('depreciation_day changed to:', depDayInput.value);
-            computeDates();
-        });
-        // Also listen to input for real-time updates
-        depDayInput.addEventListener('input', () => {
-            console.log('depreciation_day input:', depDayInput.value);
-            computeDates();
-        });
-    }
-
-    // When acquisition cost changes → recalculate monthly depreciation
+    // 3. When acquisition cost changes → recalculate monthly depreciation
     if(costInput){
         costInput.addEventListener('change', () => {
-            console.log('acquisition_cost changed');
             computeMonthlyDepreciation();
         });
     }
+
+    // ABSOLUTELY NO EVENT LISTENER FOR dateReceivedInput IS ADDED HERE.
+    // THEY ARE NOW 100% DISCONNECTED.
 
     showStep(0);
 
