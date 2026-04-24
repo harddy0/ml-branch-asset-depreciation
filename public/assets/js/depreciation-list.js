@@ -969,9 +969,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const ledgerPeriodYearEl = document.getElementById('ledger-period-year');
     const ledgerPeriodMonthEl = document.getElementById('ledger-period-month');
-    const ledgerEntrySideEl = document.getElementById('ledger-entry-side');
     const ledgerResetFilterBtn = document.getElementById('ledger-reset-filter');
     const ledgerTabLedgerBtn = document.getElementById('ledger-tab-ledger');
+    const ledgerTabDebitBtn = document.getElementById('ledger-tab-debit');
+    const ledgerTabCreditBtn = document.getElementById('ledger-tab-credit');
     const ledgerTabFsBtn = document.getElementById('ledger-tab-fs');
     const ledgerPrintBtn = document.getElementById('ledger-print-btn');
 
@@ -983,6 +984,8 @@ document.addEventListener('DOMContentLoaded', function () {
             entry_side: 'ALL'
         },
         activeTab: 'LEDGER',
+        latestLedgerRows: [],
+        latestFsRows: []
     };
 
     function monthName(monthNum) {
@@ -997,21 +1000,50 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!ledgerTabLedgerBtn || !ledgerTabFsBtn || !ledgerTableWrapEl || !fsTableWrapEl) return;
 
         if (tab === 'LEDGER') {
-            ledgerTabLedgerBtn.classList.add('bg-[#ce1126]', 'text-white');
-            ledgerTabLedgerBtn.classList.remove('bg-white', 'text-slate-700');
             ledgerTabFsBtn.classList.add('bg-white', 'text-slate-700');
-            ledgerTabFsBtn.classList.remove('bg-[#ce1126]', 'text-white');
+            ledgerTabFsBtn.classList.remove('bg-[#ce2216]', 'text-white');
 
             ledgerTableWrapEl.classList.remove('hidden');
             fsTableWrapEl.classList.add('hidden');
         } else {
-            ledgerTabFsBtn.classList.add('bg-[#ce1126]', 'text-white');
+            ledgerTabFsBtn.classList.add('bg-[#ce2216]', 'text-white');
             ledgerTabFsBtn.classList.remove('bg-white', 'text-slate-700');
-            ledgerTabLedgerBtn.classList.add('bg-white', 'text-slate-700');
-            ledgerTabLedgerBtn.classList.remove('bg-[#ce1126]', 'text-white');
+
+            // When FS is active, clear entry-side tab highlights
+            [ledgerTabLedgerBtn, ledgerTabDebitBtn, ledgerTabCreditBtn]
+                .filter(Boolean)
+                .forEach(function (btn) {
+                    btn.classList.remove('bg-[#ce2216]', 'text-white');
+                    btn.classList.add('bg-white', 'text-slate-700');
+                });
 
             fsTableWrapEl.classList.remove('hidden');
             ledgerTableWrapEl.classList.add('hidden');
+        }
+    }
+
+    function setEntrySideTab(side) {
+        const s = String((side || 'ALL')).toUpperCase();
+        ledgerState.filters.entry_side = s;
+
+        if (!ledgerTabLedgerBtn || !ledgerTabDebitBtn || !ledgerTabCreditBtn) return;
+
+        // Reset all to default (white)
+        [ledgerTabLedgerBtn, ledgerTabDebitBtn, ledgerTabCreditBtn].forEach(function (btn) {
+            btn.classList.remove('bg-[#ce2216]', 'text-white');
+            btn.classList.add('bg-white', 'text-slate-700');
+        });
+
+        // Activate selected tab with the correct accent color
+        if (s === 'DEBIT') {
+            ledgerTabDebitBtn.classList.remove('bg-white', 'text-slate-700');
+            ledgerTabDebitBtn.classList.add('bg-[#ce2216]', 'text-white');
+        } else if (s === 'CREDIT') {
+            ledgerTabCreditBtn.classList.remove('bg-white', 'text-slate-700');
+            ledgerTabCreditBtn.classList.add('bg-[#ce2216]', 'text-white');
+        } else {
+            ledgerTabLedgerBtn.classList.remove('bg-white', 'text-slate-700');
+            ledgerTabLedgerBtn.classList.add('bg-[#ce2216]', 'text-white');
         }
     }
 
@@ -1122,21 +1154,46 @@ document.addEventListener('DOMContentLoaded', function () {
                 const invPeriodLabel = `${monthName(invPeriodMonth)} ${invPeriodYear}`.trim();
                 const assetGlCode = String(asset.asset_gl_code || asset.asset_gl || '') || '';
                 const expenseGlCode = String(asset.expense_gl_code || asset.expense_gl || '') || '';
+                const assetGlType = String((asset.asset_gl_type || '').toUpperCase() || 'DEBIT');
+                const expenseGlType = String((asset.expense_gl_type || '').toUpperCase() || 'CREDIT');
+                const entryFilterView = String(ledgerState.filters.entry_side || 'ALL').toUpperCase();
 
-                const synthLines = [];
-                if (expenseGlCode) synthLines.push({ gl_code: expenseGlCode, debit: 0, credit: 0 });
-                if (assetGlCode) synthLines.push({ gl_code: assetGlCode, debit: 0, credit: 0 });
+                const allSynthLines = [];
+                if (expenseGlCode) {
+                    allSynthLines.push({
+                        gl_code: expenseGlCode,
+                        line_type: expenseGlType,
+                        debit: expenseGlType === 'DEBIT' ? 0 : 0,
+                        credit: expenseGlType === 'CREDIT' ? 0 : 0
+                    });
+                }
+                if (assetGlCode) {
+                    allSynthLines.push({
+                        gl_code: assetGlCode,
+                        line_type: assetGlType,
+                        debit: assetGlType === 'DEBIT' ? 0 : 0,
+                        credit: assetGlType === 'CREDIT' ? 0 : 0
+                    });
+                }
 
-                const synthGroup = {
-                    date: recvDate || '',
-                    periodLabel: invPeriodLabel,
-                    accumulated: 0,
-                    book: investedAmt,
-                    lines: synthLines
-                };
+                const synthLines = allSynthLines.filter(function (line) {
+                    if (entryFilterView === 'DEBIT') return String(line.line_type || '').toUpperCase() === 'DEBIT';
+                    if (entryFilterView === 'CREDIT') return String(line.line_type || '').toUpperCase() === 'CREDIT';
+                    return true;
+                });
 
-                // put invested group at the start
-                renderGroups.unshift(synthGroup);
+                if (synthLines.length > 0) {
+                    const synthGroup = {
+                        date: recvDate || '',
+                        periodLabel: invPeriodLabel,
+                        accumulated: 0,
+                        book: investedAmt,
+                        lines: synthLines
+                    };
+
+                    // put invested group at the start
+                    renderGroups.unshift(synthGroup);
+                }
             }
         } catch (e) {
             // ignore synthetic invested group on errors
@@ -1427,7 +1484,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function syncLedgerFiltersFromInputs() {
-        ledgerState.filters.entry_side = ledgerEntrySideEl ? ledgerEntrySideEl.value : 'ALL';
+        // entry_side is controlled via tabs; only sync period/year/month from inputs
         ledgerState.filters.period_year = ledgerPeriodYearEl ? ledgerPeriodYearEl.value : '';
         ledgerState.filters.period_month = ledgerPeriodMonthEl ? ledgerPeriodMonthEl.value : '';
     }
@@ -1450,6 +1507,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 const ledgerRows = res.ledger_rows || [];
                 const fsRows = res.fs_rows || [];
 
+                // cache latest rows so tab switches can re-render without fetching
+                ledgerState.latestLedgerRows = ledgerRows;
+                ledgerState.latestFsRows = fsRows;
+
                 // Ensure we use the enriched asset payload returned by the API
                 ledgerState.asset = res.asset || ledgerState.asset;
 
@@ -1464,7 +1525,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     ledgerState.filters.period_month || ''
                 );
 
-                if (ledgerEntrySideEl) ledgerEntrySideEl.value = ledgerState.filters.entry_side;
+                // sync entry-side tab UI with current filter
+                setEntrySideTab(ledgerState.filters.entry_side || 'ALL');
             })
             .catch(function (err) {
                 setLedgerError(`Unable to load ledger report: ${err.message || 'Unknown error'}`);
@@ -1484,7 +1546,7 @@ document.addEventListener('DOMContentLoaded', function () {
             period_month: ''
         };
 
-        if (ledgerEntrySideEl) ledgerEntrySideEl.value = 'ALL';
+        setEntrySideTab('ALL');
         if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = '';
         if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = '';
 
@@ -1667,7 +1729,7 @@ document.addEventListener('DOMContentLoaded', function () {
         fetchDepreciationList();
     }
 
-    [ledgerEntrySideEl, ledgerPeriodYearEl, ledgerPeriodMonthEl]
+    [ledgerPeriodYearEl, ledgerPeriodMonthEl]
         .filter(Boolean)
         .forEach(function (el) {
             el.addEventListener('change', function () {
@@ -1681,7 +1743,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (ledgerResetFilterBtn) {
         ledgerResetFilterBtn.addEventListener('click', function () {
-            if (ledgerEntrySideEl) ledgerEntrySideEl.value = 'ALL';
+            setEntrySideTab('ALL');
             if (ledgerPeriodYearEl) ledgerPeriodYearEl.value = '';
             if (ledgerPeriodMonthEl) ledgerPeriodMonthEl.value = '';
 
@@ -1696,13 +1758,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (ledgerTabLedgerBtn) {
         ledgerTabLedgerBtn.addEventListener('click', function () {
+            setEntrySideTab('ALL');
             setLedgerTab('LEDGER');
+            // re-render from cached rows for smooth transition
+            renderLedgerRows(ledgerState.latestLedgerRows || []);
+            updateLedgerFooter(({}), ledgerState.latestLedgerRows || []);
         });
     }
 
     if (ledgerTabFsBtn) {
         ledgerTabFsBtn.addEventListener('click', function () {
             setLedgerTab('FS');
+        });
+    }
+
+    if (ledgerTabDebitBtn) {
+        ledgerTabDebitBtn.addEventListener('click', function () {
+            setEntrySideTab('DEBIT');
+            setLedgerTab('LEDGER');
+            renderLedgerRows(ledgerState.latestLedgerRows || []);
+            updateLedgerFooter(({}), ledgerState.latestLedgerRows || []);
+        });
+    }
+
+    if (ledgerTabCreditBtn) {
+        ledgerTabCreditBtn.addEventListener('click', function () {
+            setEntrySideTab('CREDIT');
+            setLedgerTab('LEDGER');
+            renderLedgerRows(ledgerState.latestLedgerRows || []);
+            updateLedgerFooter(({}), ledgerState.latestLedgerRows || []);
         });
     }
 

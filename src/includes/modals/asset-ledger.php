@@ -21,10 +21,9 @@
             </button>
         </div>
 
-        <div class="px-7 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
-            <div class="grid grid-rows-1 md:grid-cols-5 gap-2">
-                <div class="flex items-center gap-3 col-span-5 md:col-span-4">
-                    <span class="text-sm font-semibold text-slate-600">As of</span>
+        <div name="ledger-header" class="bg-slate-50 shrink-0 px-7 py-3 grid md:grid-cols-12 gap-0">
+            <div name="ledger-filters" class="md:col-span-3 pr-10 flex items-center gap-3">
+                    <span class="text-sm font-semibold text-slate-600 whitespace-nowrap">As of</span>
 
                     <select id="ledger-period-month" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs text-slate-700">
                         <option value="">All Months</option>
@@ -34,22 +33,19 @@
                         <option value="">All Years</option>
                     </select>
 
-                    <select id="ledger-entry-side" class="border border-slate-300 rounded-md px-2 py-1.5 text-xs text-slate-700">
-                        <option value="ALL">All Entries</option>
-                        <option value="DEBIT">Debit Only</option>
-                        <option value="CREDIT">Credit Only</option>
-                    </select>
+                    <!-- Entry side selector has been moved into the ledger tabs (All / Debit / Credit) -->
 
-                    <button id="ledger-reset-filter" type="button"
-                            class="border border-slate-300 rounded-md px-3 py-1.5 text-xs font-bold uppercase text-slate-700 hover:bg-slate-100">
-                        Clear
-                    </button>
-                </div>
+                <button id="ledger-reset-filter" type="button"
+                        class="border border-slate-300 rounded-md px-3 py-1.5 text-xs font-bold uppercase text-slate-700 hover:bg-slate-100">
+                    Clear
+                </button>
             </div>
 
-            <div class="flex items-center justify-between mt-3">
-                <div class="inline-flex rounded-md border border-slate-300 overflow-hidden">
-                    <button id="ledger-tab-ledger" type="button" class="px-3 py-1.5 text-xs font-bold uppercase bg-[#ce1126] text-white">Ledger All Entries</button>
+            <div name="ledger-table-view" class="md:col-span-9 pl-5 flex items-center justify-between">
+                <div name="Ledger-tab" class="inline-flex rounded-md border border-slate-300 overflow-hidden">
+                    <button id="ledger-tab-ledger" type="button" class="px-3 py-1.5 text-xs font-bold uppercase bg-[#ce2216] text-white">All Entries</button>
+                    <button id="ledger-tab-debit" type="button" class="px-3 py-1.5 text-xs font-bold uppercase bg-white text-slate-700">Debit Only</button>
+                    <button id="ledger-tab-credit" type="button" class="px-3 py-1.5 text-xs font-bold uppercase bg-white text-slate-700">Credit Only</button>
                     <button id="ledger-tab-fs" type="button" class="px-3 py-1.5 text-xs font-bold uppercase bg-white text-slate-700">Financial Statement</button>
                 </div>
 
