@@ -260,20 +260,28 @@ document.addEventListener("DOMContentLoaded", function() {
             const currency = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const dateFmt  = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+            // Helper to prevent JS from shifting the day backwards based on local timezone
+            function safeFormatDate(dateStr) {
+                if (!dateStr) return '-';
+                const d = new Date(dateStr + 'T00:00:00');
+                return isNaN(d) ? '-' : dateFmt.format(d);
+            }
+
             let html = '';
             data.forEach(r => {
                 const payload = JSON.stringify(r).replace(/'/g, "&#039;");
                 html += `<tr class="asset-row cursor-pointer hover:bg-red-50/40 transition-colors" data-id="${r.asset_id}" data-asset='${payload}'>
                     <td class="py-2 pl-5 pr-3 font-mono text-xs text-slate-900">${r.system_asset_code}</td>
                     <td class="py-2 px-3 font-mono text-xs">${r.branch_name}</td>
-                    <td class="py-2 px-3 font-mono text-xs">${r.group_code || ''}</td>
+                    <td class="py-2 px-3 font-mono text-xs">${r.group_name || ''}</td>
                     <td class="py-2 px-3 truncate font-mono text-xs max-w-[200px]" title="${r.description}">${r.description}</td>
                     <td class="py-2 px-3 text-right font-mono text-xs">${currency.format(r.acquisition_cost)}</td>
                     <td class="py-2 px-3 text-right font-mono text-xs text-slate-900">${currency.format(r.period_depreciation_expense)}</td>
                     <td class="py-2 px-3 text-right font-mono text-xs">${currency.format(r.accumulated_depreciation)}</td>
                     <td class="py-2 px-3 text-center font-mono text-xs">${r.remaining_life}</td>
                     <td class="py-2 px-3 text-right font-mono text-xs text-slate-900">${currency.format(r.book_value)}</td>
-                    <td class="py-2 pl-3 pr-5 text-center text-slate-500 font-mono text-xs">${dateFmt.format(new Date(r.period_date))}</td>
+                    <td class="py-2 px-3 text-center text-slate-500 font-mono text-xs">${safeFormatDate(r.depreciation_start_date)}</td>
+                    <td class="py-2 pl-3 pr-5 text-center text-slate-500 font-mono text-xs">${safeFormatDate(r.depreciation_end_date)}</td>
                 </tr>`;
             });
             tbody.innerHTML = html;

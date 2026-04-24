@@ -109,6 +109,7 @@ class AssetReportService
                 a.asset_name,
                 a.date_received,
                 a.depreciation_start_date,
+                a.depreciation_end_date,
                 a.retirement_date,
                 a.acquisition_cost,
                 dl.period_depreciation_expense,
@@ -204,9 +205,9 @@ class AssetReportService
 
         $headerRow = 3;
         $headers   = [
-            'Asset Code', 'Branch', 'Group', 'Category', 'Description',
+            'Asset Code', 'Branch', 'Asset Group', 'Category', 'Description',
             'Cost', 'Depreciation', 'Accu. Dep.', 'Asset Lives',
-            'Book Value', 'Date Gen.',
+            'Book Value', 'Start Date', 'End Date',
         ];
 
         $col = 'A';
@@ -221,7 +222,7 @@ class AssetReportService
         foreach ($data as $row) {
             $sheet->setCellValue('A' . $rowNum, $row['system_asset_code']);
             $sheet->setCellValue('B' . $rowNum, $row['branch_name']);
-            $sheet->setCellValue('C' . $rowNum, $row['group_name']);
+            $sheet->setCellValue('C' . $rowNum, $row['group_name']); // Use group_name
             $sheet->setCellValue('D' . $rowNum, $row['category_name']);
             $sheet->setCellValue('E' . $rowNum, $row['description']);
             $sheet->setCellValue('F' . $rowNum, $row['acquisition_cost']);
@@ -229,9 +230,10 @@ class AssetReportService
             $sheet->setCellValue('H' . $rowNum, $row['accumulated_depreciation']);
             $sheet->setCellValue('I' . $rowNum, $row['remaining_life']);
             $sheet->setCellValue('J' . $rowNum, $row['book_value']);
-            $sheet->setCellValue('K' . $rowNum,
-                !empty($row['period_date']) ? date('F j, Y', strtotime($row['period_date'])) : ''
-            );
+            
+            // New Start and End Dates
+            $sheet->setCellValue('K' . $rowNum, !empty($row['depreciation_start_date']) ? date('M j, Y', strtotime($row['depreciation_start_date'])) : '-');
+            $sheet->setCellValue('L' . $rowNum, !empty($row['depreciation_end_date']) ? date('M j, Y', strtotime($row['depreciation_end_date'])) : '-');
 
             $sheet->getStyle('F' . $rowNum . ':J' . $rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
             $sheet->getStyle('I' . $rowNum)->getNumberFormat()->setFormatCode('0');
@@ -243,7 +245,7 @@ class AssetReportService
         $sheet->setCellValue('A' . $rowNum, 'TOTALS');
         $sheet->mergeCells('A' . $rowNum . ':E' . $rowNum);
         $sheet->getStyle('A' . $rowNum)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle('A' . $rowNum . ':J' . $rowNum)->getFont()->setBold(true);
+        $sheet->getStyle('A' . $rowNum . ':L' . $rowNum)->getFont()->setBold(true);
         $sheet->setCellValue('F' . $rowNum, $totals['cost']);
         $sheet->setCellValue('G' . $rowNum, $totals['de']);
         $sheet->setCellValue('H' . $rowNum, $totals['ad']);
@@ -260,7 +262,8 @@ class AssetReportService
         $sheet->getStyle('A' . $metaRow1 . ':E' . $metaRow2)->getFont()->setSize(10);
         $sheet->getStyle('A' . $metaRow1 . ':E' . $metaRow2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
-        foreach (range('A', 'K') as $columnID) {
+        // Update range to cover column L
+        foreach (range('A', 'L') as $columnID) {
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
         $sheet->getRowDimension(1)->setRowHeight(40);
