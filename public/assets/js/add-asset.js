@@ -184,7 +184,21 @@
         placeholders.forEach(ph => {
             const key = ph.getAttribute('data-key');
             if(!key) return;
-            const input = form.querySelector('[name="' + key + '"]') || form.querySelector('#' + key);
+            
+            // Search for the element
+            let input = form.querySelector('[name="' + key + '"]') || form.querySelector('#' + key);
+            
+            // --- THE FIX: PREFER VISIBLE SELECTS OVER HIDDEN INPUTS ---
+            // If the script grabs a hidden input (which holds the raw DB code), 
+            // check if there is a visible <select> with the same ID, and pull the description from it instead!
+            if (input && input.type === 'hidden') {
+                const selectFallback = form.querySelector('select#' + key);
+                if (selectFallback) {
+                    input = selectFallback;
+                }
+            }
+            // ----------------------------------------------------------
+
             let value = '';
             if(input){
                 const tag = (input.tagName || '').toLowerCase();
@@ -196,7 +210,26 @@
                 } else {
                     value = input.value;
                 }
+
+                // --- FORMAT DATES FOR PREVIEW ONLY ---
+                if (input.type === 'date' && value) {
+                    try {
+                        // T00:00:00 prevents Javascript timezone shifting bugs
+                        const d = new Date(value + 'T00:00:00');
+                        if (!isNaN(d.getTime())) {
+                            value = new Intl.DateTimeFormat('en-US', { 
+                                month: 'long', 
+                                day: 'numeric', 
+                                year: 'numeric' 
+                            }).format(d);
+                        }
+                    } catch (e) {
+                        // Fail silently and leave as ISO format if parsing fails
+                    }
+                }
+                // -------------------------------------
             }
+
             // If the placeholder is a currency container, fill its .amount child instead
             if(ph.classList.contains('currency')){
                 const amountEl = ph.querySelector('.amount');
@@ -558,12 +591,14 @@
                         sel.style.pointerEvents = '';
                     }
                 }
-
+// AUTO-POPULATE ALL 3 LOCATIONS
                 setSingleOption(mainZoneEl, found.main_zone_code, found.main_zone_code);
                 setSingleOption(zoneEl,     found.zone_code,      found.zone_code);
+                
                 const regionCode = found.region || '';
-                const regionLabel = regionCode; // show only branch_profile.region
+                const regionLabel = found.region_description || regionCode; 
                 setSingleOption(regionEl,   regionCode,    regionLabel);
+                
                 // set hidden inputs for submission (Use region_code, NOT region)
                 if(mainZoneHidden) mainZoneHidden.value = found.main_zone_code || '';
                 if(zoneHidden) zoneHidden.value = found.zone_code || '';
@@ -727,11 +762,13 @@
                         sel.style.pointerEvents = '';
                     }
                 }
-                const regionCode = item.region || '';
-                const regionLabel = regionCode; // show only branch_profile.region
                 setSingleOption(mainZoneEl, item.main_zone_code, item.main_zone_code);
                 setSingleOption(zoneEl,     item.zone_code,      item.zone_code);
+                
+                const regionCode = item.region || '';
+                const regionLabel = item.region_description || regionCode; 
                 setSingleOption(regionEl,   regionCode,          regionLabel);
+                
                 // set hidden inputs for submission as well (Use region_code, NOT region)
                 if(typeof mainZoneHidden !== 'undefined' && mainZoneHidden) mainZoneHidden.value = item.main_zone_code || '';
                 if(typeof zoneHidden !== 'undefined' && zoneHidden) zoneHidden.value = item.zone_code || '';
@@ -739,6 +776,7 @@
                 if(typeof bosHidden !== 'undefined' && bosHidden) bosHidden.value = item.branch_code || item.zone_code || '';
                 if(typeof kpxHidden !== 'undefined' && kpxHidden) kpxHidden.value = item.branch_id || '';
                 if(typeof corpHidden !== 'undefined' && corpHidden) corpHidden.value = item.corporate_name || '';
+                
                 // hide
                 suggestions.style.display = 'none';
                 highlightedIndex = -1;
