@@ -25,14 +25,11 @@ try {
     $sortBy        = (string)($_GET['sort_by'] ?? 'created_at');
     $sortDir       = strtoupper((string)($_GET['sort_dir'] ?? 'DESC'));
 
-    // Resolve group_code -> asset_group_id when provided
     if ($groupCode !== '') {
         $assetGroupId = 0;
         if (is_numeric($groupCode)) {
-            // If the frontend sent the exact database ID, use it directly
             $assetGroupId = (int)$groupCode;
         } else {
-            // Otherwise, try to look it up by string code/name
             $stmt = $pdo->prepare('SELECT id FROM asset_groups WHERE group_code = :c OR group_name = :c LIMIT 1');
             $stmt->execute([':c' => $groupCode]);
             $g = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -61,7 +58,7 @@ try {
     echo json_encode([
         'success' => true,
         'data' => $result['data'],
-        'branches' => $result['branches'],
+        'branches' => $result['branches'] ?? [], // Safely handle the now-empty branches array
         'pagination' => $result['pagination'],
         'sort' => $result['sort'],
         'filters' => $result['filters'],
