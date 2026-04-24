@@ -183,36 +183,32 @@
             </div>
 
         <!-- Combined GL Accounts Card: show both GLs in a compact table with amounts -->
-        <div class="border border-slate-200 rounded-lg p-4 bg-white mb-3">
-            <label class="block text-xs font-mono font-bold text-slate-600 mb-3 uppercase tracking-wide">GL Accounts</label>
-
+        <div class="border border-slate-200 rounded-lg p-4 bg-white ml-[10%] mr-[15%] mt-2">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <colgroup>
                         <col style="width:22%" />
                         <col style="width:48%" />
                         <col style="width:15%" />
-                        <col style="width:15%" />
                     </colgroup>
                     <thead>
                         <tr class="text-xs text-slate-500 uppercase">
                             <th class="px-2 py-1 text-left">GL Code</th>
-                            <th class="px-2 py-1 text-left">Description / Normal Balance</th>
-                            <th class="px-2 py-1 text-right">Type</th>
-                            <th class="px-2 py-1 text-right">Monthly Amount</th>
+                            <th class="px-2 py-1 text-left">Description</th>
+                            <th class="px-2 py-1 text-right whitespace-nowrap">Monthly Amount</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="border-t border-slate-100">
                             <td class="px-2 py-2 font-mono font-bold" id="gl-table-asset-code">—</td>
                             <td class="px-2 py-2 text-xs text-slate-700" id="gl-table-asset-desc">—</td>
-                            <td class="px-2 py-2 text-right text-xs uppercase" id="gl-table-asset-type">—</td>
+                          
                             <td class="px-2 py-2 text-right font-mono font-bold" id="gl-table-asset-amount">—</td>
                         </tr>
                         <tr class="border-t border-slate-100">
                             <td class="px-2 py-2 font-mono font-bold" id="gl-table-depr-code">—</td>
                             <td class="px-2 py-2 text-xs text-slate-700" id="gl-table-depr-desc">—</td>
-                            <td class="px-2 py-2 text-right text-xs uppercase" id="gl-table-depr-type">—</td>
+                            
                             <td class="px-2 py-2 text-right font-mono font-bold" id="gl-table-depr-amount">—</td>
                         </tr>
                     </tbody>

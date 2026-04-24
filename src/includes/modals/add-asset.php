@@ -59,7 +59,7 @@
                 </div>
 
                 <!-- Step 3 -->
-                <div class="step translate-y-12 m-[20%] p-[3%] border border-slate-200 shadow-md rounded-md" data-step="3">
+                <div class="step translate-y-4 m-[30%] p-[2%] border border-slate-200 shadow-md rounded-md" data-step="3">
                     <?php include __DIR__ . '/Add Asset Section/section-depreciation.php'; ?>
                 </div>
 
