@@ -64,7 +64,7 @@
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Cost Center</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Branch</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Item Code (Opt)</th>
-                        <th class="text-right text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Cost Unit (Opt)</th>
+                        
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Depreciation Start Date (Opt)</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Depreciation On</th>
                         <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Depreciation Day</th>

@@ -129,7 +129,7 @@
         try{ el.setSelectionRange(el.value.length, el.value.length); } catch(e){}
     }
 
-    ['#asset_acquisition_cost', '#asset_cost_unit'].forEach(sel => {
+    ['#asset_acquisition_cost'].forEach(sel => {
         const el = form.querySelector(sel);
         if(!el) return;
         el.addEventListener('input', () => formatCurrencyInput(el, false));
@@ -146,6 +146,17 @@
             if(firstInvalid) firstInvalid.reportValidity();
             return;
         }
+        // Extra safeguard: ensure auto-calculated depreciation_end_date is present on depreciation step
+        try {
+            const stepEl = steps[current];
+            if(stepEl && stepEl.querySelector && stepEl.querySelector('#depreciation_end_date')){
+                const endDateInput = stepEl.querySelector('#depreciation_end_date');
+                if(endDateInput && !endDateInput.value){
+                    endDateInput.reportValidity();
+                    return;
+                }
+            }
+        } catch(e) {}
         // move to next
         const nextIndex = Math.min(steps.length - 1, current + 1);
         showStep(nextIndex);
@@ -161,6 +172,9 @@
         const container = document.getElementById('finish-summary');
         if(!container) return;
 
+        // Ensure latest calculations are performed before building the preview
+        try { computeMonthlyDepreciation(); } catch(e) { /* ignore */ }
+
         // cleanup legacy fallback rows from older scripts
         const prevExtra = container.querySelector('.__extra_summary');
         if(prevExtra) prevExtra.remove();
@@ -173,8 +187,15 @@
             const input = form.querySelector('[name="' + key + '"]') || form.querySelector('#' + key);
             let value = '';
             if(input){
-                if(input.type === 'checkbox') value = input.checked ? 'Yes' : 'No';
-                else value = input.value;
+                const tag = (input.tagName || '').toLowerCase();
+                if(tag === 'select'){
+                    const opt = input.options[input.selectedIndex];
+                    value = opt ? opt.text : (input.value || '');
+                } else if(input.type === 'checkbox') {
+                    value = input.checked ? 'Yes' : 'No';
+                } else {
+                    value = input.value;
+                }
             }
             // If the placeholder is a currency container, fill its .amount child instead
             if(ph.classList.contains('currency')){
@@ -196,6 +217,37 @@
                 ph.textContent = value ? value : '—';
             }
         });
+
+        // Compute UI-only Debit/Credit preview amounts and populate them
+        try {
+            const monthlyInput = form.querySelector('#monthly_depreciation');
+            const monthly = monthlyInput ? Number(String(monthlyInput.value || '0').replace(/,/g, '')) : 0;
+            const assetType = (form.querySelector('#gl_asset_type') ? (form.querySelector('#gl_asset_type').value || '') : '').toUpperCase();
+            const deprType = (form.querySelector('#gl_depreciation_type') ? (form.querySelector('#gl_depreciation_type').value || '') : '').toUpperCase();
+
+            let debit = 0, credit = 0;
+            if(assetType === 'DEBIT') debit += monthly; else if(assetType === 'CREDIT') credit += monthly;
+            if(deprType === 'DEBIT') debit += monthly; else if(deprType === 'CREDIT') credit += monthly;
+
+            function fmt(n){
+                const num = Number(n || 0);
+                if(isNaN(num)) return '—';
+                return num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+
+            const debitEl = container.querySelector('[data-key="preview_debit"]');
+            const creditEl = container.querySelector('[data-key="preview_credit"]');
+            if(debitEl) debitEl.textContent = fmt(debit);
+            if(creditEl) creditEl.textContent = fmt(credit);
+            // Populate per-GL monthly amounts in the General Ledger Accounts card
+            const glAssetMonthlyEl = container.querySelector('[data-key="gl_asset_monthly"]');
+            const glDeprMonthlyEl = container.querySelector('[data-key="gl_depr_monthly"]');
+            if(glAssetMonthlyEl) glAssetMonthlyEl.textContent = fmt(monthly);
+            if(glDeprMonthlyEl) glDeprMonthlyEl.textContent = fmt(monthly);
+        } catch (e) {
+            // Fail silently — preview is UI-only
+            console.error('Failed to compute preview debit/credit', e);
+        }
     }
 
     function escapeHtml(str){
@@ -364,6 +416,17 @@
         const mainZoneHidden = form.querySelector('#main_zone_code_hidden');
         const zoneHidden = form.querySelector('#zone_code_hidden');
         const regionHidden = form.querySelector('#region_code_hidden');
+        const bosHidden = form.querySelector('#bos_branch_code');
+        const kpxHidden = form.querySelector('#kpx_branch_id');
+        const corpHidden = form.querySelector('#corporate_name');
+        const bosDisplay = form.querySelector('#bos_branch_code_display');
+        const kpxDisplay = form.querySelector('#kpx_branch_id_display');
+        const corpDisplay = form.querySelector('#corporate_name_display');
+
+        // keep corporate display and hidden input in sync when user edits corporate_name manually
+        if(corpDisplay && corpHidden){
+            corpDisplay.addEventListener('input', function(){ corpHidden.value = corpDisplay.value || ''; });
+        }
 
         if(!branchInput || !hiddenBranch) return;
 
@@ -461,6 +524,12 @@
             if(found){
                 hiddenBranch.value = found.value || '';
                 if(costEl) costEl.value = found.branch_code || found.cost_center_code || '';
+                    if(bosHidden) bosHidden.value = found.branch_code || found.zone_code || '';
+                    if(kpxHidden) kpxHidden.value = found.branch_id || '';
+                    if(corpHidden) corpHidden.value = found.corporate_name || '';
+                    if(bosDisplay) bosDisplay.value = found.branch_code || found.zone_code || '';
+                    if(kpxDisplay) kpxDisplay.value = found.branch_id || '';
+                    if(corpDisplay) corpDisplay.value = found.corporate_name || '';
 
                 function setSingleOption(sel, val, label){
                     if(!sel) return;
@@ -526,6 +595,12 @@
                 if(mainZoneHidden) mainZoneHidden.value = found.main_zone_code || '';
                 if(zoneHidden) zoneHidden.value = found.zone_code || '';
                 if(regionHidden) regionHidden.value = found.region || '';
+                if(bosHidden) bosHidden.value = found.branch_code || found.zone_code || '';
+                if(kpxHidden) kpxHidden.value = found.branch_id || '';
+                if(corpHidden) corpHidden.value = found.corporate_name || '';
+                if(bosDisplay) bosDisplay.value = found.branch_code || found.zone_code || '';
+                if(kpxDisplay) kpxDisplay.value = found.branch_id || '';
+                if(corpDisplay) corpDisplay.value = found.corporate_name || '';
                 function setSingleOptionDisplay(sel, val){ if(!sel) return; sel.innerHTML = ''; if(val){ const o = document.createElement('option'); o.value = val; o.textContent = val; sel.appendChild(o); sel.value = val; sel.disabled = false; sel.style.pointerEvents = 'none'; sel.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400'); sel.style.background = 'white'; sel.style.color = ''; } }
                 setSingleOptionDisplay(mainZoneEl, found.main_zone_code);
                 setSingleOptionDisplay(zoneEl, found.zone_code);
@@ -618,6 +693,12 @@
                 branchInput.value = item.value || item.label || '';
                 hiddenBranch.value = item.value || item.label || '';
                 if(costEl) costEl.value = item.branch_code || item.cost_center_code || '';
+                if(bosHidden) bosHidden.value = item.branch_code || item.zone_code || '';
+                if(kpxHidden) kpxHidden.value = item.branch_id || '';
+                if(corpHidden) corpHidden.value = item.corporate_name || '';
+                if(bosDisplay) bosDisplay.value = item.branch_code || item.zone_code || '';
+                if(kpxDisplay) kpxDisplay.value = item.branch_id || '';
+                if(corpDisplay) corpDisplay.value = item.corporate_name || '';
                 // fill selects
                 function setSingleOption(sel, val, label){
                     if(!sel) return;
@@ -655,6 +736,9 @@
                 if(typeof mainZoneHidden !== 'undefined' && mainZoneHidden) mainZoneHidden.value = item.main_zone_code || '';
                 if(typeof zoneHidden !== 'undefined' && zoneHidden) zoneHidden.value = item.zone_code || '';
                 if(typeof regionHidden !== 'undefined' && regionHidden) regionHidden.value = item.region_code || '';
+                if(typeof bosHidden !== 'undefined' && bosHidden) bosHidden.value = item.branch_code || item.zone_code || '';
+                if(typeof kpxHidden !== 'undefined' && kpxHidden) kpxHidden.value = item.branch_id || '';
+                if(typeof corpHidden !== 'undefined' && corpHidden) corpHidden.value = item.corporate_name || '';
                 // hide
                 suggestions.style.display = 'none';
                 highlightedIndex = -1;
@@ -900,7 +984,7 @@
             // NEW: Trigger auto-calculations on group selection
             computeDates();
             computeMonthlyDepreciation();
-            updateDepreciationDayState();
+            
 
             // Trigger change event so that validation/progress updates
             form.dispatchEvent(new Event('change', { bubbles: true }));
@@ -946,148 +1030,129 @@
 
         if(months <= 0 || cost <= 0){
             monthlyDepInput.value = '0.00';
+            // refresh GL table display as zero
+            if(typeof updateGlTable === 'function') updateGlTable(0);
             return;
         }
 
         const monthlyDep = cost / months;
         monthlyDepInput.value = monthlyDep.toFixed(2);
+        if(typeof updateGlTable === 'function') updateGlTable(monthlyDep);
+    }
+
+    /**
+     * updateGlTable(monthlyAmount)
+     * Populate the combined GL accounts table with codes, descriptions, types and formatted monthly amounts.
+     */
+    function updateGlTable(monthlyAmount){
+        const assetCodeEl = form.querySelector('#gl_asset_code');
+        const assetTypeEl = form.querySelector('#gl_asset_type');
+        const assetDescEl = form.querySelector('#gl_asset_description');
+        const deprCodeEl = form.querySelector('#gl_depreciation_code');
+        const deprTypeEl = form.querySelector('#gl_depreciation_type');
+        const deprDescEl = form.querySelector('#gl_depreciation_description');
+
+        const assetCodeTd = document.getElementById('gl-table-asset-code');
+        const assetDescTd = document.getElementById('gl-table-asset-desc');
+        const assetTypeTd = document.getElementById('gl-table-asset-type');
+        const assetAmountTd = document.getElementById('gl-table-asset-amount');
+        const deprCodeTd = document.getElementById('gl-table-depr-code');
+        const deprDescTd = document.getElementById('gl-table-depr-desc');
+        const deprTypeTd = document.getElementById('gl-table-depr-type');
+        const deprAmountTd = document.getElementById('gl-table-depr-amount');
+
+        function fmt(n){
+            const num = Number(n || 0);
+            if(isNaN(num) || num === 0) return '0.00';
+            return num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        if(assetCodeTd) assetCodeTd.textContent = assetCodeEl ? (assetCodeEl.value || '—') : '—';
+        if(assetDescTd) assetDescTd.textContent = assetDescEl ? (assetDescEl.value || '—') : '—';
+        if(assetTypeTd) assetTypeTd.textContent = assetTypeEl ? (assetTypeEl.value || '—') : '—';
+        if(assetAmountTd) assetAmountTd.textContent = '₱ ' + fmt(monthlyAmount);
+
+        if(deprCodeTd) deprCodeTd.textContent = deprCodeEl ? (deprCodeEl.value || '—') : '—';
+        if(deprDescTd) deprDescTd.textContent = deprDescEl ? (deprDescEl.value || '—') : '—';
+        if(deprTypeTd) deprTypeTd.textContent = deprTypeEl ? (deprTypeEl.value || '—') : '—';
+        if(deprAmountTd) deprAmountTd.textContent = '₱ ' + fmt(monthlyAmount);
     }
 
     /**
      * computeDates()
-     * Calculate depreciation_start_date and depreciation_end_date
-     * based on: date_received, depreciation_on, depreciation_day, actual_months
+     * Calculate depreciation_end_date based on: depreciation_start_date and actual_months
+     * The user must select `depreciation_start_date`; `date_received` is independent.
      */
     function computeDates(){
-        const dateReceivedInput = form.querySelector('input[name="date_received"]') || form.querySelector('#date_received');
-        const depOnSelect = form.querySelector('select[name="depreciation_on"]') || form.querySelector('#depreciation_on');
-        const depDayInput = form.querySelector('input[name="depreciation_day"]') || form.querySelector('#depreciation_day');
-        const monthsInput = form.querySelector('#actual_months');
         const startDateInput = form.querySelector('input[name="depreciation_start_date"]') || form.querySelector('#depreciation_start_date');
+        const monthsInput = form.querySelector('#actual_months');
         const endDateInput = form.querySelector('input[name="depreciation_end_date"]') || form.querySelector('#depreciation_end_date');
 
-        if(!dateReceivedInput || !depOnSelect || !monthsInput) return;
+        if(!startDateInput || !monthsInput) return;
 
-        const dateReceivedStr = dateReceivedInput.value || '';
-        const depOn = depOnSelect.value || '';
+        const startDateStr = startDateInput.value || '';
         const months = parseInt(monthsInput.value) || 0;
 
-        if(!dateReceivedStr || !depOn || months <= 0){
-            if(startDateInput) startDateInput.value = '';
+        if(!startDateStr || months <= 0){
             if(endDateInput) endDateInput.value = '';
             return;
         }
 
-        // Parse received date
-        const dateReceived = new Date(dateReceivedStr);
-        if(isNaN(dateReceived.getTime())){
-            if(startDateInput) startDateInput.value = '';
+        const startDate = new Date(startDateStr);
+        if(isNaN(startDate.getTime())){
             if(endDateInput) endDateInput.value = '';
             return;
         }
 
-        let startDate = null;
-
-        if(depOn === 'LAST_DAY'){
-            // Last day of the month received
-            startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth() + 1, 0);
-        } else if(depOn === 'FIRST_DAY'){
-            // First day of the month received
-            startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth(), 1);
-        } else if(depOn === 'SPECIFIC_DATE'){
-            // Specific day of the month received
-            const dayStr = depDayInput ? (depDayInput.value || '') : '';
-            const day = parseInt(dayStr) || 1;
-            startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth(), day);
-            // If day is greater than max day in month, use last day of month
-            const lastDayOfMonth = new Date(dateReceived.getFullYear(), dateReceived.getMonth() + 1, 0).getDate();
-            if(day > lastDayOfMonth){
-                startDate = new Date(dateReceived.getFullYear(), dateReceived.getMonth() + 1, 0);
-            }
-        }
-
-        if(!startDate || isNaN(startDate.getTime())){
-            if(startDateInput) startDateInput.value = '';
-            if(endDateInput) endDateInput.value = '';
-            return;
-        }
-
-        // Calculate end date = start + months
         const endDate = addMonths(startDate, months);
 
-        // Set form fields
-        if(startDateInput) startDateInput.value = formatDate(startDate);
         if(endDateInput) endDateInput.value = formatDate(endDate);
     }
-
-    /**
-     * updateDepreciationDayState()
-     * Enable/disable depreciation_day input based on depreciation_on value
-     */
-    function updateDepreciationDayState(){
-        const depOnSelect = form.querySelector('select[name="depreciation_on"]') || form.querySelector('#depreciation_on');
-        const depDayInput = form.querySelector('input[name="depreciation_day"]') || form.querySelector('#depreciation_day');
-
-        if(!depOnSelect || !depDayInput) return;
-
-        const depOn = depOnSelect.value || '';
-
-        if(depOn === 'SPECIFIC_DATE'){
-            depDayInput.disabled = false;
-            depDayInput.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400');
-        } else {
-            depDayInput.disabled = true;
-            depDayInput.value = '';
-            depDayInput.classList.add('disabled:bg-slate-100', 'disabled:text-slate-400');
-        }
-    }
-
+    
     // ─────────────────────────────────────────────────────────
     // ATTACH EVENT LISTENERS FOR AUTO-CALCULATIONS
     // ─────────────────────────────────────────────────────────
 
-    const dateReceivedInput = form.querySelector('input[name="date_received"]') || form.querySelector('#date_received');
-    const depOnSelect = form.querySelector('select[name="depreciation_on"]') || form.querySelector('#depreciation_on');
-    const depDayInput = form.querySelector('input[name="depreciation_day"]') || form.querySelector('#depreciation_day');
+    const dateReceivedInput = form.querySelector('#date_received');
     const costInput = form.querySelector('#asset_acquisition_cost');
+    const startDateInput = form.querySelector('#depreciation_start_date');
+    const monthsInput = form.querySelector('#actual_months');
+    const depDayHidden = form.querySelector('#depreciation_day');
+    const depOnHidden = form.querySelector('#depreciation_on');
 
-    // When date_received changes → recalculate dates
-    if(dateReceivedInput){
-        dateReceivedInput.addEventListener('change', () => {
-            console.log('date_received changed');
+    // 1. ONLY listen to Start Date to calculate the End Date and hidden backend values
+    if(startDateInput){
+        startDateInput.addEventListener('change', () => {
             computeDates();
+            
+            const dateStr = startDateInput.value;
+            if (dateStr && depDayHidden && depOnHidden) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    depDayHidden.value = parseInt(parts[2], 10);
+                    depOnHidden.value = 'SPECIFIC_DATE';
+                }
+            }
         });
     }
 
-    // When depreciation_on changes → recalculate dates + update day state
-    if(depOnSelect){
-        depOnSelect.addEventListener('change', () => {
-            console.log('depreciation_on changed to:', depOnSelect.value);
+    // 2. When actual_months change → recalculate dates and monthly amounts
+    if(monthsInput){
+        monthsInput.addEventListener('change', () => {
             computeDates();
-            updateDepreciationDayState();
-        });
-    }
-
-    // When depreciation_day changes OR input (for real-time) → recalculate dates
-    if(depDayInput){
-        depDayInput.addEventListener('change', () => {
-            console.log('depreciation_day changed to:', depDayInput.value);
-            computeDates();
-        });
-        // Also listen to input for real-time updates
-        depDayInput.addEventListener('input', () => {
-            console.log('depreciation_day input:', depDayInput.value);
-            computeDates();
-        });
-    }
-
-    // When acquisition cost changes → recalculate monthly depreciation
-    if(costInput){
-        costInput.addEventListener('change', () => {
-            console.log('acquisition_cost changed');
             computeMonthlyDepreciation();
         });
     }
+
+    // 3. When acquisition cost changes → recalculate monthly depreciation
+    if(costInput){
+        costInput.addEventListener('change', () => {
+            computeMonthlyDepreciation();
+        });
+    }
+
+    // ABSOLUTELY NO EVENT LISTENER FOR dateReceivedInput IS ADDED HERE.
+    // THEY ARE NOW 100% DISCONNECTED.
 
     showStep(0);
 
@@ -1121,6 +1186,7 @@
             try{ el.dispatchEvent(new Event('input', { bubbles: true })); } catch(e){}
             try{ el.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
         });
+        if(typeof updateGlTable === 'function') updateGlTable(0);
     }
 
     // Observe the modal element and reset when it's hidden

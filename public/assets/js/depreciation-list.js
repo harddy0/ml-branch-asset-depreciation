@@ -1,30 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ==========================================
-    // 1. DYNAMIC FORM UI LOGIC (Specific Date)
-    // ==========================================
-    const depreciationOnSelect = document.getElementById('depreciation_on');
-    const specificDayInput     = document.getElementById('depreciation_day');
-    const specificDayLabel     = document.getElementById('depreciation_day_label');
-
-    if (depreciationOnSelect && specificDayInput) {
-        depreciationOnSelect.addEventListener('change', function () {
-            if (this.value === 'SPECIFIC_DATE') {
-                specificDayInput.disabled = false;
-                specificDayInput.classList.remove('bg-slate-100', 'text-slate-400', 'cursor-not-allowed', 'border-slate-200');
-                specificDayInput.classList.add('border-slate-300', 'focus:ring-2', 'focus:ring-red-500');
-                specificDayInput.setAttribute('required', 'required');
-                if (specificDayLabel) specificDayLabel.innerHTML = 'Specific Day <span class="text-red-500">*</span>';
-            } else {
-                specificDayInput.disabled = true;
-                specificDayInput.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed', 'border-slate-200');
-                specificDayInput.classList.remove('border-slate-300', 'focus:ring-2', 'focus:ring-red-500');
-                specificDayInput.removeAttribute('required');
-                specificDayInput.value = '';
-                if (specificDayLabel) specificDayLabel.innerHTML = 'Specific Day';
-            }
-        });
-    }
+    
 
     // ==========================================
     // 2. LOCATIONS HIERARCHY FETCH & AUTO-FILL
@@ -322,58 +298,33 @@ document.addEventListener('DOMContentLoaded', function () {
     // 4. END DATE AUTO-COMPUTE 
     // ==========================================
 
-    const dateReceivedInput   = document.getElementById('date_received');
     const startDateInput      = document.getElementById('depreciation_start_date'); 
     const endDateInput        = document.getElementById('depreciation_end_date');
     const endDateAutoBadge    = document.getElementById('end_date_auto_badge');
-    
-    const depOnSelect         = document.getElementById('depreciation_on');
-    const depDayInput         = document.getElementById('depreciation_day');
+    const depDayHidden        = document.getElementById('depreciation_day');
+    const depOnHidden         = document.getElementById('depreciation_on');
 
     let endDateManuallySet = false;
     let currentActualMonths = 0;
 
     function computeDates() {
-        if (!dateReceivedInput || !dateReceivedInput.value) return;
+        // ONLY calculate end date based on start date + actual months
+        // We absolutely do NOT touch the start date here anymore.
+        if (!startDateInput || !startDateInput.value) return;
 
-        const recvDate = new Date(dateReceivedInput.value + 'T00:00:00');
-        if (isNaN(recvDate)) return;
-
-        const depOn = depOnSelect ? depOnSelect.value : 'LAST_DAY';
-        let specificDay = (depDayInput && !depDayInput.disabled && depDayInput.value) ? parseInt(depDayInput.value) : 1;
-
-        let startYear = recvDate.getFullYear();
-        let startMonth = recvDate.getMonth();
-        let startDateObj;
-
-        if (depOn === 'LAST_DAY') {
-            startDateObj = new Date(startYear, startMonth + 1, 0); 
-        } else if (depOn === 'FIRST_DAY') {
-            startDateObj = new Date(startYear, startMonth, 1); 
-        } else {
-            let lastDayOfMonth = new Date(startYear, startMonth + 1, 0).getDate();
-            let clampedDay = Math.min(specificDay, lastDayOfMonth);
-            startDateObj = new Date(startYear, startMonth, clampedDay);
-        }
-
-        if (startDateInput) {
-            startDateInput.value = formatDate(startDateObj);
-        }
+        const startDateObj = new Date(startDateInput.value + 'T00:00:00');
+        if (isNaN(startDateObj)) return;
 
         if (!endDateManuallySet && currentActualMonths > 0) {
             let endYear = startDateObj.getFullYear();
             let endMonth = startDateObj.getMonth() + currentActualMonths;
-            let endDateObj;
-
-            if (depOn === 'LAST_DAY') {
-                endDateObj = new Date(endYear, endMonth + 1, 0);
-            } else if (depOn === 'FIRST_DAY') {
-                endDateObj = new Date(endYear, endMonth, 1);
-            } else {
-                let lastDayOfEndMonth = new Date(endYear, endMonth + 1, 0).getDate();
-                let endClampedDay = Math.min(specificDay, lastDayOfEndMonth);
-                endDateObj = new Date(endYear, endMonth, endClampedDay);
-            }
+            
+            // Calculate end date clamping to the exact specific day
+            let specificDay = startDateObj.getDate();
+            let lastDayOfEndMonth = new Date(endYear, endMonth + 1, 0).getDate();
+            let endClampedDay = Math.min(specificDay, lastDayOfEndMonth);
+            
+            let endDateObj = new Date(endYear, endMonth, endClampedDay);
 
             if (endDateInput) {
                 endDateInput.value = formatDate(endDateObj);
@@ -400,9 +351,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (dateReceivedInput) dateReceivedInput.addEventListener('change', computeDates);
-    if (depOnSelect) depOnSelect.addEventListener('change', computeDates);
-    if (depDayInput) depDayInput.addEventListener('input', computeDates);
+    // ONLY listen to the Start Date changing. Date Received is totally ignored.
+    if (startDateInput) {
+        startDateInput.addEventListener('change', function() {
+            computeDates();
+            
+            // Extract the day to keep the backend happy
+            const dateStr = startDateInput.value;
+            if (dateStr && depDayHidden && depOnHidden) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    depDayHidden.value = parseInt(parts[2], 10);
+                    depOnHidden.value = 'SPECIFIC_DATE';
+                }
+            }
+        });
+    }
 
     // ==========================================
     // 5. RESET FORM when modal is closed

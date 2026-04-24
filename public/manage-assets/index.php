@@ -168,14 +168,15 @@ $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
                     <tr class="border-b-2 border-slate-200 bg-[#ce2216]">
                         <th class="py-2.5 pl-5 pr-3 font-bold text-white uppercase tracking-wider text-xs">Codes</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs">Branches</th>
-                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs">Group Code</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs">Asset Group</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs w-full">Description</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-right">Cost</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-right">Depreciation</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-right">Accu. Dep.</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-center">Life</th>
                         <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-right">Book Value</th>
-                        <th class="py-2.5 pl-3 pr-5 font-bold text-white uppercase tracking-wider text-xs text-center">Date Gen.</th>
+                        <th class="py-2.5 px-3 font-bold text-white uppercase tracking-wider text-xs text-center">Start Date</th>
+                        <th class="py-2.5 pl-3 pr-5 font-bold text-white uppercase tracking-wider text-xs text-center">End Date</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody" class="divide-y divide-slate-100 font-medium text-slate-700">
@@ -184,14 +185,15 @@ $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
                         <tr class="asset-row cursor-pointer" data-id="<?= (int)$row['asset_id'] ?>" data-asset='<?= $payload ?>'>
                             <td class="py-0 pl-5 pr-3 text-xs text-slate-900"><?= htmlspecialchars($row['system_asset_code']) ?></td>
                             <td class="py-0 px-3 text-xs"><?= htmlspecialchars($row['branch_name']) ?></td>
-                            <td class="py-0 px-3 text-xs"><?= htmlspecialchars($row['group_code'] ?? '') ?></td>
+                            <td class="py-0 px-3 text-xs"><?= htmlspecialchars($row['group_name'] ?? '') ?></td>
                             <td class="py-0 px-3 truncate max-w-[200px] text-xs" title="<?= htmlspecialchars($row['description']) ?>"><?= htmlspecialchars($row['description']) ?></td>
                             <td class="py-0 px-3 text-right font-mono text-xs"><?= number_format($row['acquisition_cost'], 2) ?></td>
                             <td class="py-0 px-3 text-right font-mono text-slate-900"><?= number_format($row['period_depreciation_expense'], 2) ?></td>
                             <td class="py-0 px-3 text-right font-mono text-xs"><?= number_format($row['accumulated_depreciation'], 2) ?></td>
                             <td class="py-0 px-3 text-center font-bold text-xs"><?= $row['remaining_life'] ?></td>
                             <td class="py-0 px-3 text-right font-mono text-xs text-slate-900"><?= number_format($row['book_value'], 2) ?></td>
-                            <td class="py-0 pl-3 pr-5 text-center text-slate-500 text-xs"><?= date('M j, Y', strtotime($row['period_date'])) ?></td>
+                            <td class="py-0 px-3 text-center text-slate-500 text-xs"><?= !empty($row['depreciation_start_date']) ? date('M j, Y', strtotime($row['depreciation_start_date'])) : '-' ?></td>
+                            <td class="py-0 pl-3 pr-5 text-center text-slate-500 text-xs"><?= !empty($row['depreciation_end_date']) ? date('M j, Y', strtotime($row['depreciation_end_date'])) : '-' ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

@@ -201,7 +201,7 @@ function buildReviewModal(data) {
                 + 'OK ' + escHtml(String(row.row_num)) + '</span></td>';
         }
 
-        tr.innerHTML = checkCell + badgeCell
+            tr.innerHTML = checkCell + badgeCell
             + cell(row.serial_number || '—')
             + cell(row.description || '—')
             + cell(row.reference_no || '—')
@@ -216,7 +216,6 @@ function buildReviewModal(data) {
             + cell(row.cost_center_code || '—')
             + cell(row.branch_name || '—')
             + cell(row.item_code || '—')
-            + cell(formatMoney(row.cost_unit), 'text-right')
             + cell(row.depreciation_start_date || '—')
             + cell(row.depreciation_on || 'LAST_DAY')
             + cell(row.depreciation_day || 1);
@@ -399,7 +398,6 @@ function _populateEditForm(row) {
     _setVal('depr-f-date-received', row.date_received);
     _setVal('depr-f-depr-start',   row.depreciation_start_date);
     _setVal('depr-f-acq-cost',     row.acquisition_cost);
-    _setVal('depr-f-cost-unit',    row.cost_unit || row.acquisition_cost);
     _setVal('depr-f-monthly-dep',  row.monthly_depreciation);
     _setVal('depr-f-quantity',     row.quantity || 1);
     _setVal('depr-f-branchcode',   row.branch_code || '');
@@ -764,7 +762,6 @@ function saveDeprEdit() {
     var dateReceived      = document.getElementById('depr-f-date-received')?.value  || '';
     var deprStart         = document.getElementById('depr-f-depr-start')?.value     || '';
     var acqCost           = parseFloat(document.getElementById('depr-f-acq-cost')?.value  || 0);
-    var costUnit          = parseFloat(document.getElementById('depr-f-cost-unit')?.value || 0);
     var monthlyDep        = parseFloat(document.getElementById('depr-f-monthly-dep')?.value || 0);
     var quantity          = parseInt(document.getElementById('depr-f-quantity')?.value || 1, 10);
     var deprOn            = document.getElementById('depr-f-depr-on')?.value        || 'LAST_DAY';
@@ -832,7 +829,6 @@ function saveDeprEdit() {
     row.date_received           = dateReceived;
     row.depreciation_start_date = deprStart;
     row.acquisition_cost        = acqCost;
-    row.cost_unit               = costUnit > 0 ? costUnit : acqCost;
     row.monthly_depreciation    = monthlyDep;
     row.quantity                = quantity;
     row.depreciation_on         = deprOn;

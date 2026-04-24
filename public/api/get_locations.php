@@ -108,6 +108,8 @@ try {
                 'label'            => $branchName,
                 'cost_center_code' => (string)($row['cost_center_code'] ?? ''),
                 'branch_code'      => (string)($row['branch_code'] ?? ($row['cost_center_code'] ?? '')),
+                'branch_id'        => (string)($row['branch_id'] ?? ''),
+                'corporate_name'   => (string)($row['corporate_name'] ?? ''),
                 'zone_code'        => (string)($row['zone_code'] ?? ''),
                 'main_zone_code'   => (string)($row['main_zone_code'] ?? ''),
                 'region_code'      => (string)($row['region_code'] ?? ''),

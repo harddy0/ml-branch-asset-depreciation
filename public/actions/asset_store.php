@@ -45,6 +45,9 @@ try {
         'region_code'             => substr(trim((string)($_POST['region_code'] ?? '')), 0, 100) ?: null,
         'cost_center_code'        => trim((string)($_POST['cost_center_code'] ?? '')) ?: null,
         'branch_name'             => trim((string)($_POST['branch_name'] ?? '')) ?: null,
+        'bos_branch_code'         => trim((string)($_POST['bos_branch_code'] ?? '')) ?: null,
+        'kpx_branch_id'           => trim((string)($_POST['kpx_branch_id'] ?? '')) ?: null,
+        'corporate_name'          => trim((string)($_POST['corporate_name'] ?? '')) ?: null,
         'asset_name'              => trim((string)($_POST['asset_name'] ?? $_POST['description'] ?? '')),
         'months'                  => (int)($_POST['months'] ?? 0),
         'description'             => trim((string)($_POST['description'] ?? '')),
@@ -58,7 +61,6 @@ try {
         'depreciation_on'         => $_POST['depreciation_on'] ?? 'LAST_DAY',
         'depreciation_day'        => isset($_POST['depreciation_day']) && $_POST['depreciation_day'] !== '' ? (int)$_POST['depreciation_day'] : null,
         'acquisition_cost'        => $_POST['acquisition_cost'] ?? 0,
-        'cost_unit'               => $_POST['cost_unit'] ?? 0,
         'status'                  => $_POST['status'] ?? 'ACTIVE'
     ];
 
