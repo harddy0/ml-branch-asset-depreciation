@@ -505,7 +505,7 @@ class AssetService
         $perPage = max(1, min(100, (int)($options['per_page'] ?? 50)));
 
         $search     = trim((string)($options['search'] ?? ''));
-        $groupId    = (int)($options['asset_group_id'] ?? 0);   // renamed from group_code
+        $groupId    = (int)($options['asset_group_id'] ?? 0);
         $branchName = trim((string)($options['branch_name'] ?? ''));
         $dateFrom   = trim((string)($options['date_from'] ?? ''));
         $dateTo     = trim((string)($options['date_to'] ?? ''));
@@ -533,7 +533,7 @@ class AssetService
         $where  = [];
         $params = [];
 
-        // Status filter — only apply when explicitly selected
+        // Status filter
         if ($status !== '') {
             $where[]           = 'a.status = :status';
             $params[':status'] = $status;
@@ -569,22 +569,24 @@ class AssetService
             $whereSql = 'WHERE ' . implode(' AND ', $where);
         }
 
+        // OPTIMIZATION 1: Count total rows using ONLY the indexed assets table
+        $countSql = "SELECT COUNT(a.id) FROM assets a {$whereSql}";
+        $countStmt = $this->db->prepare($countSql);
+        foreach ($params as $k => $v) $countStmt->bindValue($k, $v);
+        $countStmt->execute();
+        
+        $total      = (int)$countStmt->fetchColumn();
+        $totalPages = max(1, (int)ceil($total / $perPage));
+        $page       = min($page, $totalPages);
+        $offset     = ($page - 1) * $perPage;
+
+        // OPTIMIZATION 2: Only apply heavy joins to the specific page of data retrieved
         $baseJoin = '
             FROM assets a
             LEFT JOIN asset_groups ag ON ag.id = a.asset_group_id
             LEFT JOIN users u ON u.id = a.created_by
         ';
 
-        // Total count
-        $countStmt = $this->db->prepare("SELECT COUNT(*) {$baseJoin} {$whereSql}");
-        foreach ($params as $k => $v) $countStmt->bindValue($k, $v);
-        $countStmt->execute();
-        $total      = (int)$countStmt->fetchColumn();
-        $totalPages = max(1, (int)ceil($total / $perPage));
-        $page       = min($page, $totalPages);
-        $offset     = ($page - 1) * $perPage;
-
-        // Data rows
         $dataSql = "
             SELECT
                 a.id,
@@ -617,17 +619,9 @@ class AssetService
         $dataStmt->execute();
         $rows = $dataStmt->fetchAll(\PDO::FETCH_ASSOC);
 
-        // Distinct branches for filter dropdown (respects current filters except branch)
-        $branchWhere  = array_filter($where, fn($c) => strpos($c, 'branch_name') === false);
-        $branchParams = array_filter($params, fn($k) => $k !== ':branch_name', ARRAY_FILTER_USE_KEY);
-
-        $branchWhere[] = "a.branch_name IS NOT NULL AND a.branch_name <> ''";
-        $branchSql     = "SELECT DISTINCT a.branch_name {$baseJoin} WHERE " . implode(' AND ', $branchWhere) . ' ORDER BY a.branch_name ASC';
-
-        $branchStmt = $this->db->prepare($branchSql);
-        foreach ($branchParams as $k => $v) $branchStmt->bindValue($k, $v);
-        $branchStmt->execute();
-        $branches = $branchStmt->fetchAll(\PDO::FETCH_COLUMN);
+        // OPTIMIZATION 3: Removed the heavy dynamic DISTINCT branch subquery.
+        // The frontend will now use the master location API for branch lists.
+        $branches = [];
 
         return [
             'data'       => $rows,

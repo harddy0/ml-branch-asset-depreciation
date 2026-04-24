@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     
 
-    // ==========================================
+// ==========================================
     // 2. LOCATIONS HIERARCHY FETCH & AUTO-FILL
     // ==========================================
     const mainZoneSelect  = document.getElementById('main_zone_code');
@@ -21,19 +21,36 @@ document.addEventListener('DOMContentLoaded', function () {
         ? '/public'
         : (appBase.endsWith('/public') ? appBase : appBase + '/public');
 
-    const locationsApiUrl    = publicBase + '/api/get_locations.php';
+    // OPTIMIZATION: Use cascaded API (?level=branches) to reduce payload by ~80%
+    const locationsApiUrl    = publicBase + '/api/get_locations.php?level=branches';
     const groupDetailsApiUrl = publicBase + '/api/get_group_details.php';
 
     fetch(locationsApiUrl)
         .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
         .then(text => JSON.parse(text.replace(/^\uFEFF/, '').trim()))
-        .then(data => {
-            if (data.success && data.branches) {
-                allBranches = data.branches;
+        .then(res => {
+            // The cascaded API returns the data array in res.data, not res.branches
+            if (res.success && res.data) {
+                // Map the lightweight payload to match the expected structure
+                allBranches = res.data.map(b => ({
+                    branch_name: b.value,
+                    cost_center_code: b.cost_center_code,
+                    main_zone_code: b.main_zone_code,
+                    zone_code: b.zone_code,
+                    region_code: b.region_code,
+                    region: b.region,
+                    branch_code: b.branch_code
+                }));
+                
                 populateDropdown(mainZoneSelect,   [], 'Auto');
                 populateDropdown(zoneSelect,     [], 'Auto');
                 populateDropdown(regionSelect,   [], 'Auto');
                 populateBranchDropdown(allBranches);
+                
+                // Also populate the global list filter dropdown with this master list immediately
+                if (typeof populateBranchFilter === 'function') {
+                    populateBranchFilter(allBranches.map(b => b.branch_name));
+                }
             }
         })
         .catch(err => console.error('Location fetch error:', err));
@@ -794,7 +811,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 const rows = Array.isArray(res.data) ? res.data : [];
-                const branches = Array.isArray(res.branches) ? res.branches : [];
+                // We no longer extract res.branches here
                 const pagination = res.pagination || null;
 
                 if (res.sort && res.sort.sort_by) {
@@ -805,7 +822,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     listState.page = parseInt(pagination.page, 10) || listState.page;
                 }
 
-                populateBranchFilter(branches);
+                // 🛑 REMOVED: populateBranchFilter(branches); 
+                // We let the Master Location API handle the dropdown purely on initial page load now.
+
                 if (dateFromInput) {
                     const v = (res.filters && res.filters.date_from) ? res.filters.date_from : (listState.date_from || '');
                     dateFromInput.value = v || '';
@@ -821,6 +840,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     statusFilter.value = sv || '';
                     listState.status = sv || '';
                 }
+                
                 renderListRows(rows);
                 updatePaginationUi(pagination);
                 updateSortIndicators();
