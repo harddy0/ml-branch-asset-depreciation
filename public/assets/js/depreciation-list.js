@@ -30,9 +30,9 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
             if (data.success && data.branches) {
                 allBranches = data.branches;
-                populateDropdown(mainZoneSelect,   [], 'Enter branch name or branch code...');
-                populateDropdown(zoneSelect,     [], 'Enter branch name or branch code...');
-                populateDropdown(regionSelect,   [], 'Enter branch name or branch code...');
+                populateDropdown(mainZoneSelect,   [], 'Auto');
+                populateDropdown(zoneSelect,     [], 'Auto');
+                populateDropdown(regionSelect,   [], 'Auto');
                 populateBranchDropdown(allBranches);
             }
         })
