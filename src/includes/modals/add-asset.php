@@ -29,7 +29,7 @@
 
                         <div class="flex flex-col items-center z-10">
                             <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold" data-step-index="1">2</div>
-                            <div class="text-xs font-semibold mt-2">Details</div>
+                            <div class="text-xs font-semibold mt-2">Classification</div>
                         </div>
 
                         <div class="flex-1 mx-4 h-1 bg-slate-200 rounded transform -translate-y-2" data-bar-index="1"></div>
@@ -54,7 +54,7 @@
                 </div>
 
                 <!-- Step 2 -->
-                <div class="step hidden m-[5%] p-[3%] border border-slate-200 shadow-md rounded-md" data-step="2">
+                <div class="step hidden m-[10%] border border-slate-200 shadow-md rounded-md" data-step="2">
                     <?php include __DIR__ . '/Add Asset Section/section-details.php'; ?>
                 </div>
 
