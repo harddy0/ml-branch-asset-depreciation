@@ -1,5 +1,5 @@
 <section>
-    <h3 class="text-xs font-black text-[#ce1126] uppercase tracking-widest border-b border-slate-200 pb-2 mb-4">
+    <h3 class="text-xs text-center font-black text-[#ce1126] uppercase tracking-widest pb-2 mb-2">
         Depreciation Schedule
     </h3>
 
