@@ -646,9 +646,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             return `
                 <tr class="depr-asset-row border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${rowBg}" data-asset="${payload}">
-                    <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(serialNo)}</td>
+                    <td class="px-6 py-1 text-center text-xs font-mono uppercase text-slate-700 whitespace-nowrap">${escapeHtml(serialNo)}</td>
                     <td class="px-6 py-1 text-left text-xs font-semibold text-slate-700 whitespace-nowrap">${escapeHtml(description)}</td>
-                    <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(itemCode)}</td>
+                    <td class="px-6 py-1 text-center text-xs font-mono uppercase text-slate-700 whitespace-nowrap">${escapeHtml(itemCode)}</td>
                     <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(groupName)}</td>
                     <td class="px-6 py-1 text-left text-xs text-slate-700 whitespace-nowrap">
                         <div class="font-semibold">${escapeHtml(branch)}</div>
