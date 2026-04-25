@@ -653,9 +653,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     <td class="px-6 py-1 text-left text-xs text-slate-700 whitespace-nowrap">
                         <div class="font-semibold">${escapeHtml(branch)}</div>
                     </td>
-                    <td class="px-6 py-1 text-left text-xs text-slate-700 whitespace-nowrap">
-                        <div class="text-[11px] text-slate-500">${escapeHtml(uploadedBy)}</div>
-                    </td>
                     <td class="px-6 py-1 text-xs font-mono text-slate-700 whitespace-nowrap">
                         <div class="font-semibold currency-cell"><span class="currency-symbol">₱</span><span class="amount">${acquisitionCost}</span></div>
                     </td>
@@ -669,6 +666,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     </td>
                     <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(endDate)}</td>
                     <td class="px-6 py-1 text-center text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(dateAdded)}</td>
+                    <td class="px-6 py-1 text-left text-xs text-slate-700 whitespace-nowrap">
+                        <div class="text-[11px] uppercase text-slate-500">${escapeHtml(uploadedBy)}</div>
+                    </td>
                 </tr>
             `;
         }).join('');

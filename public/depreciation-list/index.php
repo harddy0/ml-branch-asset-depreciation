@@ -121,11 +121,11 @@ require_once __DIR__ . '/../../public/actions/load_depreciation_list_page.php';
                 <col style="width:12%" />
                 <col style="width:12%" />
                 <col style="width:6%" />
-                <col style="width:10%" />
                 <col style="width:8%" />
                 <col style="width:7%" />
                 <col style="width:4%" />
                 <col style="width:6%" />
+                <col style="width:10%" />
             </colgroup>
             <thead>
                 <tr class="bg-[#ce2216] border-b border-slate-200">
@@ -144,9 +144,6 @@ require_once __DIR__ . '/../../public/actions/load_depreciation_list_page.php';
                     <th class="text-left text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
                         <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="branch_name">Branch <span class="depr-sort-indicator opacity-70">↕</span></button>
                     </th>
-                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
-                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="uploaded_by">Uploaded by <span class="depr-sort-indicator opacity-70">↕</span></button>
-                    </th>
                     <th class="text-right text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
                         <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="acquisition_cost">Amount <span class="depr-sort-indicator opacity-70">↕</span></button>
                     </th>
@@ -161,6 +158,9 @@ require_once __DIR__ . '/../../public/actions/load_depreciation_list_page.php';
                     </th>
                     <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
                         <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="created_at">Date Added <span class="depr-sort-indicator opacity-70">↕</span></button>
+                    </th>
+                    <th class="text-center text-xs font-black text-white uppercase tracking-widest px-6 py-2 whitespace-nowrap">
+                        <button type="button" class="depr-sort inline-flex items-center gap-1" data-sort="uploaded_by">Uploaded by <span class="depr-sort-indicator opacity-70">↕</span></button>
                     </th>
                 </tr>
             </thead>
