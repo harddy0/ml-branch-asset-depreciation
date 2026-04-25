@@ -216,7 +216,7 @@ class LocationMasterService {
                 return null;
             }
 
-            if (count($matches) === 1) {
+            if (count($matches) === 1) {                      
                 $m = $matches[0];
                 return ['code' => $m['region_code'], 'description' => $m['region_description'] ?? ''];
             }
@@ -231,4 +231,126 @@ class LocationMasterService {
             return null;
         }
     }
+
+    /**
+     * Resolves the best possible location data for the import process.
+     * 1. Tries exact Cost Center match.
+     * 2. Falls back to fuzzy Branch Name match.
+     * 3. Independently fuzzy matches the Region if branch lookup fails.
+     */
+    public function resolveImportLocation(string $costCenter, string $branchName, string $regionStr): array {
+        $this->checkConnection();
+
+        $result = [
+            'main_zone_code'   => '',
+            'zone_code'        => '',
+            'region_code'      => '',
+            'branch_name'      => '',
+            'cost_center_code' => '',
+            'branch_code'      => '',
+            'bos_branch_code'  => '',
+            'kpx_branch_id'    => '',
+            'corporate_name'   => '',
+            'matched_by'       => 'none',
+            'errors'           => []
+        ];
+
+        $ccClean = trim($costCenter);
+        $bnClean = trim($branchName);
+        
+        // 1. Strict Cost Center Match
+        if ($ccClean !== '' && preg_match('/^\d{4}-\d{3}$/', $ccClean)) {
+            // FIX: explicitly selecting b.region_code instead of b.region
+            $stmt = $this->dbMaster->prepare(
+                "SELECT b.cost_center, b.code as branch_code, b.branch_id, b.corporate_name, b.branch_name, b.region_code, r.zone_code, z.main_zone_code 
+                 FROM branch_profile b
+                 LEFT JOIN region_masterfile r ON b.region_code = r.region_code
+                 LEFT JOIN zone_masterfile z ON r.zone_code = z.zone_code
+                 WHERE b.cost_center = :cc LIMIT 1"
+            );
+            $stmt->execute([':cc' => $ccClean]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            if ($row) {
+                $result['main_zone_code']   = $row['main_zone_code'] ?? '';
+                $result['zone_code']        = $row['zone_code'] ?? '';
+                
+                // Now perfectly assigns the Code instead of the Name
+                $result['region_code']      = $row['region_code'] ?? ''; 
+                
+                $result['branch_name']      = $row['branch_name'] ?? '';
+                $result['cost_center_code'] = $row['cost_center'] ?? '';
+                $result['branch_code']      = $row['branch_code'] ?? $row['cost_center'];
+                
+                $result['bos_branch_code']  = $row['branch_code'] ?: ($row['zone_code'] ?? '');
+                $result['kpx_branch_id']    = $row['branch_id'] ?? '';
+                $result['corporate_name']   = $row['corporate_name'] ?? '';
+                
+                $result['matched_by']       = 'cost_center';
+                return $result;
+            }
+        }
+
+        // 2. Fuzzy Branch Match (If CC fails or is empty)
+        if ($bnClean !== '') {
+            // FIX: explicitly selecting b.region_code instead of b.region
+            $stmt = $this->dbMaster->query(
+                "SELECT b.cost_center, b.code as branch_code, b.branch_id, b.corporate_name, b.branch_name, b.region_code, r.zone_code, z.main_zone_code 
+                 FROM branch_profile b
+                 LEFT JOIN region_masterfile r ON b.region_code = r.region_code
+                 LEFT JOIN zone_masterfile z ON r.zone_code = z.zone_code"
+            );
+            $branches = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            
+            $bestMatch = null;
+            $highestPct = 0;
+            $target = strtolower(preg_replace('/[^a-z0-9]/i', '', $bnClean));
+
+            foreach ($branches as $b) {
+                $candidate = strtolower(preg_replace('/[^a-z0-9]/i', '', $b['branch_name']));
+                similar_text($target, $candidate, $pct);
+                if ($pct > $highestPct) {
+                    $highestPct = $pct;
+                    $bestMatch = $b;
+                }
+            }
+
+            if ($highestPct >= 80 && $bestMatch) {
+                $result['main_zone_code']   = $bestMatch['main_zone_code'] ?? '';
+                $result['zone_code']        = $bestMatch['zone_code'] ?? '';
+                
+                // Now perfectly assigns the Code instead of the Name
+                $result['region_code']      = $bestMatch['region_code'] ?? ''; 
+                
+                $result['branch_name']      = $bestMatch['branch_name'] ?? '';
+                $result['cost_center_code'] = $bestMatch['cost_center'] ?? '';
+                $result['branch_code']      = $bestMatch['branch_code'] ?? $bestMatch['cost_center'];
+                
+                $result['bos_branch_code']  = $bestMatch['branch_code'] ?: ($bestMatch['zone_code'] ?? '');
+                $result['kpx_branch_id']    = $bestMatch['branch_id'] ?? '';
+                $result['corporate_name']   = $bestMatch['corporate_name'] ?? '';
+
+                $result['matched_by']       = 'fuzzy_branch';
+                return $result;
+            }
+        }
+
+        // 3. Independent Fuzzy Region Match
+        if (trim($regionStr) !== '') {
+            $regionMatch = $this->findByCodeOrDescription($regionStr);
+            if ($regionMatch && !isset($regionMatch['ambiguous'])) {
+                $result['region_code'] = $regionMatch['code'];
+                $result['matched_by']  = 'fuzzy_region_only';
+            } else {
+                $result['errors'][] = "Could not definitively resolve Region '{$regionStr}'.";
+            }
+        }
+
+        if ($result['matched_by'] === 'none') {
+            $result['errors'][] = "Branch/Cost Center could not be verified in Master Data.";
+        }
+
+        return $result;
+    }
+
 }

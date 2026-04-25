@@ -1,114 +1,71 @@
-<!-- src/includes/modals/import-review.php-->
-<div id="modal-import-review"
-     class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl animate-fadeIn flex flex-col"
-         style="max-height:92vh">
-
-        <!-- Header-->
-        <div class="flex items-center justify-between px-7 py-2 border-b border-slate-100 shrink-0">
-            <div class="flex items-center gap-4">
+<div id="modal-import-review" class="fixed inset-0 z-[100] hidden">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeImportReview()"></div>
+    <div class="absolute inset-4 md:inset-10 flex items-center justify-center pointer-events-none">
+        
+        <div class="bg-white rounded-2xl shadow-2xl w-full h-full max-w-screen-2xl flex flex-col pointer-events-auto overflow-hidden">
+            
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50 shrink-0">
                 <div>
-                    <h2 class="text-md text-slate-800 uppercase tracking-wide">Import Review</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">
-                        <span id="review-summary-ok"
-                              class="font-bold text-green-600"></span>
-                        <span id="review-summary-err"
-                              class="font-bold text-red-600 ml-1"></span>
-                    </p>
+                    <h3 class="text-lg font-bold text-slate-800">Review Import Data</h3>
+                    <p class="text-sm font-medium text-slate-500 mt-0.5">Please review the parsed rows before confirming insertion.</p>
+                </div>
+                <button type="button" onclick="closeImportReview()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div id="review-error-note" class="hidden shrink-0 bg-red-50 px-6 py-3 border-b border-red-100 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+                <p id="review-error-note-text" class="text-sm font-semibold text-red-800"></p>
+            </div>
+
+            <div class="flex-1 overflow-auto bg-slate-50/50">
+                <table class="w-full text-left border-collapse min-w-max">
+                    <thead class="sticky top-0 z-10 bg-white shadow-sm ring-1 ring-slate-100">
+                        <tr>
+                            <th class="px-3 py-3 w-10 text-center border-b border-slate-200">
+                                <input type="checkbox" id="review-select-all" class="w-3.5 h-3.5 rounded border-slate-300 text-[#ce1126] focus:ring-red-200">
+                            </th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Status</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Serial No</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Description</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Ref No</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Qty</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Property</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">GL Group</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 text-right">Acq. Cost</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Date Rec.</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Main Zone</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Sub-Zone</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Region</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Cost Center</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Branch</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Item Code</th>
+                            <th class="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">Depr. Start</th>
+                        </tr>
+                    </thead>
+                    <tbody id="review-tbody" class="text-sm divide-y divide-slate-100">
+                        </tbody>
+                </table>
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-100 bg-white flex items-center justify-between shrink-0">
+                <div class="flex flex-col">
+                    <span id="review-summary-ok" class="text-sm font-bold text-green-600">0 row(s) ready</span>
+                    <span id="review-summary-err" class="text-[11px] font-semibold text-slate-400 mt-0.5"></span>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeImportReview()" class="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                    <button type="button" id="btn-confirm-import" onclick="confirmImport()" disabled class="px-6 py-2.5 text-sm font-bold text-white bg-[#ce1126] hover:bg-[#a80e1f] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-colors flex items-center gap-2">
+                        <span>Confirm Import</span>
+                    </button>
                 </div>
             </div>
-            <button onclick="closeImportReview()"
-                    class="p-2 hover:bg-slate-100 rounded-lg transition-colors shrink-0">
-                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
 
-        <!-- Legend-->
-        <div class="flex items-center gap-6 px-7 py-3 bg-white border-b border-slate-100 text-xs font-semibold text-slate-500 shrink-0">
-            <span class="flex items-center gap-1.5">
-                <span class="w-3 h-3 rounded-full bg-green-400 inline-block"></span>
-                Valid row
-            </span>
-            <span class="flex items-center gap-1.5">
-                <span class="w-3 h-3 rounded-full bg-red-400 inline-block"></span>
-                Row has errors — skipped
-            </span>
-            <span class="flex items-center gap-1.5">
-                <span class="w-3 h-3 rounded-full bg-orange-400 inline-block"></span>
-                Duplicate — already exists in system
-            </span>
-        </div>
-
-        <!-- Table-->
-        <div class="overflow-auto flex-1 px-2">
-            <table class="w-full text-xs border-separate border-spacing-0 min-w-[900px]">
-                <thead class="sticky top-0 z-10">
-                    <tr class="bg-[#ce2216]">
-                        <th class="text-center text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">
-                            <input type="checkbox" id="review-select-all" class="w-3.5 h-3.5 rounded border-slate-300 text-[#ce1126] focus:ring-red-200">
-                        </th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Status</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Serial Number</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Asset Description</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Reference Number (Opt)</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Quantity</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Property Type</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Asset Group</th>
-                        <th class="text-right text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Acquisition Cost</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Date Received</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Main Zone</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Sub-Zone</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Region</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Cost Center</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Branch</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Item Code (Opt)</th>
-                        
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Depreciation Start Date (Opt)</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Depreciation On</th>
-                        <th class="text-left text-[10px] font-black text-white uppercase tracking-widest px-3 py-3 border-b border-slate-200 whitespace-nowrap">Depreciation Day</th>
-                    </tr>
-                </thead>
-                <tbody id="review-tbody">
-                    <!-- Populated by JS-->
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Footer-->
-        <div class="px-7 py-5 border-t border-slate-100 shrink-0 flex items-center justify-between bg-white rounded-b-2xl">
-            <div id="review-error-note" class="hidden text-xs font-semibold text-red-600 flex items-center gap-2">
-                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span id="review-error-note-text"></span>
-            </div>
-            <div class="flex gap-3 ml-auto">
-                <button onclick="closeImportReview()"
-                        class="px-6 py-2.5 border-2 border-slate-200 text-slate-600 font-black text-xs
-                               uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-colors">
-                    Cancel
-                </button>
-                <button id="btn-confirm-import"
-                        onclick="confirmImport()"
-                        class="px-8 py-2.5 bg-[#ce1126] hover:bg-red-700 text-white font-black text-xs
-                               uppercase tracking-widest rounded-xl shadow-lg shadow-red-200
-                               hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0">
-                    Save
-                </button>
-            </div>
         </div>
     </div>
 </div>
-
-<!-- Hidden form for the commit phase -->
-<form id="import-commit-form"
-      method="POST"
-      action="<?= BASE_URL ?>/public/actions/asset_import_process.php"
-      class="hidden">
-    <input type="hidden" name="action" value="commit">
-    <input type="hidden" name="selected_rows" id="selected-rows" value="">
-    <input type="hidden" name="edited_rows"   id="edited-rows"   value="">
-</form>
