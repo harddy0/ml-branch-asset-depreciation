@@ -248,6 +248,9 @@ class LocationMasterService {
             'branch_name'      => '',
             'cost_center_code' => '',
             'branch_code'      => '',
+            'bos_branch_code'  => '',
+            'kpx_branch_id'    => '',
+            'corporate_name'   => '',
             'matched_by'       => 'none',
             'errors'           => []
         ];
@@ -257,11 +260,11 @@ class LocationMasterService {
         
         // 1. Strict Cost Center Match
         if ($ccClean !== '' && preg_match('/^\d{4}-\d{3}$/', $ccClean)) {
-            // Using maa_region to align with the master data structure
+            // FIX: explicitly selecting b.region_code instead of b.region
             $stmt = $this->dbMaster->prepare(
-                "SELECT b.cost_center, b.code as branch_code, b.branch_name, b.region, r.zone_code, z.main_zone_code 
+                "SELECT b.cost_center, b.code as branch_code, b.branch_id, b.corporate_name, b.branch_name, b.region_code, r.zone_code, z.main_zone_code 
                  FROM branch_profile b
-                 LEFT JOIN maa_region r ON b.region = r.region_code OR b.region_code = r.region_code
+                 LEFT JOIN region_masterfile r ON b.region_code = r.region_code
                  LEFT JOIN zone_masterfile z ON r.zone_code = z.zone_code
                  WHERE b.cost_center = :cc LIMIT 1"
             );
@@ -271,10 +274,18 @@ class LocationMasterService {
             if ($row) {
                 $result['main_zone_code']   = $row['main_zone_code'] ?? '';
                 $result['zone_code']        = $row['zone_code'] ?? '';
-                $result['region_code']      = $row['region'] ?? '';
+                
+                // Now perfectly assigns the Code instead of the Name
+                $result['region_code']      = $row['region_code'] ?? ''; 
+                
                 $result['branch_name']      = $row['branch_name'] ?? '';
                 $result['cost_center_code'] = $row['cost_center'] ?? '';
                 $result['branch_code']      = $row['branch_code'] ?? $row['cost_center'];
+                
+                $result['bos_branch_code']  = $row['branch_code'] ?: ($row['zone_code'] ?? '');
+                $result['kpx_branch_id']    = $row['branch_id'] ?? '';
+                $result['corporate_name']   = $row['corporate_name'] ?? '';
+                
                 $result['matched_by']       = 'cost_center';
                 return $result;
             }
@@ -282,12 +293,17 @@ class LocationMasterService {
 
         // 2. Fuzzy Branch Match (If CC fails or is empty)
         if ($bnClean !== '') {
-            $stmt = $this->dbMaster->query("SELECT cost_center, code as branch_code, branch_name, region FROM branch_profile");
+            // FIX: explicitly selecting b.region_code instead of b.region
+            $stmt = $this->dbMaster->query(
+                "SELECT b.cost_center, b.code as branch_code, b.branch_id, b.corporate_name, b.branch_name, b.region_code, r.zone_code, z.main_zone_code 
+                 FROM branch_profile b
+                 LEFT JOIN region_masterfile r ON b.region_code = r.region_code
+                 LEFT JOIN zone_masterfile z ON r.zone_code = z.zone_code"
+            );
             $branches = $stmt->fetchAll(\PDO::FETCH_ASSOC);
             
             $bestMatch = null;
             $highestPct = 0;
-            // Strip non-alphanumeric characters for a highly forgiving match
             $target = strtolower(preg_replace('/[^a-z0-9]/i', '', $bnClean));
 
             foreach ($branches as $b) {
@@ -299,30 +315,27 @@ class LocationMasterService {
                 }
             }
 
-            // Accept match if it is at least 80% similar
             if ($highestPct >= 80 && $bestMatch) {
-                // Fetch hierarchy for the fuzzy matched branch using maa_region
-                $stmtH = $this->dbMaster->prepare(
-                    "SELECT r.zone_code, z.main_zone_code 
-                     FROM maa_region r
-                     LEFT JOIN zone_masterfile z ON r.zone_code = z.zone_code
-                     WHERE r.region_code = :rc LIMIT 1"
-                );
-                $stmtH->execute([':rc' => $bestMatch['region']]);
-                $hRow = $stmtH->fetch(\PDO::FETCH_ASSOC);
-
-                $result['main_zone_code']   = $hRow['main_zone_code'] ?? '';
-                $result['zone_code']        = $hRow['zone_code'] ?? '';
-                $result['region_code']      = $bestMatch['region'] ?? '';
+                $result['main_zone_code']   = $bestMatch['main_zone_code'] ?? '';
+                $result['zone_code']        = $bestMatch['zone_code'] ?? '';
+                
+                // Now perfectly assigns the Code instead of the Name
+                $result['region_code']      = $bestMatch['region_code'] ?? ''; 
+                
                 $result['branch_name']      = $bestMatch['branch_name'] ?? '';
                 $result['cost_center_code'] = $bestMatch['cost_center'] ?? '';
                 $result['branch_code']      = $bestMatch['branch_code'] ?? $bestMatch['cost_center'];
+                
+                $result['bos_branch_code']  = $bestMatch['branch_code'] ?: ($bestMatch['zone_code'] ?? '');
+                $result['kpx_branch_id']    = $bestMatch['branch_id'] ?? '';
+                $result['corporate_name']   = $bestMatch['corporate_name'] ?? '';
+
                 $result['matched_by']       = 'fuzzy_branch';
                 return $result;
             }
         }
 
-        // 3. Independent Fuzzy Region Match (If everything else failed)
+        // 3. Independent Fuzzy Region Match
         if (trim($regionStr) !== '') {
             $regionMatch = $this->findByCodeOrDescription($regionStr);
             if ($regionMatch && !isset($regionMatch['ambiguous'])) {

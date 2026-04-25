@@ -1119,7 +1119,7 @@
     /**
      * computeDates()
      * Calculate depreciation_end_date based on: depreciation_start_date and actual_months
-     * The user must select `depreciation_start_date`; `date_received` is independent.
+     * Respects the specific day chosen by the user, applying inclusive month math.
      */
     function computeDates(){
         const startDateInput = form.querySelector('input[name="depreciation_start_date"]') || form.querySelector('#depreciation_start_date');
@@ -1136,15 +1136,28 @@
             return;
         }
 
-        const startDate = new Date(startDateStr);
-        if(isNaN(startDate.getTime())){
-            if(endDateInput) endDateInput.value = '';
-            return;
+        // 1. Split manually to avoid Javascript timezone shifting bugs
+        const parts = startDateStr.split('-');
+        const year = parseInt(parts[0], 10);
+        const startMonthIndex = parseInt(parts[1], 10) - 1; // 0-based index (0 = Jan)
+        const startDay = parseInt(parts[2], 10);
+
+        // 2. Inclusive month math: Target month is Start + (duration - 1)
+        const targetMonthIndex = startMonthIndex + (months - 1);
+
+        // 3. Prevent Javascript rollover bugs (e.g., jumping from Jan 31 to Mar 3)
+        // Find the maximum number of days in our target month
+        const maxDaysInTargetMonth = new Date(year, targetMonthIndex + 1, 0).getDate();
+        
+        // Clip the day so it never exceeds the month's maximum
+        const targetDay = Math.min(startDay, maxDaysInTargetMonth);
+
+        // 4. Construct the exact end date
+        const endDate = new Date(year, targetMonthIndex, targetDay);
+
+        if(endDateInput) {
+            endDateInput.value = formatDate(endDate);
         }
-
-        const endDate = addMonths(startDate, months);
-
-        if(endDateInput) endDateInput.value = formatDate(endDate);
     }
     
     // ─────────────────────────────────────────────────────────

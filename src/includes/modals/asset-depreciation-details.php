@@ -85,6 +85,10 @@
                                 <input type="text" id="depr-f-costcenter" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-mono text-slate-500 pointer-events-none">
                             </div>
                             <input type="hidden" id="depr-f-branchcode">
+                            <input type="hidden" id="depr-f-branchcode">
+                            <input type="hidden" id="depr-f-bos-code">
+                            <input type="hidden" id="depr-f-kpx-id">
+                            <input type="hidden" id="depr-f-corp-name">
                         </div>
                     </div>
 

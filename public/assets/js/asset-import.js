@@ -370,6 +370,9 @@ function _populateEditForm(row) {
     _setVal('depr-f-monthly-dep',  row.monthly_depreciation);
     _setVal('depr-f-quantity',     row.quantity || 1);
     _setVal('depr-f-branchcode',   row.branch_code || '');
+    _setVal('depr-f-bos-code',     row.bos_branch_code || '');
+    _setVal('depr-f-kpx-id',       row.kpx_branch_id || '');
+    _setVal('depr-f-corp-name',    row.corporate_name || '');
     _setVal('depr-f-system-code',  row.system_asset_code || '');
     _selectVal('depr-f-property-type', row.property_type || 'PURCHASED');
 
@@ -449,6 +452,9 @@ function _fillBranchDropdown(el, items, placeholder) {
         opt.dataset.zonecode    = item.zone_code        || '';
         opt.dataset.mainzone    = item.main_zone_code   || '';
         opt.dataset.regioncode  = item.region_code      || '';
+        opt.dataset.boscode     = item.branch_code || item.zone_code || '';
+        opt.dataset.kpxid       = item.branch_id || '';
+        opt.dataset.corpname    = item.corporate_name || '';
         el.appendChild(opt);
     });
 }
@@ -508,6 +514,10 @@ function _wireFormEvents() {
             var opt = this.options[this.selectedIndex];
             if (elCC) elCC.value = opt ? (opt.dataset.costcenter || '') : '';
             if (elBC) elBC.value = opt ? (opt.dataset.branchcode  || '') : '';
+
+            _setVal('depr-f-bos-code',  opt ? (opt.dataset.boscode || '') : '');
+            _setVal('depr-f-kpx-id',    opt ? (opt.dataset.kpxid || '') : '');
+            _setVal('depr-f-corp-name', opt ? (opt.dataset.corpname || '') : '');
 
             if (opt && opt.value) {
                 var mz = opt.dataset.mainzone || '';
@@ -611,6 +621,10 @@ function saveDeprEdit() {
     var branchName        = document.getElementById('depr-f-branch')?.value         || '';
     var costCenterCode    = document.getElementById('depr-f-costcenter')?.value     || '';
     var branchCode        = document.getElementById('depr-f-branchcode')?.value     || '';
+
+    var bosCode           = document.getElementById('depr-f-bos-code')?.value       || '';
+    var kpxId             = document.getElementById('depr-f-kpx-id')?.value         || '';
+    var corpName          = document.getElementById('depr-f-corp-name')?.value      || '';
     
     // Core integer identifier for the group
     var groupId           = document.getElementById('depr-f-group')?.value          || '';
@@ -667,6 +681,9 @@ function saveDeprEdit() {
     row.branch_name             = branchName;
     row.cost_center_code        = costCenterCode;
     row.branch_code             = branchCode;
+    row.bos_branch_code         = bosCode;
+    row.kpx_branch_id           = kpxId;
+    row.corporate_name          = corpName;
     row.asset_group_id          = parseInt(groupId, 10);
     row.group_name              = groupName;
     row.actual_months           = actualMonths;

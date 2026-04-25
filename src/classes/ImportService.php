@@ -181,6 +181,10 @@ class ImportService {
                 'cost_center_code'        => $locData['cost_center_code'] ?? $costCenter,
                 'branch_code'             => $locData['branch_code'] ?? $costCenter,
                 'branch_name'             => $locData['branch_name'] ?? $branchStr,
+
+                'bos_branch_code'         => $locData['bos_branch_code'] ?? null,
+                'kpx_branch_id'           => $locData['kpx_branch_id'] ?? null,
+                'corporate_name'          => $locData['corporate_name'] ?? null,
                 
                 'description'             => $description,
                 'serial_number'           => $serialNumber,
@@ -261,6 +265,11 @@ class ImportService {
                 'cost_center_code'        => $row['cost_center_code'],
                 'branch_code'             => $row['branch_code'],
                 'branch_name'             => $row['branch_name'],
+
+                'bos_branch_code'         => $row['bos_branch_code'] ?? null,
+                'kpx_branch_id'           => $row['kpx_branch_id'] ?? null,
+                'corporate_name'          => $row['corporate_name'] ?? null,
+                
                 'asset_name'              => $row['description'],
                 'description'             => $row['description'],
                 
