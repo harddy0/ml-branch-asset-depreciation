@@ -87,10 +87,10 @@
 .finish-note { font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem; }
 .finish-grid .finish-label + .finish-value { margin-top: 0.25rem; display: block; }
 
-/* Currency formatting in finish values: peso sign left, amount right */
-.finish-value.currency { display: flex; align-items: center; gap: 0.5rem; }
-.finish-value.currency .currency-symbol { color: #6b7280; font-weight: 600; margin-right: 0.25rem; }
-.finish-value.currency .amount { margin-left: auto; text-align: right; display: inline-block; min-width: 0ch; }
+/* Currency formatting for card/grid layouts only (not table cells) */
+.finish-grid .finish-value.currency { display: flex; align-items: center; gap: 0.5rem; }
+.finish-grid .finish-value.currency .currency-symbol { color: #6b7280; font-weight: 600; margin-right: 0.25rem; }
+.finish-grid .finish-value.currency .amount { margin-left: auto; text-align: right; display: inline-block; min-width: 0ch; }
 
 /* Right-align currency form inputs and make room for left peso sign */
 .currency-input { text-align: right; }
@@ -244,21 +244,45 @@
 }
 
 #finish-summary .finish-table .finish-value.currency {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    white-space: nowrap;
 }
 
 #finish-summary .finish-table .finish-value.currency .currency-symbol {
     color: #64748b;
     font-weight: 700;
+    margin-right: 0.35rem;
 }
 
 #finish-summary .finish-table .finish-value.currency .amount {
-    margin-left: auto;
     text-align: right;
 }
 
+#finish-summary .finish-card--single {
+    max-width: 980px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#finish-summary .finish-table--single col.finish-col-label-sm {
+    width: 12%;
+}
+
+#finish-summary .finish-table--single col.finish-col-value-lg {
+    width: 21.333%;
+}
+
+#finish-summary .finish-table--single .finish-subtitle {
+    text-align: left;
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #b91c1c;
+    background: #f3f4f6;
+}
+
+#finish-summary .finish-table td.finish-value[data-key="serial_number"],
 #finish-summary .finish-table td.finish-value[data-key="reference_no"],
 #finish-summary .finish-table td.finish-value[data-key="item_code"] {
     text-transform: uppercase;
