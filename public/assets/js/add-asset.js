@@ -618,30 +618,36 @@
         });
 
         // allow entering branch code manually: match branch by branch_code or cost_center_code
-        if(costEl){
-            costEl.addEventListener('input', function(){
-                const v = String(costEl.value || '').trim();
-                if(v === '') return;
-                const found = branchesData.find(b => String(b.branch_code || b.cost_center_code || '').toLowerCase() === v.toLowerCase());
-                if(!found) return;
-                // reflect branch name and trigger autofill
-                branchInput.value = found.value || found.label || '';
-                hiddenBranch.value = found.value || '';
-                if(mainZoneHidden) mainZoneHidden.value = found.main_zone_code || '';
-                if(zoneHidden) zoneHidden.value = found.zone_code || '';
-                if(regionHidden) regionHidden.value = found.region || '';
-                if(bosHidden) bosHidden.value = found.branch_code || found.zone_code || '';
-                if(kpxHidden) kpxHidden.value = found.branch_id || '';
-                if(corpHidden) corpHidden.value = found.corporate_name || '';
-                if(bosDisplay) bosDisplay.value = found.branch_code || found.zone_code || '';
-                if(kpxDisplay) kpxDisplay.value = found.branch_id || '';
-                if(corpDisplay) corpDisplay.value = found.corporate_name || '';
-                function setSingleOptionDisplay(sel, val){ if(!sel) return; sel.innerHTML = ''; if(val){ const o = document.createElement('option'); o.value = val; o.textContent = val; sel.appendChild(o); sel.value = val; sel.disabled = false; sel.style.pointerEvents = 'none'; sel.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400'); sel.style.background = 'white'; sel.style.color = ''; } }
-                setSingleOptionDisplay(mainZoneEl, found.main_zone_code);
-                setSingleOptionDisplay(zoneEl, found.zone_code);
-                setSingleOptionDisplay(regionEl, found.region || '');
-            });
-        }
+        // allow entering branch code manually: match branch by branch_code or cost_center_code
+if(costEl){
+    costEl.addEventListener('input', function(){
+        const v = String(costEl.value || '').trim();
+        if(v === '') return;
+        const found = branchesData.find(b => String(b.branch_code || b.cost_center_code || '').toLowerCase() === v.toLowerCase());
+        if(!found) return;
+        
+        // reflect branch name and trigger autofill
+        branchInput.value = found.value || found.label || '';
+        hiddenBranch.value = found.value || '';
+        if(mainZoneHidden) mainZoneHidden.value = found.main_zone_code || '';
+        if(zoneHidden) zoneHidden.value = found.zone_code || '';
+        
+        // [FIXED LINE] Use region_code instead of region
+        if(regionHidden) regionHidden.value = found.region_code || ''; 
+        
+        if(bosHidden) bosHidden.value = found.branch_code || found.zone_code || '';
+        if(kpxHidden) kpxHidden.value = found.branch_id || '';
+        if(corpHidden) corpHidden.value = found.corporate_name || '';
+        if(bosDisplay) bosDisplay.value = found.branch_code || found.zone_code || '';
+        if(kpxDisplay) kpxDisplay.value = found.branch_id || '';
+        if(corpDisplay) corpDisplay.value = found.corporate_name || '';
+        
+        function setSingleOptionDisplay(sel, val){ if(!sel) return; sel.innerHTML = ''; if(val){ const o = document.createElement('option'); o.value = val; o.textContent = val; sel.appendChild(o); sel.value = val; sel.disabled = false; sel.style.pointerEvents = 'none'; sel.classList.remove('disabled:bg-slate-100', 'disabled:text-slate-400'); sel.style.background = 'white'; sel.style.color = ''; } }
+        setSingleOptionDisplay(mainZoneEl, found.main_zone_code);
+        setSingleOptionDisplay(zoneEl, found.zone_code);
+        setSingleOptionDisplay(regionEl, found.region || '');
+    });
+}
             // Create a custom suggestions popup that we control and position below the input
             const suggestions = document.createElement('div');
             suggestions.className = '__branch_suggestions';
