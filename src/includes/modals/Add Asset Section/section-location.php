@@ -19,7 +19,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-1" style="grid-template-columns: 22% 78%;">
             <div class="flex items-center justify-end pr-2">
-                <label class="block text-sm font-mono font-bold text-slate-700 mb-1">Branch Code <span class="text-red-500">*</span></label>
+                <label class="block text-sm font-mono font-bold text-slate-700 mb-1">BOS Code <span class="text-red-500">*</span></label>
             </div>
                 <div>
                     <input type="text" name="cost_center_code" id="cost_center_code" placeholder="Enter branch code" required class="w-full text-sm font-mono border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-red-500 outline-none transition-all bg-white">

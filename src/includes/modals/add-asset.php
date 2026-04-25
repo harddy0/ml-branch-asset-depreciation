@@ -64,8 +64,8 @@
                 </div>
 
                 <!-- Step 4 - Finish/Review -->
-                <div class="step hidden m-[5%] p-[0%] pt-2 text-center" data-step="4">
-                    <h3 class="text-lg font-bold">Asset Preview</h3>
+                <div class="step hidden m-[5%] p-[0%] text-center" data-step="4">
+                    <h3 class="text-md font-bold">Asset Preview</h3>
                     <?php include __DIR__ . '/Add Asset Section/section-finish.php'; ?>
                 </div>
 
