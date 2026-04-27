@@ -174,13 +174,13 @@ function buildReviewModal(data) {
         if (row.errors && row.errors.length) tr.setAttribute('title', row.errors.join(' | '));
 
         function cell(val, extra) {
-            return '<td class="px-3 py-2.5 text-slate-700 font-medium whitespace-nowrap ' + (extra || '') + '">'
+            return '<td class="px-3 py-1 text-slate-900 text-sm font-mono whitespace-nowrap ' + (extra || '') + '">'
                 + escHtml(String(val ?? '—')) + '</td>';
         }
 
         var canSelect = !row.has_error && !row.is_duplicate;
 
-        var checkCell = '<td class="px-3 py-2.5 text-center whitespace-nowrap">'
+        var checkCell = '<td class="px-3 py-1 text-center whitespace-nowrap">'
             + '<input type="checkbox" class="review-row-check w-3.5 h-3.5 rounded border-slate-300 text-[#ce1126] focus:ring-red-200" '
             + 'data-row-num="' + escHtml(String(row.row_num)) + '" '
             + (canSelect ? '' : 'disabled title="Only valid rows can be selected"')
@@ -188,28 +188,28 @@ function buildReviewModal(data) {
 
         var badgeCell;
         if (row.is_duplicate) {
-            badgeCell = '<td class="px-3 py-2.5 whitespace-nowrap"><span class="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-[10px] font-black px-2 py-0.5 rounded-full">DUP</span></td>';
+            badgeCell = '<td class="px-3 py-1 whitespace-nowrap"><span class="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-[10px] font-black px-2 py-0.5 rounded-full">DUP</span></td>';
         } else if (row.has_error) {
-            badgeCell = '<td class="px-3 py-2.5 whitespace-nowrap"><span class="inline-flex items-center gap-1 bg-red-100 text-red-700 text-[10px] font-black px-2 py-0.5 rounded-full">ERR</span></td>';
+            badgeCell = '<td class="px-3 py-1 whitespace-nowrap"><span class="inline-flex items-center gap-1 bg-red-100 text-red-700 text-[10px] font-black px-2 py-0.5 rounded-full">ERR</span></td>';
         } else {
-            badgeCell = '<td class="px-3 py-2.5 whitespace-nowrap"><span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded-full">OK</span></td>';
+            badgeCell = '<td class="px-3 py-1 whitespace-nowrap"><span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded-full">OK</span></td>';
         }
 
         tr.innerHTML = checkCell + badgeCell
             + cell(row.serial_number || '—')
             + cell(row.description || '—')
-            + cell(row.reference_no || '—')
-            + cell(row.quantity || 1)
-            + cell(row.property_type || 'PURCHASED')
+            + cell(row.reference_no || '—', 'hidden')
+            + cell(row.quantity || 1, 'hidden')
+            + cell(row.property_type || 'PURCHASED', 'hidden')
             + cell(row.group_name || '—')
             + cell(formatMoney(row.acquisition_cost), 'text-right')
             + cell(row.date_received || '—')
-            + cell(row.main_zone_code || '—')
-            + cell(row.zone_code || '—')
-            + cell(row.region_code || '—')
-            + cell(row.cost_center_code || '—')
-            + cell(row.branch_name || '—')
-            + cell(row.item_code || '—')
+            + cell(row.main_zone_code || '—', 'hidden')
+            + cell(row.zone_code || '—', 'hidden')
+            + cell(row.region_code || '—', 'hidden')
+            + cell(row.cost_center_code || '—', 'hidden')
+            + cell(row.branch_name || '—', 'hidden')
+            + cell(row.item_code || '—', 'hidden')
             + cell(row.depreciation_start_date || '—');
 
         tr.addEventListener('click', function (e) {
@@ -265,45 +265,85 @@ function _renderViewContent(row) {
 
     var errHtml = '';
     if (row.errors && row.errors.length) {
-        errHtml = '<div class="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg">'
-            + '<p class="text-xs font-black text-red-700 uppercase tracking-wide mb-1">Validation Errors</p>'
+        errHtml = '<div class="mb-5 px-6 py-2 bg-red-50 border border-red-200 rounded-lg">'
             + '<ul class="list-disc list-inside space-y-0.5">'
             + row.errors.map(function (e) { return '<li class="text-xs text-red-600">' + escHtml(e) + '</li>'; }).join('')
             + '</ul></div>';
     }
 
-    function fieldRow(label, value) {
-        return '<div><p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">' + label + '</p>'
-            + '<p class="text-sm font-semibold text-slate-700">' + escHtml(String(value ?? '—')) + '</p></div>';
+    function val(v) {
+        return escHtml(String(v === null || v === undefined || v === '' ? '—' : v));
     }
 
+    var titleCls = 'finish-title text-left text-[0.78rem] font-black uppercase tracking-[0.08em] text-red-700 bg-slate-50 border border-slate-200 px-2.5 py-1';
+    var labelCls = 'finish-label text-slate-700 text-[0.8rem] font-bold font-mono bg-slate-50 border border-slate-300 px-2.5 py-1 whitespace-nowrap';
+    var valueCls = 'finish-value text-slate-900 text-[0.84rem] font-bold font-mono bg-white border border-slate-200 px-2.5 py-1';
+    var gapCls   = 'finish-value bg-white border border-slate-200 px-2.5 py-1';
+
     container.innerHTML = errHtml
-        + '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">'
-        + fieldRow('Main Zone',   row.main_zone_code)
-        + fieldRow('Sub-Zone',    row.zone_code)
-        + fieldRow('Region',      row.region_code)
-        + fieldRow('Cost Center', row.cost_center_code)
-        + '</div>'
-        + '<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">'
-        + fieldRow('Branch',      row.branch_name)
-        + fieldRow('GL Group',    row.group_name)
-        + fieldRow('Property',    row.property_type)
-        + '</div>'
-        + '<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">'
-        + fieldRow('Description', row.description)
-        + fieldRow('Reference No', row.reference_no)
-        + fieldRow('Serial No',    row.serial_number)
-        + '</div>'
-        + '<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">'
-        + fieldRow('Date Received',   row.date_received)
-        + fieldRow('Depr. Start',     row.depreciation_start_date)
-        + fieldRow('Acq. Cost',       '₱ ' + formatMoney(row.acquisition_cost))
-        + fieldRow('Monthly Depr.',   '₱ ' + formatMoney(row.monthly_depreciation))
-        + '</div>'
-        + '<div class="grid grid-cols-2 md:grid-cols-2 gap-4">'
-        + fieldRow('System Code',     row.system_asset_code)
-        + fieldRow('Status',          row.status || 'ACTIVE')
-        + '</div>';
+        + '<div class="depr-view-table-wrap finish-card finish-card--table finish-card--single rounded-xl border border-slate-200 overflow-hidden">'
+        + '<table class="depr-view-table finish-table finish-table--single w-full">'
+        + '<colgroup>'
+        + '<col class="finish-col-label-sm"><col class="finish-col-value-lg">'
+        + '<col class="finish-col-label-sm"><col class="finish-col-value-lg">'
+        + '<col class="finish-col-label-sm"><col class="finish-col-value-lg">'
+        + '</colgroup>'
+        + '<tbody>'
+
+        + '<tr><th colspan="6" class="' + titleCls + '">Location</th></tr>'
+        + '<tr>'
+        + '<td class="' + labelCls + '">Branch Name</td><td class="' + valueCls + '">' + val(row.branch_name) + '</td>'
+        + '<td class="' + labelCls + '">Main Zone</td><td class="' + valueCls + '" colspan="3">' + val(row.main_zone_code) + '</td>'
+        + '</tr>'
+        + '<tr>'
+        + '<td class="' + labelCls + '">BOS Code</td><td class="' + valueCls + '">' + val(row.bos_branch_code) + '</td>'
+        + '<td class="' + labelCls + '">Sub-Zone</td><td class="' + valueCls + '" colspan="3">' + val(row.zone_code) + '</td>'
+        + '</tr>'
+        + '<tr>'
+        + '<td class="' + labelCls + '">KPX Branch ID</td><td class="' + valueCls + '">' + val(row.kpx_branch_id) + '</td>'
+        + '<td class="' + labelCls + '">Region</td><td class="' + valueCls + '" colspan="3">' + val(row.region_code) + '</td>'
+        + '</tr>'
+        + '<tr><td class="' + labelCls + '">Corporate Name</td><td class="' + valueCls + '" colspan="5">' + val(row.corporate_name) + '</td></tr>'
+        + '<tr><td class="' + gapCls + '" colspan="6">&nbsp;</td></tr>'
+
+        + '<tr><th colspan="6" class="' + titleCls + '">Asset Details</th></tr>'
+        + '<tr>'
+        + '<td class="' + labelCls + '">Item Code</td><td class="' + valueCls + '">' + val(row.item_code) + '</td>'
+        + '<td class="' + labelCls + '">Serial No.</td><td class="' + valueCls + '">' + val(row.serial_number) + '</td>'
+        + '<td class="' + labelCls + '">Reference No.</td><td class="' + valueCls + '">' + val(row.reference_no) + '</td>'
+        + '</tr>'
+        + '<tr>'
+        + '<td class="' + labelCls + '">Property Type</td><td class="' + valueCls + '">' + val(row.property_type) + '</td>'
+        + '<td class="' + labelCls + '">Status</td><td class="' + valueCls + '" colspan="3">' + val(row.status || 'ACTIVE') + '</td>'
+        + '</tr>'
+        + '<tr><td class="' + labelCls + '">GL Group</td><td class="' + valueCls + '" colspan="5">' + val(row.group_name) + '</td></tr>'
+        + '<tr><td class="' + labelCls + '">Description</td><td class="' + valueCls + '" colspan="5">' + val(row.description) + '</td></tr>'
+        + '<tr><td class="' + gapCls + '" colspan="6">&nbsp;</td></tr>'
+
+        + '<tr><th colspan="6" class="' + titleCls + '">Dates</th></tr>'
+        + '<tr>'
+        + '<td class="' + labelCls + '" colspan="3">Date Received</td>'
+        + '<td class="' + labelCls + '" colspan="3">Depreciation Start</td>'
+        + '</tr>'
+        + '<tr>'
+        + '<td class="' + valueCls + '" colspan="3">' + val(row.date_received) + '</td>'
+        + '<td class="' + valueCls + '" colspan="3">' + val(row.depreciation_start_date) + '</td>'
+        + '</tr>'
+        + '<tr><td class="' + gapCls + '" colspan="6">&nbsp;</td></tr>'
+
+        + '<tr><th colspan="6" class="' + titleCls + '">Financial</th></tr>'
+        + '<tr>'
+        + '<td class="' + labelCls + '" colspan="2">Quantity</td>'
+        + '<td class="' + labelCls + '" colspan="2">Acquisition Cost</td>'
+        + '<td class="' + labelCls + '" colspan="2">Monthly Depreciation</td>'
+        + '</tr>'
+        + '<tr>'
+        + '<td class="' + valueCls + '" colspan="2">' + val(row.quantity || 1) + '</td>'
+        + '<td class="' + valueCls + '" colspan="2">₱ ' + formatMoney(row.acquisition_cost) + '</td>'
+        + '<td class="' + valueCls + '" colspan="2">₱ ' + formatMoney(row.monthly_depreciation) + '</td>'
+        + '</tr>'
+
+        + '</tbody></table></div>';
 }
 
 function enableDeprEdit() {
