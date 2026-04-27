@@ -423,39 +423,104 @@ class AssetService
     // READ — Single Asset
     // ==========================================
 
-    public function getAssetById(int $id): ?array
+    public function getAssetById(int $id, ?string $asOfDate = null): ?array
     {
         $stmt = $this->db->prepare('
-            SELECT a.*,
-                   ag.group_name,
-                   ag.actual_months,
-                   ag.asset_gl_code,
-                   ag.asset_gl_type,
-                   ag.expense_gl_code,
-                   ag.expense_gl_type,
-                   et.expense_name,
-                   et.category_type,
-                   et.policy_months,
-                   rd.accumulated_depreciation,
-                   rd.book_value,
-                   rd.periods_elapsed,
-                   rd.periods_remaining,
-                   rd.last_depreciation_date,
-                   rd.is_fully_depreciated,
-                   u.username AS created_by_username,
-                   a.bos_branch_code,
-                   a.kpx_branch_id,
-                   a.corporate_name
-            FROM assets a
-            LEFT JOIN asset_groups ag ON ag.id = a.asset_group_id
-            LEFT JOIN expense_types et ON et.id = ag.expense_type_id
-            LEFT JOIN running_depreciation rd ON rd.asset_id = a.id
-            LEFT JOIN users u ON u.id = a.created_by
+                 SELECT a.*,
+                     ag.group_name,
+                     ag.actual_months,
+                     ag.asset_gl_code,
+                     ag.asset_gl_type,
+                     ag.expense_gl_code,
+                     ag.expense_gl_type,
+                     et.expense_name,
+                     et.category_type,
+                     et.policy_months,
+                     rd.accumulated_depreciation,
+                     rd.book_value,
+                     rd.periods_elapsed,
+                     rd.periods_remaining,
+                     rd.last_depreciation_date,
+                     rd.is_fully_depreciated,
+                     u.username AS created_by_username,
+                     a.bos_branch_code,
+                     a.kpx_branch_id,
+                     a.corporate_name,
+                     ga.description AS gl_asset_description,
+                     gb.description AS gl_depreciation_description
+                 FROM assets a
+                 LEFT JOIN asset_groups ag ON ag.id = a.asset_group_id
+                 LEFT JOIN expense_types et ON et.id = ag.expense_type_id
+                 LEFT JOIN running_depreciation rd ON rd.asset_id = a.id
+                 LEFT JOIN users u ON u.id = a.created_by
+                 LEFT JOIN gl_codes ga ON ga.gl_code = ag.asset_gl_code
+                 LEFT JOIN gl_codes gb ON gb.gl_code = ag.expense_gl_code
             WHERE a.id = :id
             LIMIT 1
         ');
         $stmt->execute([':id' => $id]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if (!$row) return null;
+
+        // Compute preview debit/credit based on GL normal balance types and monthly depreciation
+        $monthly = isset($row['monthly_depreciation']) ? (float)$row['monthly_depreciation'] : 0.0;
+        $assetType = strtoupper((string)($row['asset_gl_type'] ?? ''));
+        $deprType  = strtoupper((string)($row['expense_gl_type'] ?? ''));
+
+        $debit = 0.0;
+        $credit = 0.0;
+        if ($assetType === 'DEBIT') $debit += $monthly; elseif ($assetType === 'CREDIT') $credit += $monthly;
+        if ($deprType === 'DEBIT')  $debit += $monthly; elseif ($deprType === 'CREDIT')  $credit += $monthly;
+
+        $row['preview_debit']  = $debit;
+        $row['preview_credit'] = $credit;
+
+        // Expose GL fields in a canonical shape expected by the frontend/modal
+        $row['gl_depreciation_code'] = $row['expense_gl_code'] ?? null;
+        $row['gl_depreciation_type'] = $row['expense_gl_type'] ?? null;
+        $row['gl_depreciation_description'] = $row['gl_depreciation_description'] ?? null;
+
+        $row['gl_asset_code'] = $row['asset_gl_code'] ?? null;
+        $row['gl_asset_type'] = $row['asset_gl_type'] ?? null;
+        $row['gl_asset_description'] = $row['gl_asset_description'] ?? null;
+
+        // If an as-of date was provided, prefer ledger snapshot values as of that date
+        if (!empty($asOfDate)) {
+            $ledgerStmt = $this->db->prepare('
+                SELECT * FROM depreciation_ledger
+                WHERE asset_id = :asset_id AND period_date <= :as_of_date
+                ORDER BY period_date DESC
+                LIMIT 1
+            ');
+            $ledgerStmt->execute([':asset_id' => $id, ':as_of_date' => $asOfDate]);
+            $led = $ledgerStmt->fetch(\PDO::FETCH_ASSOC);
+            if ($led) {
+                $periodMonthly = isset($led['period_depreciation_expense']) ? (float)$led['period_depreciation_expense'] : $monthly;
+                $glA = isset($led['gl_a_amount']) ? (float)$led['gl_a_amount'] : 0.0;
+                $glB = isset($led['gl_b_amount']) ? (float)$led['gl_b_amount'] : 0.0;
+
+                $periodDebit = 0.0;
+                $periodCredit = 0.0;
+                if ($glA < 0) $periodDebit += -$glA; else $periodCredit += $glA;
+                if ($glB < 0) $periodDebit += -$glB; else $periodCredit += $glB;
+
+                $row['period_date'] = $led['period_date'];
+                $row['period_monthly_debit'] = round($periodDebit, 2);
+                $row['period_monthly_credit'] = round($periodCredit, 2);
+                $row['period_monthly_display'] = $periodDebit > 0 ? round($periodDebit, 2) : round($periodCredit, 2);
+                // Use ledger's cumulative snapshot for accumulated depreciation and book value
+                $row['accumulated_depreciation'] = isset($led['accumulated_depreciation']) ? (float)$led['accumulated_depreciation'] : (float)($row['accumulated_depreciation'] ?? 0);
+                $row['book_value'] = isset($led['book_value']) ? (float)$led['book_value'] : (float)($row['book_value'] ?? 0);
+                // Also expose the period amount
+                $row['period_depreciation_expense'] = $periodMonthly;
+
+                // Expose GL-side monthly amounts so frontend elements with data-key match correctly
+                // gl_a = asset side (accumulated depreciation), gl_b = expense side (depreciation expense)
+                $row['gl_asset_monthly'] = isset($led['gl_a_amount']) ? abs((float)$led['gl_a_amount']) : 0.0;
+                $row['gl_depr_monthly']  = isset($led['gl_b_amount']) ? abs((float)$led['gl_b_amount']) : 0.0;
+            }
+        }
+
         return $row ?: null;
     }
 
@@ -492,6 +557,21 @@ class AssetService
         ');
         $stmt->execute([':code' => $code]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if (!$row) return null;
+
+        // Compute preview debit/credit based on GL normal balance types and monthly depreciation
+        $monthly = isset($row['monthly_depreciation']) ? (float)$row['monthly_depreciation'] : 0.0;
+        $assetType = strtoupper((string)($row['asset_gl_type'] ?? ''));
+        $deprType  = strtoupper((string)($row['expense_gl_type'] ?? ''));
+
+        $debit = 0.0;
+        $credit = 0.0;
+        if ($assetType === 'DEBIT') $debit += $monthly; elseif ($assetType === 'CREDIT') $credit += $monthly;
+        if ($deprType === 'DEBIT')  $debit += $monthly; elseif ($deprType === 'CREDIT')  $credit += $monthly;
+
+        $row['preview_debit']  = $debit;
+        $row['preview_credit'] = $credit;
+
         return $row ?: null;
     }
 

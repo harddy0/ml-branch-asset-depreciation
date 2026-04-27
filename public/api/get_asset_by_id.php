@@ -21,7 +21,8 @@ try {
     }
 
     $service = new \App\AssetService($pdo);
-    $asset = $service->getAssetById($id);
+    $asOf = isset($_GET['as_of_date']) && $_GET['as_of_date'] !== '' ? trim($_GET['as_of_date']) : null;
+    $asset = $service->getAssetById($id, $asOf);
 
     if (!$asset) {
         echo json_encode(['success' => false, 'error' => 'Asset not found.']);

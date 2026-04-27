@@ -326,8 +326,8 @@ class AssetReportService
             $sheet->setCellValue('J' . $rowNum, $row['book_value']);
             
             // New Start and End Dates
-            $sheet->setCellValue('K' . $rowNum, !empty($row['depreciation_start_date']) ? date('M j, Y', strtotime($row['depreciation_start_date'])) : '-');
-            $sheet->setCellValue('L' . $rowNum, !empty($row['depreciation_end_date']) ? date('M j, Y', strtotime($row['depreciation_end_date'])) : '-');
+            $sheet->setCellValue('K' . $rowNum, !empty($row['depreciation_start_date']) ? date('F j, Y', strtotime($row['depreciation_start_date'])) : '-');
+            $sheet->setCellValue('L' . $rowNum, !empty($row['depreciation_end_date']) ? date('F j, Y', strtotime($row['depreciation_end_date'])) : '-');
 
             $sheet->getStyle('F' . $rowNum . ':J' . $rowNum)->getNumberFormat()->setFormatCode('#,##0.00');
             $sheet->getStyle('I' . $rowNum)->getNumberFormat()->setFormatCode('0');

@@ -196,8 +196,8 @@ $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
                             <td class="py-0 px-3 text-right font-mono text-xs"><?= number_format($row['accumulated_depreciation'], 2) ?></td>
                             <td class="py-0 px-3 text-center font-bold text-xs"><?= $row['remaining_life'] ?></td>
                             <td class="py-0 px-3 text-right font-mono text-xs text-slate-900"><?= number_format($row['book_value'], 2) ?></td>
-                            <td class="py-0 px-3 text-center text-slate-500 text-xs"><?= !empty($row['depreciation_start_date']) ? date('M j, Y', strtotime($row['depreciation_start_date'])) : '-' ?></td>
-                            <td class="py-0 pl-3 pr-5 text-center text-slate-500 text-xs"><?= !empty($row['depreciation_end_date']) ? date('M j, Y', strtotime($row['depreciation_end_date'])) : '-' ?></td>
+                            <td class="py-0 px-3 text-center text-slate-500 text-xs"><?= !empty($row['depreciation_start_date']) ? date('F j, Y', strtotime($row['depreciation_start_date'])) : '-' ?></td>
+                            <td class="py-0 pl-3 pr-5 text-center text-slate-500 text-xs"><?= !empty($row['depreciation_end_date']) ? date('F j, Y', strtotime($row['depreciation_end_date'])) : '-' ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
