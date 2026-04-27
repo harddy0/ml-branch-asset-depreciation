@@ -69,8 +69,20 @@ try {
         $regions = $locationService->getRegionOptions($filters['zone']);
     } catch (\Throwable $regionError) {
         $regions = [];
-        foreach ($reportService->getRegions($filters['zone']) as $regionCode) {
-            $regions[] = ['value' => $regionCode, 'label' => $regionCode];
+        foreach ($reportService->getRegions($filters['zone']) as $row) {
+            $code = trim((string)($row['region_code'] ?? ''));
+            if ($code === '') {
+                continue;
+            }
+
+            $description = trim((string)($row['region_description'] ?? ''));
+            $label = $description !== '' ? ($code . ' - ' . $description) : $code;
+            $regions[] = [
+                'value' => $code,
+                'text' => $label,
+                'label' => $label,
+                'description' => $description,
+            ];
         }
     }
     $branches = $reportService->getBranches($filters['zone'], $filters['region']);

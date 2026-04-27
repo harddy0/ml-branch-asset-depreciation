@@ -220,7 +220,8 @@ document.addEventListener("DOMContentLoaded", function() {
         (optionsData || []).forEach(item => {
             if (item && typeof item === 'object') {
                 const value = item.value ?? item.code ?? item.region_code ?? '';
-                const text = item.text ?? item.label ?? item.name ?? value;
+                const description = item.description ?? item.region_description ?? item.branch_name ?? item.corporate_name ?? '';
+                const text = item.text ?? item.label ?? item.name ?? (description ? `${value} - ${description}` : value);
                 if (value !== '') {
                     instance.addOption({ ...item, value: String(value), text: String(text) });
                 }
