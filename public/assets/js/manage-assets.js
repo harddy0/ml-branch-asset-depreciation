@@ -140,6 +140,14 @@ document.addEventListener("DOMContentLoaded", function() {
         fetchData('init');
     }
 
+    // Wire checkbox to trigger fetch when toggled
+    const includeFullyCb = document.getElementById('includeFullyCheckbox');
+    if (includeFullyCb) {
+        includeFullyCb.addEventListener('change', function () {
+            fetchData('filter');
+        });
+    }
+
     // ─── 2. Fetch ────────────────────────────────────────────────────────
     function fetchData(source) {
         const rawParams   = new URLSearchParams(new FormData(form));
@@ -147,6 +155,14 @@ document.addEventListener("DOMContentLoaded", function() {
         rawParams.forEach((val, key) => {
             cleanParams.set(key, (val === '__ALL__') ? '' : val);
         });
+
+        // propagate include fully depreciated checkbox explicitly as '1' when checked
+        try {
+            const cb = document.getElementById('includeFullyCheckbox');
+            if (cb) {
+                cleanParams.set('include_fully_depreciated', cb.checked ? '1' : '');
+            }
+        } catch (e) {}
 
         const tableWrapper = document.getElementById('tableWrapper');
         if (tableWrapper) tableWrapper.style.opacity = '0.5';
