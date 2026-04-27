@@ -1,10 +1,10 @@
 <div id="modal-asset-depr-details" class="fixed inset-0 z-[110] hidden">
     <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAssetDepreciationDetails()"></div>
-    <div class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 flex items-center justify-center pointer-events-none">
+  <div class="absolute inset-4 md:inset-10 flex items-center justify-center pointer-events-none">
         
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col pointer-events-auto overflow-hidden">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col min-h-0 overflow-hidden pointer-events-auto animate-fadeIn" style="max-height: 94vh;">
             
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50 shrink-0">
+            <div class="flex items-center justify-between px-6 py-2 border-b border-slate-100 bg-slate-50 shrink-0">
                 <div class="flex items-center gap-3">
                     <h3 class="text-lg font-bold text-slate-800">Row Details</h3>
                     <span id="depr-edit-badge" class="hidden px-2 py-0.5 rounded bg-orange-100 text-orange-700 text-[10px] font-black uppercase tracking-wider">Edit Mode</span>
@@ -14,9 +14,9 @@
                 </button>
             </div>
 
-            <div id="depr-modal-errors" class="hidden shrink-0 bg-red-50 px-6 py-3 border-b border-red-100 text-sm font-semibold text-red-700 space-y-1"></div>
+            <div id="depr-modal-errors" class="hidden shrink-0 bg-red-50 px-6 py-1 border-b border-red-100 text-sm font-semibold text-red-700 space-y-0"></div>
 
-            <div class="flex-1 overflow-y-auto p-6 bg-white">
+            <div class="flex-1 min-h-0 overflow-y-auto p-6 bg-white">
                 
                 <div id="depr-view-content"></div>
 
@@ -133,18 +133,18 @@
                 </form>
             </div>
 
-            <div class="px-6 py-4 border-t border-slate-100 bg-white flex items-center justify-between shrink-0">
+            <div class="px-6 py-2 border-t border-slate-100 bg-white flex items-center justify-between shrink-0">
                 <span id="depr-unsaved-hint" class="hidden text-xs font-semibold text-orange-600">Unsaved changes</span>
                 <span class="text-xs"></span>
                 <div class="flex gap-3">
-                    <button type="button" id="depr-btn-close" onclick="closeAssetDepreciationDetails()" class="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors">Close</button>
-                    <button type="button" id="depr-btn-edit" onclick="enableDeprEdit()" class="px-6 py-2.5 text-sm font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors flex items-center gap-2">
+                    <button type="button" id="depr-btn-close" onclick="closeAssetDepreciationDetails()" class="px-5 py-1 text-sm font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors">Close</button>
+                    <button type="button" id="depr-btn-edit" onclick="enableDeprEdit()" class="px-6 py-1 text-sm font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-colors flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                        <span>Edit Row</span>
+                        <span>Edit</span>
                     </button>
                     
-                    <button type="button" id="depr-btn-cancel-edit" onclick="cancelDeprEdit()" class="hidden px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors">Cancel Edit</button>
-                    <button type="button" id="depr-btn-save" onclick="saveDeprEdit()" class="hidden px-6 py-2.5 text-sm font-bold text-white bg-[#ce1126] hover:bg-[#a80e1f] rounded-lg transition-colors">Apply Changes</button>
+                    <button type="button" id="depr-btn-cancel-edit" onclick="cancelDeprEdit()" class="hidden px-5 py-1 text-sm font-bold text-slate-600 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors">Cancel</button>
+                    <button type="button" id="depr-btn-save" onclick="saveDeprEdit()" class="hidden px-6 py-1 text-sm font-bold text-white bg-[#ce1126] hover:bg-[#a80e1f] rounded-lg transition-colors">Save</button>
                 </div>
             </div>
 
