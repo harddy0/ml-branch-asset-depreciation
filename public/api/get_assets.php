@@ -2,6 +2,7 @@
 $noLayout = true;
 require_once __DIR__ . '/../../src/includes/init.php';
 require_once __DIR__ . '/../../src/classes/AssetReportService.php';
+require_once __DIR__ . '/../../src/classes/LocationMasterService.php';
 
 ini_set('display_errors', '0');
 error_reporting(0);
@@ -17,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 try {
     $reportService = new \App\AssetReportService($pdo, $pdo2);
+    $locationService = new \App\LocationMasterService($pdo2 ?? null);
 
     // Normalize inputs; treat '__ALL__' and empty strings as null
     $rawZone   = trim((string)($_GET['zone'] ?? ''));
@@ -42,8 +44,15 @@ try {
         'as_of_date'  => $asOfDate,
     ];
 
-    $reportData = $reportService->getFilteredAssets($filters);
-    $regions  = $reportService->getRegions($filters['zone']);
+    $reportData = $reportService->getFilteredAssetsForManageAssets($filters);
+    try {
+        $regions = $locationService->getRegionOptions($filters['zone']);
+    } catch (\Throwable $regionError) {
+        $regions = [];
+        foreach ($reportService->getRegions($filters['zone']) as $regionCode) {
+            $regions[] = ['value' => $regionCode, 'label' => $regionCode];
+        }
+    }
     $branches = $reportService->getBranches($filters['zone'], $filters['region']);
 
     $response = [

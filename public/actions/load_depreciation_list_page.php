@@ -11,6 +11,7 @@
 
 require_once __DIR__ . '/../../src/includes/init.php';
 require_once __DIR__ . '/../../src/classes/AssetReportService.php';
+require_once __DIR__ . '/../../src/classes/LocationMasterService.php';
 // ADDED: We need the AssetGroupService to fetch the groups
 require_once __DIR__ . '/../../src/classes/AssetGroupService.php';
 
@@ -40,7 +41,15 @@ try {
     }
 
     $zones    = $reportService->getZones();
-    $regions  = $reportService->getRegions($filters['zone']);
+    $locationService = new \App\LocationMasterService($pdo2 ?? null);
+    try {
+        $regions = $locationService->getRegionOptions($filters['zone']);
+    } catch (\Throwable $regionError) {
+        $regions = [];
+        foreach ($reportService->getRegions($filters['zone']) as $regionCode) {
+            $regions[] = ['value' => $regionCode, 'label' => $regionCode];
+        }
+    }
     $branches = $reportService->getBranches($filters['zone'], $filters['region']);
     
     // Asset groups already loaded above for the filter dropdown

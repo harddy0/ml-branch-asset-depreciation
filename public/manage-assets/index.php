@@ -133,7 +133,11 @@ $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
                     <option value="">Select Region</option>
                     <option value="__ALL__" <?= ($rawFilters['region'] ?? '') === '__ALL__' ? 'selected' : '' ?>>All Regions</option>
                     <?php foreach($regions as $r): ?>
-                        <option value="<?= htmlspecialchars($r) ?>" <?= $filters['region'] === $r ? 'selected' : '' ?>><?= htmlspecialchars($r) ?></option>
+                        <?php
+                            $regionValue = is_array($r) ? (string)($r['value'] ?? $r['region_code'] ?? '') : (string)$r;
+                            $regionLabel = is_array($r) ? (string)($r['label'] ?? $r['text'] ?? $regionValue) : (string)$r;
+                        ?>
+                        <option value="<?= htmlspecialchars($regionValue) ?>" <?= $filters['region'] === $regionValue ? 'selected' : '' ?>><?= htmlspecialchars($regionLabel) ?></option>
                     <?php endforeach; ?>
                 </select>
 

@@ -216,7 +216,18 @@ document.addEventListener("DOMContentLoaded", function() {
         instance.addOption({ value: '__ALL__', text: allLabel });
 
         (optionsData || []).forEach(item => {
-            instance.addOption({ value: item, text: item });
+            if (item && typeof item === 'object') {
+                const value = item.value ?? item.code ?? item.region_code ?? '';
+                const text = item.text ?? item.label ?? item.name ?? value;
+                if (value !== '') {
+                    instance.addOption({ ...item, value: String(value), text: String(text) });
+                }
+                return;
+            }
+
+            if (item !== null && item !== undefined && item !== '') {
+                instance.addOption({ value: item, text: item });
+            }
         });
         instance.refreshOptions(false);
 
@@ -230,7 +241,7 @@ document.addEventListener("DOMContentLoaded", function() {
         let label = defaultLabel;
         if (val) {
             const opt = instance.options && instance.options[val];
-            if (opt && opt.text) label = opt.text;
+            if (opt && (opt.text || opt.label)) label = opt.text || opt.label;
         }
         if (instance.wrapper) {
             instance.wrapper.title = label;
