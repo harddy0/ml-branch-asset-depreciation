@@ -88,9 +88,9 @@ require_once __DIR__ . '/../../public/actions/load_depreciation_list_page.php';
                 <button
                     type="button"
                     id="depr-filter-reset"
-                    class="inline-flex items-center justify-center px-3 py-1 text-sm font-mono font-bold uppercase tracking-wide border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100"
+                    class="inline-flex items-center justify-center px-3 py-1 text-sm font-mono font-bold tracking-wide border border-slate-300 rounded-md text-slate-700 hover:bg-slate-100"
                 >
-                    Reset
+                    Clear
                 </button>
             </div>
         </div>
