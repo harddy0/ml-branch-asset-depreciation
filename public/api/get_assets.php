@@ -20,6 +20,18 @@ try {
     $reportService = new \App\AssetReportService($pdo, $pdo2);
     $locationService = new \App\LocationMasterService($pdo2 ?? null);
 
+    $normalizeDate = static function (string $raw): string {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return '';
+        }
+        $ts = strtotime($raw);
+        if ($ts === false) {
+            return '';
+        }
+        return date('Y-m-d', $ts);
+    };
+
     // Normalize inputs; treat '__ALL__' and empty strings as null
     $rawZone   = trim((string)($_GET['zone'] ?? ''));
     $rawRegion = trim((string)($_GET['region'] ?? ''));
@@ -29,12 +41,20 @@ try {
     $region = ($rawRegion === '__ALL__' || $rawRegion === '') ? null : $rawRegion;
     $branch = ($rawBranch === '__ALL__' || $rawBranch === '') ? null : $rawBranch;
 
-    $asOfDate = trim((string)($_GET['as_of_date'] ?? ''));
-    $dateFrom = trim((string)($_GET['date_from'] ?? ''));
-    $dateTo   = trim((string)($_GET['date_to'] ?? ''));
+    $asOfDate = $normalizeDate((string)($_GET['as_of_date'] ?? ''));
+    $dateFrom = $normalizeDate((string)($_GET['date_from'] ?? ''));
+    $dateTo   = $normalizeDate((string)($_GET['date_to'] ?? ''));
 
+    // If no explicit as_of_date or date range provided, leave as empty so
+    // the report service returns an empty dataset (table remains empty)
     if ($asOfDate === '') {
-        $asOfDate = $dateTo !== '' ? $dateTo : ($dateFrom !== '' ? $dateFrom : date('Y-m-d'));
+        if ($dateTo !== '') {
+            $asOfDate = $dateTo;
+        } elseif ($dateFrom !== '') {
+            $asOfDate = $dateFrom;
+        } else {
+            $asOfDate = '';
+        }
     }
 
     $filters = [

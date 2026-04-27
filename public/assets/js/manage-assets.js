@@ -151,6 +151,8 @@ document.addEventListener("DOMContentLoaded", function() {
         const tableWrapper = document.getElementById('tableWrapper');
         if (tableWrapper) tableWrapper.style.opacity = '0.5';
 
+        // Debug: log outgoing API URL and params to help trace as_of_date value
+        try { console.debug('GET', apiUrl, cleanParams.toString()); } catch (e) {}
         fetch(`${apiUrl}?${cleanParams.toString()}`)
             .then(r => r.json())
             .then(res => {
@@ -741,4 +743,27 @@ document.addEventListener("DOMContentLoaded", function() {
         return tbody.querySelectorAll('tr').length > 0;
     })();
     setExportAvailability(initialHasData);
+
+    // Expose a helper to clear all UI filters programmatically
+    window.clearAssetFilters = function() {
+        try {
+            form.reset();
+        } catch (err) { /* ignore */ }
+
+        try {
+            _resetToPlaceholder(tsZone);
+            _resetToPlaceholder(tsRegion);
+            _resetToPlaceholder(tsBranch);
+        } catch (err) { /* ignore if instances missing */ }
+
+        try {
+            const dateInput = form.querySelector('input[name="as_of_date"]');
+            if (dateInput) {
+                if (dateInput._flatpickr) dateInput._flatpickr.clear();
+                dateInput.value = '';
+            }
+        } catch (err) { /* ignore */ }
+
+        try { fetchData('clear'); } catch (err) { /* ignore */ }
+    };
 });
