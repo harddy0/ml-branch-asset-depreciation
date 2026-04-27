@@ -22,72 +22,154 @@
         </div>
 
         <div id="view-asset-content" class="hidden flex-1 overflow-y-auto bg-white p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2">Identity & Classification</h3>
-                    <div class="space-y-3">
-                        <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Description</span><span id="view-description" class="text-sm font-bold text-slate-900"></span></div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Serial Number</span><span id="view-serial" class="text-sm font-mono text-slate-900"></span></div>
-                            <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Item Code</span><span id="view-item-code" class="text-sm font-mono text-slate-900"></span></div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Asset Group</span><span id="view-group" class="text-sm text-slate-900"></span></div>
-                            <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Property Type</span><span id="view-property-type" class="text-sm text-slate-900"></span></div>
-                        </div>
-                    </div>
-                </div>
+            <div id="finish-summary" class="finish-card finish-card--table finish-card--single">
+                <table class="finish-table finish-table--single w-full">
+                    <colgroup>
+                        <col class="finish-col-label-sm">
+                        <col class="finish-col-value-lg">
+                        <col class="finish-col-label-sm">
+                        <col class="finish-col-value-lg">
+                        <col class="finish-col-label-sm">
+                        <col class="finish-col-value-lg">
+                    </colgroup>
+                    <tbody>
+                        <tr><th colspan="6" class="finish-title">Location</th></tr>
+                        <tr>
+                            <td class="finish-label">Branch Name</td>
+                            <td class="finish-value" data-key="branch_name"><span id="view-branch">-</span></td>
+                            <td class="finish-label">Main Zone</td>
+                            <td class="finish-value" colspan="3" data-key="main_zone_code"><span id="view-main-zone">-</span></td>
+                        </tr>
+                        <tr>
+                            <td class="finish-label">BOS Code</td>
+                            <td class="finish-value" data-key="cost_center_code"><span id="view-cost-center">-</span></td>
+                            <td class="finish-label">Sub-Zone</td>
+                            <td class="finish-value" colspan="3" data-key="zone_code"><span id="view-zone">-</span></td>
+                        </tr>
+                        <tr>
+                            <td class="finish-label">KPX Branch ID</td>
+                            <td class="finish-value" data-key="kpx_branch_id"><span id="view-kpx-branch-id">-</span></td>
+                            <td class="finish-label">Region</td>
+                            <td class="finish-value" colspan="3" data-key="region_code"><span id="view-region-dup" style="display:none">-</span></td>
+                        </tr>
+                        <tr>
+                            <td class="finish-label">Corporate Name</td>
+                            <td class="finish-value" colspan="5" data-key="corporate_name"><span id="view-corporate-name">-</span></td>
+                        </tr>
+                        <tr>
+                            <td class="finish-value" colspan="6">&nbsp;</td>
+                        </tr>
 
-                <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2">Location Information</h3>
-                    <div class="space-y-3">
-                        <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Branch Name</span><span id="view-branch" class="text-sm font-bold text-slate-900"></span></div>
-                        <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Cost Center Code</span><span id="view-cost-center" class="text-sm font-mono text-slate-900"></span></div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Region</span><span id="view-region" class="text-sm text-slate-900"></span></div>
-                            <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Sub-Zone</span><span id="view-zone" class="text-sm text-slate-900"></span></div>
-                            <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Main Zone</span><span id="view-main-zone" class="text-sm text-slate-900"></span></div>
-                        </div>
-                    </div>
-                </div>
+                        <tr><th colspan="6" class="finish-title">Asset Details</th></tr>
+                        <tr>
+                            <td class="finish-label">Item Code</td>
+                            <td class="finish-value" data-key="item_code"><span id="view-item-code">-</span></td>
+                            <td class="finish-label">Serial No.</td>
+                            <td class="finish-value" data-key="serial_number"><span id="view-serial">-</span></td>
+                            <td class="finish-label">Reference No.</td>
+                            <td class="finish-value" data-key="reference_no"><span id="view-reference">-</span></td>
+                        </tr>
+                        <tr>
+                            <td class="finish-label">Property Type</td>
+                            <td class="finish-value" data-key="property_type"><span id="view-property-type">-</span></td>
+                            <td class="finish-label">Status</td>
+                            <td class="finish-value" colspan="3" data-key="status"><span id="view-status">-</span></td>
+                        </tr>
+                        <tr><td class="finish-label">Description</td><td class="finish-value" colspan="5" data-key="description"><span id="view-description">-</span></td></tr>
+                        <tr>
+                            <td class="finish-value" colspan="6">&nbsp;</td>
+                        </tr>
 
-                <div class="md:col-span-2 bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2">Financial & Schedule</h3>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <span class="text-[12px] text-slate-700 block uppercase tracking-wider font-semibold">Acquisition Cost</span>
-                            <span class="text-lg font-mono font-black text-slate-900">₱ <span id="view-acq-cost">0.00</span></span>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <span class="text-[12px] text-slate-700 block uppercase tracking-wider font-semibold">Monthly Depr.</span>
-                            <span class="text-lg font-mono font-black text-red-700">₱ <span id="view-monthly-dep">0.00</span></span>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <span class="text-[12px] text-slate-700 block uppercase tracking-wider font-semibold">Accumulated Depr.</span>
-                            <span class="text-lg font-mono font-black text-slate-900">₱ <span id="view-accum-dep">0.00</span></span>
-                        </div>
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <span class="text-[12px] text-slate-700 block uppercase tracking-wider font-semibold">Book Value</span>
-                            <span class="text-lg font-mono font-black text-red-700">₱ <span id="view-book-value">0.00</span></span>
-                        </div>
-                    </div>
+                        <tr><th colspan="6" class="finish-title">Dates</th></tr>
+                        <tr>
+                            <td class="finish-label" colspan="2">Date Received</td>
+                            <td class="finish-label" colspan="2">Depreciation Start</td>
+                            <td class="finish-label" colspan="2">Depreciation End</td>
+                        </tr>
+                        <tr>
+                            <td class="finish-value" colspan="2" data-key="date_received"><span id="view-date-received">-</span></td>
+                            <td class="finish-value" colspan="2" data-key="depreciation_start_date"><span id="view-start-date">-</span></td>
+                            <td class="finish-value" colspan="2" data-key="depreciation_end_date"><span id="view-end-date">-</span></td>
+                        </tr>
+                        <tr class="hidden">
+                            <td class="finish-label">Policy (Months)</td>
+                            <td class="finish-value" colspan="5"><span id="view-months">0</span></td>
+                        </tr>
+                        <tr>
+                            <td class="finish-value" colspan="6">&nbsp;</td>
+                        </tr>
 
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Date Received</span><span id="view-date-received" class="text-sm font-mono text-slate-900"></span></div>
-                        <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Start Date</span><span id="view-start-date" class="text-sm font-mono text-slate-900"></span></div>
-                        <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">End Date</span><span id="view-end-date" class="text-sm font-mono text-slate-900"></span></div>
-                        <div><span class="text-[12px] text-slate-700 block uppercase font-semibold">Policy (Months)</span><span id="view-months" class="text-sm font-bold text-slate-900"></span></div>
-                    </div>
-                </div>
+                        <tr><th colspan="6" class="finish-title">Financial</th></tr>
+                        <tr>
+                            <td class="finish-label">Quantity</td>
+                            <td class="finish-label" colspan="2">Acquisition Cost</td>
+                            <td class="finish-label">Debit Amount</td>
+                            <td class="finish-label" colspan="2">Credit Amount</td>
+                        </tr>
+                        <tr>
+                            <td class="finish-value" data-key="quantity"><span id="view-quantity">-</span></td>
+                            <td class="finish-value currency" colspan="2" data-key="acquisition_cost"><span class="currency-symbol">₱</span><span class="amount" id="view-acq-cost">0.00</span></td>
+                            <td class="finish-value currency" data-key="preview_debit"><span class="currency-symbol">₱</span><span class="amount" id="view-debit">0.00</span></td>
+                            <td class="finish-value currency" colspan="2" data-key="preview_credit"><span class="currency-symbol">₱</span><span class="amount" id="view-credit">0.00</span></td>
+                        </tr>
+                        <tr>
+                            <td class="finish-value" colspan="6">&nbsp;</td>
+                        </tr>
 
+                        <tr><th colspan="6" class="finish-title">Depreciation</th></tr>
+                        <tr>
+                            <td class="finish-label" colspan="2">Monthly Depreciation</td>
+                            <td class="finish-label" colspan="2">Accumulated Depreciation</td>
+                            <td class="finish-label" colspan="2">Book Value</td>
+                        </tr>
+                        <tr>
+                            <td class="finish-value currency" colspan="2" data-key="gl_depr_monthly">₱ <span class="amount" id="view-monthly-dep">0.00</span></td>
+                            <td class="finish-value currency" colspan="2" data-key="accumulated_depreciation">₱ <span class="amount" id="view-accum-dep">0.00</span></td>
+                            <td class="finish-value currency" colspan="2" data-key="book_value">₱ <span class="amount" id="view-book-value">0.00</span></td>
+                        </tr>
+                        <tr>
+                            <td class="finish-value" colspan="6">&nbsp;</td>
+                        </tr>
+                        
+                        <tr><th colspan="6" class="finish-title">Asset Categorization</th></tr>
+                        <tr>
+                            <td class="finish-label">Category</td>
+                            <td class="finish-value" colspan="2" data-key="category_type"><span id="view-category">-</span></td>
+                            <td class="finish-label">Expense Type</td>
+                            <td class="finish-value" colspan="2" data-key="expense_name"><span id="view-expense-type">-</span></td>
+                        </tr>
+                        <tr><td class="finish-label">Asset Group</td><td class="finish-value" colspan="5" data-key="group_name"><span id="view-group">-</span></td></tr>
+                        <tr>
+                            <td class="finish-value" colspan="6">&nbsp;</td>
+                        </tr>
+
+                        <tr><th colspan="6" class="finish-title">General Ledger</th></tr>
+                        <tr>
+                            <td class="finish-label">GL Codes</td>
+                            <td class="finish-label">Normal Balance</td>
+                            <td class="finish-label" colspan="2">Description</td>
+                            <td class="finish-label" colspan="2">Monthly Amount</td>
+                        </tr>
+                        <tr>
+                            <td class="finish-value" data-key="gl_depreciation_code"><span id="view-gl-depr-code">-</span></td>
+                            <td class="finish-value" data-key="gl_depreciation_type"><span id="view-gl-depr-type">-</span></td>
+                            <td class="finish-value" colspan="2" data-key="gl_depreciation_description"><span id="view-gl-depr-desc">-</span></td>
+                            <td class="finish-value currency" colspan="2" data-key="gl_depr_monthly">₱ <span class="amount" id="view-gl-depr-monthly">0.00</span></td>
+                        </tr>
+                        <tr>
+                            <td class="finish-value" data-key="gl_asset_code"><span id="view-gl-asset-code">-</span></td>
+                            <td class="finish-value" data-key="gl_asset_type"><span id="view-gl-asset-type">-</span></td>
+                            <td class="finish-value" colspan="2" data-key="gl_asset_description"><span id="view-gl-asset-desc">-</span></td>
+                            <td class="finish-value currency" colspan="2" data-key="gl_asset_monthly">₱ <span class="amount" id="view-gl-asset-monthly">0.00</span></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
         <div class="px-6 py-3 border-t border-slate-200 bg-white shrink-0 flex items-center justify-between text-[12px] text-slate-700">
-            <div>Uploaded by: <span id="view-uploaded-by" class="font-semibold text-slate-900"></span></div>
-            <div>Date Added: <span id="view-created-at" class="font-semibold text-slate-900"></span></div>
+            <div>Uploaded by: <span id="view-uploaded-by" class="font-semibold uppercase text-slate-700"></span></div>
+            <div>Date Added: <span id="view-created-at" class="font-semibold text-slate-700"></span></div>
         </div>
 
     </div>

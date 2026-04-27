@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     flatpickr(".date-formatter", {
-        altInput: true, altFormat: "M j, Y", dateFormat: "Y-m-d",
+        altInput: true, altFormat: "F j, Y", dateFormat: "Y-m-d",
         onChange: function() { fetchData('date'); }
     });
 
@@ -258,7 +258,7 @@ document.addEventListener("DOMContentLoaded", function() {
             setExportAvailability(true);
 
             const currency = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const dateFmt  = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const dateFmt  = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
             // Helper to prevent JS from shifting the day backwards based on local timezone
             function safeFormatDate(dateStr) {
@@ -337,7 +337,20 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const appBase = (typeof BASE_URL !== 'undefined' && BASE_URL !== '') ? BASE_URL.replace(/\/+$/, '') : '';
         const publicBase = appBase === '' ? '/public' : (appBase.endsWith('/public') ? appBase : appBase + '/public');
-        const apiUrl = `${publicBase}/api/get_asset_by_id.php?id=${id}`;
+        // Prefer the UI filter's as_of_date if present (flatpickr provides YYYY-MM-DD).
+        let asOf = null;
+        try {
+            const filterForm = document.getElementById('filterForm');
+            if (filterForm) {
+                const input = filterForm.querySelector('input[name="as_of_date"]');
+                if (input && input.value) asOf = input.value;
+            }
+        } catch (err) { /* ignore */ }
+        if (!asOf) {
+            const y = (new Date()).getFullYear();
+            asOf = `${y}-04-30`;
+        }
+        const apiUrl = `${publicBase}/api/get_asset_by_id.php?id=${id}&as_of_date=${encodeURIComponent(asOf)}`;
 
         fetch(apiUrl)
             .then(r => {
@@ -363,8 +376,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const parseAssetDate = (value) => {
             if (!value) return null;
-            const normalized = String(value).trim().replace(/\s+/g, 'T');
-            const date = new Date(normalized);
+            let s = String(value).trim();
+            // If value is plain YYYY-MM-DD, append time to avoid timezone shifting
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+                s = s + 'T00:00:00';
+            } else {
+                s = s.replace(/\s+/g, 'T');
+            }
+            const date = new Date(s);
             return Number.isNaN(date.getTime()) ? null : date;
         };
 
@@ -391,34 +410,47 @@ document.addEventListener("DOMContentLoaded", function() {
             }).format(date);
         };
 
+        // Helper to set text safely (avoids errors if an element is missing)
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (!el) {
+                console.warn('view modal element missing:', id);
+                return;
+            }
+            el.textContent = value;
+        }
+
         // Identity & Classification
-        document.getElementById('view-system-code').textContent = data.system_asset_code || 'N/A';
-        document.getElementById('view-description').textContent = data.description || 'N/A';
-        document.getElementById('view-serial').textContent = data.serial_number || 'N/A';
-        document.getElementById('view-item-code').textContent = data.item_code || 'N/A';
-        document.getElementById('view-group').textContent = data.group_name || 'N/A';
-        document.getElementById('view-property-type').textContent = data.property_type || 'PURCHASED';
+        setText('view-system-code', data.system_asset_code || 'N/A');
+        setText('view-description', data.description || 'N/A');
+        setText('view-serial', data.serial_number || 'N/A');
+        setText('view-item-code', data.item_code || 'N/A');
+        setText('view-group', data.group_name || 'N/A');
+        setText('view-property-type', data.property_type || 'PURCHASED');
 
         // Location Info
-        document.getElementById('view-branch').textContent = data.branch_name || 'N/A';
-        document.getElementById('view-cost-center').textContent = data.cost_center_code || 'N/A';
-        document.getElementById('view-region').textContent = data.region_code || 'N/A';
-        document.getElementById('view-zone').textContent = data.zone_code || 'N/A';
-        document.getElementById('view-main-zone').textContent = data.main_zone_code || 'N/A';
+        setText('view-branch', data.branch_name || 'N/A');
+        setText('view-cost-center', data.cost_center_code || 'N/A');
+        setText('view-region', data.region_code || 'N/A');
+        setText('view-kpx-branch-id', data.kpx_branch_id || '-');
+        setText('view-corporate-name', data.corporate_name || '-');
+        setText('view-zone', data.zone_code || 'N/A');
+        setText('view-main-zone', data.main_zone_code || 'N/A');
 
-        // Financials
-        document.getElementById('view-acq-cost').textContent = formatMoney.format(data.acquisition_cost || 0);
-        document.getElementById('view-monthly-dep').textContent = formatMoney.format(data.monthly_depreciation || 0);
-        document.getElementById('view-accum-dep').textContent = formatMoney.format(data.accumulated_depreciation || 0);
-        document.getElementById('view-book-value').textContent = formatMoney.format(data.book_value || 0);
-        
+        // Financials (amount spans expect plain number strings)
+        const monthlyDisplay = (typeof data.period_monthly_display !== 'undefined') ? data.period_monthly_display : data.monthly_depreciation;
+        setText('view-acq-cost', formatMoney.format(data.acquisition_cost || 0));
+        setText('view-monthly-dep', formatMoney.format(monthlyDisplay || 0));
+        setText('view-accum-dep', formatMoney.format(data.accumulated_depreciation || 0));
+        setText('view-book-value', formatMoney.format(data.book_value || 0));
+
         // Dates & Audit
-        document.getElementById('view-date-received').textContent = formatFullDate(data.date_received);
-        document.getElementById('view-start-date').textContent = formatFullDate(data.depreciation_start_date);
-        document.getElementById('view-end-date').textContent = formatFullDate(data.depreciation_end_date);
-        document.getElementById('view-months').textContent = data.months || '0';
-        document.getElementById('view-uploaded-by').textContent = data.created_by_username || 'System';
-        document.getElementById('view-created-at').textContent = formatFullDateTime(data.created_at);
+        setText('view-date-received', formatFullDate(data.date_received));
+        setText('view-start-date', formatFullDate(data.depreciation_start_date));
+        setText('view-end-date', formatFullDate(data.depreciation_end_date));
+        setText('view-months', data.months || '0');
+        setText('view-uploaded-by', data.created_by_username || 'System');
+        setText('view-created-at', formatFullDateTime(data.created_at));
 
 
         // Badge styling
@@ -435,6 +467,34 @@ document.addEventListener("DOMContentLoaded", function() {
             }
             badge.classList.remove('hidden');
         }
+
+        // Populate any elements that use `data-key` (mirrors section-finish fields)
+        try {
+            const finishElems = document.querySelectorAll('#finish-summary [data-key]');
+            finishElems.forEach(el => {
+                const key = el.getAttribute('data-key');
+                if (!key) return;
+
+                // Currency amount handling: elements may contain a .amount span
+                const amountChild = el.querySelector('.amount');
+                if (amountChild && (key === 'acquisition_cost' || key === 'preview_debit' || key === 'preview_credit' || key === 'gl_depr_monthly' || key === 'gl_asset_monthly' || key === 'accumulated_depreciation' || key === 'book_value')) {
+                    amountChild.textContent = formatMoney.format(Number(data[key] || 0));
+                    return;
+                }
+
+                // Dates: format keys that start or end with `_date` (covers `date_received`, `depreciation_start_date`)
+                if (key && (/_date$/.test(key) || /^date_/.test(key) || key === 'period_date')) {
+                    const v = data[key];
+                    el.textContent = v ? formatFullDate(v) : '-';
+                    return;
+                }
+
+                // Default: use raw value or dash
+                const val = (typeof data[key] === 'undefined' || data[key] === null || data[key] === '') ? '-' : data[key];
+                // If element contains a span with an id we still set the element textContent so it shows for both td and span
+                el.textContent = val;
+            });
+        } catch (err) { console.warn('Failed to populate finish-summary keys', err); }
 
         // Hide loading state and display grid
         document.getElementById('view-asset-loading').classList.add('hidden');
