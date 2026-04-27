@@ -154,6 +154,12 @@ $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
                     Clear
                 </button>
             </div>
+            <div class="flex items-center">
+                <label class="inline-flex items-center text-sm text-slate-700 ml-2">
+                    <input type="checkbox" name="include_fully_depreciated" id="includeFullyCheckbox" class="mr-2" <?= !empty($rawFilters['include_fully_depreciated']) ? 'checked' : '' ?> />
+                    <span class="text-xs">Show fully depreciated</span>
+                </label>
+            </div>
         </form>
     </div>
 

@@ -248,6 +248,13 @@ class AssetReportService
             $params[':branch_name'] = $filters['branch_name'];
         }
 
+        // By default exclude fully depreciated assets (when latest ledger row indicates zero life or zero book value)
+        $includeFully = !empty($filters['include_fully_depreciated']) && ($filters['include_fully_depreciated'] === true || $filters['include_fully_depreciated'] === '1' || $filters['include_fully_depreciated'] === 'true');
+        if (!$includeFully) {
+            // Only exclude when a ledger row exists and shows fully depreciated (periods_remaining = 0 or book_value <= 0)
+            $sql .= ' AND NOT ( (dl.periods_remaining IS NOT NULL AND dl.periods_remaining = 0) OR (dl.book_value IS NOT NULL AND dl.book_value <= 0) )';
+        }
+
         $sql .= ' ORDER BY COALESCE(dl.period_date, a.depreciation_start_date, a.date_received) DESC, COALESCE(dl.branch_name, a.branch_name) ASC';
 
         $stmt = $this->db->prepare($sql);

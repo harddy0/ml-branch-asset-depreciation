@@ -37,6 +37,10 @@ try {
     $rawRegion = trim((string)($_GET['region'] ?? ''));
     $rawBranch = trim((string)($_GET['branch_name'] ?? ''));
 
+    // include fully depreciated flag: present and '1' or 'true' means include
+    $includeFullyRaw = trim((string)($_GET['include_fully_depreciated'] ?? ''));
+    $includeFully = ($includeFullyRaw === '1' || strcasecmp($includeFullyRaw, 'true') === 0) ? true : false;
+
     $zone   = ($rawZone === '__ALL__' || $rawZone === '') ? null : $rawZone;
     $region = ($rawRegion === '__ALL__' || $rawRegion === '') ? null : $rawRegion;
     $branch = ($rawBranch === '__ALL__' || $rawBranch === '') ? null : $rawBranch;
@@ -62,6 +66,7 @@ try {
         'region'      => $region,
         'branch_name' => $branch,
         'as_of_date'  => $asOfDate,
+        'include_fully_depreciated' => $includeFully,
     ];
 
     $reportData = $reportService->getFilteredAssetsForManageAssets($filters);

@@ -85,6 +85,7 @@ require_once __DIR__ . '/../../public/actions/load_depreciation_list_page.php';
                     <option value="SOLD">Sold</option>
                 </select>
 
+
                 <button
                     type="button"
                     id="depr-filter-reset"

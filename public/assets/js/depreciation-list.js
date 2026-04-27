@@ -791,6 +791,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return params.toString();
     }
 
+
     function fetchDepreciationList() {
         if (!tableBody) return;
 
@@ -840,6 +841,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     statusFilter.value = sv || '';
                     listState.status = sv || '';
                 }
+                
                 
                 renderListRows(rows);
                 updatePaginationUi(pagination);
