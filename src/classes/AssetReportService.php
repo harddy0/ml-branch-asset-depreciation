@@ -168,6 +168,100 @@ class AssetReportService
         return ['data' => $data, 'totals' => $totals];
     }
 
+    /**
+     * Manage-assets variant of the report that keeps active assets visible even when
+     * they do not yet have a depreciation ledger row.
+     */
+    public function getFilteredAssetsForManageAssets(array $filters): array
+    {
+        $asOfDate = trim((string)($filters['as_of_date'] ?? ''));
+        if ($asOfDate === '') {
+            $fallbackTo = trim((string)($filters['date_to'] ?? ''));
+            $fallbackFrom = trim((string)($filters['date_from'] ?? ''));
+            $asOfDate = $fallbackTo !== '' ? $fallbackTo : $fallbackFrom;
+        }
+
+        if ($asOfDate === '') {
+            return ['data' => [], 'totals' => ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0]];
+        }
+
+        $sql = '
+            SELECT
+                a.id                                                          AS asset_id,
+                COALESCE(dl.system_asset_code, a.system_asset_code)           AS system_asset_code,
+                a.reference_no,
+                COALESCE(dl.main_zone_code, a.main_zone_code)                 AS zone,
+                COALESCE(dl.region_code, a.region_code)                       AS region,
+                COALESCE(dl.cost_center_code, a.cost_center_code)             AS cost_center,
+                COALESCE(dl.branch_name, a.branch_name)                       AS branch_name,
+                a.asset_group_id,
+                COALESCE(dl.group_name, ag.group_name)                        AS group_name,
+                et.expense_name                                               AS category_name,
+                et.category_type,
+                a.months                                                      AS asset_life_months,
+                a.description,
+                a.asset_name,
+                a.date_received,
+                a.depreciation_start_date,
+                a.depreciation_end_date,
+                a.retirement_date,
+                a.acquisition_cost,
+                COALESCE(dl.period_depreciation_expense, 0)                  AS period_depreciation_expense,
+                COALESCE(dl.accumulated_depreciation, 0)                     AS accumulated_depreciation,
+                COALESCE(dl.periods_remaining, a.months)                     AS remaining_life,
+                COALESCE(dl.book_value, a.acquisition_cost)                  AS book_value,
+                COALESCE(dl.period_date, a.depreciation_start_date, a.date_received) AS period_date,
+                a.monthly_depreciation
+            FROM assets a
+            LEFT JOIN (
+                SELECT d1.*
+                FROM depreciation_ledger d1
+                JOIN (
+                    SELECT asset_id, MAX(period_date) AS period_date
+                    FROM depreciation_ledger
+                    WHERE period_date <= :as_of_date
+                    GROUP BY asset_id
+                ) d2 ON d1.asset_id = d2.asset_id AND d1.period_date = d2.period_date
+            ) dl ON dl.asset_id = a.id
+            LEFT JOIN asset_groups ag ON ag.id = a.asset_group_id
+            LEFT JOIN expense_types et ON et.id = ag.expense_type_id
+            WHERE a.status = \'ACTIVE\'
+        ';
+
+        $params = [
+            ':as_of_date' => $asOfDate,
+        ];
+
+        if (!empty($filters['zone'])) {
+            $sql            .= ' AND COALESCE(dl.main_zone_code, a.main_zone_code) = :zone';
+            $params[':zone'] = $filters['zone'];
+        }
+        if (!empty($filters['region'])) {
+            $sql              .= ' AND COALESCE(dl.region_code, a.region_code) = :region';
+            $params[':region'] = $filters['region'];
+        }
+        if (!empty($filters['branch_name'])) {
+            $sql                    .= ' AND COALESCE(dl.branch_name, a.branch_name) = :branch_name';
+            $params[':branch_name'] = $filters['branch_name'];
+        }
+
+        $sql .= ' ORDER BY COALESCE(dl.period_date, a.depreciation_start_date, a.date_received) DESC, COALESCE(dl.branch_name, a.branch_name) ASC';
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $data = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $totals = ['cost' => 0.0, 'de' => 0.0, 'ad' => 0.0, 'bv' => 0.0];
+        foreach ($data as $row) {
+            $totals['cost'] += (float)$row['acquisition_cost'];
+            $totals['de']   += (float)$row['period_depreciation_expense'];
+            $totals['ad']   += (float)$row['accumulated_depreciation'];
+            $totals['bv']   += (float)$row['book_value'];
+        }
+
+        return ['data' => $data, 'totals' => $totals];
+    }
+
     // ==========================================
     // EXCEL EXPORT
     // ==========================================

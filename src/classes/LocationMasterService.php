@@ -97,6 +97,40 @@ class LocationMasterService {
         }
     }
 
+    /**
+     * Region options for dropdowns, preserving code as the submitted value.
+     */
+    public function getRegionOptions(?string $zoneCode = null): array {
+        $rows = trim((string)$zoneCode) !== ''
+            ? $this->getRegionsByZone($zoneCode)
+            : $this->getRegionsWithDescriptions();
+
+        $options = [];
+        foreach ($rows as $row) {
+            $code = trim((string)($row['region_code'] ?? ''));
+            if ($code === '') {
+                continue;
+            }
+
+            $description = trim((string)($row['region_description'] ?? ''));
+            $options[] = [
+                'value' => $code,
+                'label' => $description !== '' ? ($code . ' - ' . $description) : $code,
+            ];
+        }
+
+        return $options;
+    }
+
+    private function getRegionsWithDescriptions(): array {
+        $this->checkConnection();
+        $stmt = $this->dbMaster->prepare(
+            "SELECT DISTINCT region_code, region_description FROM region_masterfile WHERE region_code IS NOT NULL ORDER BY region_code ASC"
+        );
+        $stmt->execute();
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
     // ── 4. Branches (all, or filtered by region_code) ─────────────────────
 
     public function getBranches(?string $regionCode = null): array {
@@ -175,6 +209,8 @@ class LocationMasterService {
             return null;
         }
 
+        $normalized = mb_strtolower(preg_replace('/\s+/', ' ', $raw));
+
         // Try exact code match first
         try {
             $stmtCode = $this->dbMaster->prepare(
@@ -186,30 +222,22 @@ class LocationMasterService {
                 return ['code' => $r['region_code'], 'description' => $r['region_description'] ?? ''];
             }
 
-            // Normalize for description match: collapse whitespace and lowercase
-            $norm = mb_strtolower(preg_replace('/\s+/', ' ', $raw));
-
             $stmtDesc = $this->dbMaster->prepare(
                 "SELECT region_code, region_description FROM region_masterfile WHERE LOWER(TRIM(region_description)) = :d"
             );
-            $stmtDesc->execute([':d' => trim($norm)]);
+            $stmtDesc->execute([':d' => trim($normalized)]);
             $matches = $stmtDesc->fetchAll(\PDO::FETCH_ASSOC);
 
             if (!$matches) {
-                // Try a looser normalized match using REPLACE of multiple spaces
-                $stmtDesc2 = $this->dbMaster->prepare(
-                    "SELECT region_code, region_description FROM region_masterfile"
+                $stmtLike = $this->dbMaster->prepare(
+                    "SELECT region_code, region_description
+                     FROM region_masterfile
+                     WHERE region_code LIKE :q
+                        OR LOWER(region_description) LIKE :q
+                     ORDER BY region_code ASC"
                 );
-                $stmtDesc2->execute();
-                $all = $stmtDesc2->fetchAll(\PDO::FETCH_ASSOC);
-                $found = [];
-                foreach ($all as $m) {
-                    $mnorm = mb_strtolower(preg_replace('/\s+/', ' ', trim($m['region_description'] ?? '')));
-                    if ($mnorm === $norm) {
-                        $found[] = $m;
-                    }
-                }
-                $matches = $found;
+                $stmtLike->execute([':q' => '%' . $normalized . '%']);
+                $matches = $stmtLike->fetchAll(\PDO::FETCH_ASSOC);
             }
 
             if (!$matches) {
