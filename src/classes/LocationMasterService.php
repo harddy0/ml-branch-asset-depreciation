@@ -66,12 +66,11 @@ class LocationMasterService {
 
     public function getRegions(?string $zoneCode = null): array {
         $this->checkConnection();
-        $sql    = "SELECT DISTINCT region_code FROM region_masterfile WHERE region_code IS NOT NULL";
-        $params = [];
-        $sql   .= " ORDER BY region_code ASC";
-        $stmt   = $this->dbMaster->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        if (trim((string)$zoneCode) !== '') {
+            return $this->getRegionsByZone($zoneCode);
+        }
+
+        return $this->getRegionsWithDescriptions();
     }
 
     /**
@@ -80,7 +79,7 @@ class LocationMasterService {
     public function getRegionsByZone(string $zoneCode): array {
         $this->checkConnection();
         if (trim($zoneCode) === '') {
-            return $this->getRegions();
+            return $this->getRegionsWithDescriptions();
         }
         try {
             $stmt = $this->dbMaster->prepare(
@@ -91,9 +90,9 @@ class LocationMasterService {
             );
             $stmt->execute([':zc' => $zoneCode]);
             $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            return $rows ?: $this->getRegions();
+            return $rows ?: $this->getRegionsWithDescriptions();
         } catch (\PDOException $e) {
-            return $this->getRegions();
+            return $this->getRegionsWithDescriptions();
         }
     }
 
@@ -113,9 +112,12 @@ class LocationMasterService {
             }
 
             $description = trim((string)($row['region_description'] ?? ''));
+            $label = $description !== '' ? ($code . ' - ' . $description) : $code;
             $options[] = [
                 'value' => $code,
-                'label' => $description !== '' ? ($code . ' - ' . $description) : $code,
+                'text' => $label,
+                'label' => $label,
+                'description' => $description,
             ];
         }
 
