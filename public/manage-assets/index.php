@@ -107,10 +107,6 @@ $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
     </div>
 </div>
 
-<div class="mb-1 mr-6 text-right">
-    <p class="text-[11px] font-mono text-slate-500">Filtered as of date</p>
-</div>
-
 <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
         <div class="bg-slate-50 border-b border-slate-200 px-3 py-2">
        <form id="filterForm" 
@@ -151,7 +147,12 @@ $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
             </div>
             
             <div class="flex items-center gap-2 border border-slate-300 rounded px-2 py-1 bg-white focus-within:border-[#ce2216] focus-within:ring-1 focus-within:ring-[#ce2216] transition-all">
-                <input type="text" name="as_of_date" value="<?= htmlspecialchars($filters['as_of_date'] ?? '') ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="As of">
+                <input type="text" name="as_of_date" value="<?= htmlspecialchars($filters['as_of_date'] ?? '') ?>" required class="date-formatter text-sm text-slate-800 font-medium outline-none cursor-pointer w-28 bg-slate-50 text-center" placeholder="As of date">
+            </div>
+            <div class="flex items-center">
+                <button id="clearFiltersBtn" type="button" title="Clear filters" class="ml-0 px-3 py-1.5 text-xs border border-slate-300 rounded bg-white hover:bg-slate-100 text-slate-600 font-mono">
+                    Clear
+                </button>
             </div>
         </form>
     </div>
@@ -248,3 +249,34 @@ $totals = ['cost' => 0, 'de' => 0, 'ad' => 0, 'bv' => 0];
         echo "<script src=\"" . ASSET_URL . "js/" . $f . "$ver\"></script>\n";
     }
 ?>
+
+<script>
+(function(){
+    const form = document.getElementById('filterForm');
+    if(!form) return;
+    const clearBtn = document.getElementById('clearFiltersBtn');
+    if(!clearBtn) return;
+    clearBtn.addEventListener('click', function(){
+        if (window.clearAssetFilters && typeof window.clearAssetFilters === 'function') {
+            window.clearAssetFilters();
+            return;
+        }
+
+        // Fallback if the main script hasn't loaded yet
+        form.reset();
+        ['zoneSelect','regionSelect','branchSelect'].forEach(function(id){
+            const el = document.getElementById(id);
+            if(el){
+                el.value = '';
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+        const dateInput = form.querySelector('input[name="as_of_date"]');
+        if(dateInput){
+            if(dateInput._flatpickr){ dateInput._flatpickr.clear(); }
+            dateInput.value = '';
+        }
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+})();
+</script>

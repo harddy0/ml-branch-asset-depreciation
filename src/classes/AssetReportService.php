@@ -132,6 +132,7 @@ class AssetReportService
             LEFT JOIN asset_groups ag ON ag.id = a.asset_group_id
             LEFT JOIN expense_types et ON et.id = ag.expense_type_id
             WHERE a.status = \'ACTIVE\'
+            AND DATE(COALESCE(a.created_at, a.date_received, a.depreciation_start_date)) <= :as_of_date
         ';
 
         $params = [
