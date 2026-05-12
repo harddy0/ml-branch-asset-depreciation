@@ -105,25 +105,41 @@
     function formatCurrencyInput(el, blur){
         if(!el) return;
         let v = el.value || '';
-        // keep only digits and dot
+        // keep only digits and dot; allow a single dot for decimals
         let cleaned = String(v).replace(/[^0-9.]/g, '');
-        // handle multiple dots
-        const parts = cleaned.split('.');
-        let int = parts[0] || '';
-        let dec = parts[1] || '';
-        if(parts.length > 2) dec = parts.slice(1).join('').slice(0,2);
-        if(dec.length > 2) dec = dec.slice(0,2);
-        // remove leading zeros (but leave single zero)
-        int = int.replace(/^0+(?=\d)/, '');
-        const intFormatted = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') || '0';
-        let newVal = dec ? intFormatted + '.' + dec : intFormatted;
-        if(newVal === '0') newVal = '';
-        el.value = newVal;
-        if(blur){
-            if(el.value === '') return;
-            const num = Number(el.value.replace(/,/g, ''));
-            if(!isNaN(num)){
-                el.value = num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        const firstDotIndex = cleaned.indexOf('.');
+        if(firstDotIndex !== -1){
+            // allow only first dot and up to 2 decimals
+            const intPart = cleaned.slice(0, firstDotIndex);
+            let decPart = cleaned.slice(firstDotIndex + 1).replace(/\./g, '');
+            decPart = decPart.slice(0, 2);
+            // remove leading zeros from integer part but keep single zero
+            const int = intPart.replace(/^0+(?=\d)/, '') || (intPart === '' ? '' : '0');
+            if(blur){
+                // on blur: format with thousands separators and exactly 2 decimals
+                const num = Number((int === '' ? '0' : int) + '.' + (decPart || '0'));
+                if(!isNaN(num)){
+                    el.value = num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                } else {
+                    el.value = '';
+                }
+            } else {
+                // while typing: keep raw number with single dot and decimals (no commas)
+                const displayInt = (int === '' && intPart === '') ? '' : (int === '' ? '0' : int);
+                el.value = displayInt + '.' + decPart;
+            }
+        } else {
+            // no dot present: integer only
+            let int = cleaned.replace(/^0+(?=\d)/, '');
+            if(blur){
+                if(int === '') { el.value = ''; }
+                else {
+                    const num = Number(int);
+                    if(!isNaN(num)) el.value = num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                }
+            } else {
+                // while typing: show integer without commas
+                el.value = int;
             }
         }
         try{ el.setSelectionRange(el.value.length, el.value.length); } catch(e){}
@@ -237,7 +253,7 @@
                     // format numbers with thousand separators when numeric
                     const num = Number(String(value).replace(/,/g, ''));
                     if(!isNaN(num)){
-                        amountEl.textContent = num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        amountEl.textContent = num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                     } else if(value){
                         amountEl.textContent = value;
                     } else {
@@ -265,7 +281,7 @@
             function fmt(n){
                 const num = Number(n || 0);
                 if(isNaN(num)) return '—';
-                return num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                return num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             }
 
             const debitEl = container.querySelector('[data-key="preview_debit"]');
@@ -1067,8 +1083,8 @@ if(costEl){
 
         if(!costInput || !monthsInput || !monthlyDepInput) return;
 
-        // Parse cost: remove commas and convert to number
-        const costStr = String(costInput.value || '0').replace(/,/g, '');
+        // Parse cost: remove any non-numeric (except dot/minus) and convert to number
+        const costStr = String(costInput.value || '0').replace(/[^0-9.\-]/g, '');
         const cost = parseFloat(costStr) || 0;
         const months = parseInt(monthsInput.value) || 0;
 
@@ -1108,7 +1124,7 @@ if(costEl){
         function fmt(n){
             const num = Number(n || 0);
             if(isNaN(num) || num === 0) return '0.00';
-            return num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            return num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
         if(assetCodeTd) assetCodeTd.textContent = assetCodeEl ? (assetCodeEl.value || '—') : '—';
