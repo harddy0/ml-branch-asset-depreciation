@@ -64,6 +64,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // In-memory cache of asset groups keyed by id for quick lookup when editing
     let assetGroupsCache = {};
+    let assetGroupsList = []; // ordered list of groups
+    let currentFiltered = []; // rows after search/filter
+    let currentPage = 1;
+    const PAGE_SIZE = 13; // rows per page
     let expenseTypeOptions = [];
     let selectedExpenseFilterId = '';
 
@@ -86,14 +90,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const rows = json.data || [];
             assetGroupsCache = {};
+            assetGroupsList = rows.slice();
+            currentFiltered = assetGroupsList.slice();
+            currentPage = 1;
             if (rows.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-slate-500">No asset groups found.</td></tr>';
                 return;
             }
 
-            // Cache rows and render
+            // Cache rows and render (use pagination)
             rows.forEach(r => { assetGroupsCache[r.id] = r; });
-            renderAssetGroups(rows);
+            renderPage();
         } catch (err) {
             console.error('Failed to fetch asset groups:', err);
             tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-red-600">Network error loading asset groups.</td></tr>';
@@ -109,11 +116,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const expenseName = r.expense_name ? `${r.expense_name}${r.policy_months ? ' (' + r.policy_months + ' months)' : ''}` : '-';
             return `
                     <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-6 py-0 text-sm font-medium text-slate-700">${escapeHtml(r.group_name || '')}</td>
-                        <td class="px-6 py-0 text-sm font-medium text-slate-700">${escapeHtml(expenseName)}</td>
-                        <td class="px-6 py-0 text-sm font-medium text-slate-700 text-center">${escapeHtml(r.actual_months ?? '')}</td>
-                        <td class="px-6 py-0 text-sm font-medium text-slate-700 text-center">${escapeHtml(r.asset_gl_code || '')}</td>
-                        <td class="px-6 py-0 text-sm font-medium text-slate-700 text-center">${escapeHtml(r.expense_gl_code || '')}</td>
+                        <td class="px-6 py-0 text-sm font-medium text-slate-700 whitespace-nowrap overflow-hidden truncate">${escapeHtml(r.group_name || '')}</td>
+                        <td class="px-6 py-0 text-sm font-medium text-slate-700 whitespace-nowrap overflow-hidden truncate">${escapeHtml(expenseName)}</td>
+                        <td class="px-6 py-0 text-sm font-medium text-slate-700 text-center whitespace-nowrap">${escapeHtml(r.actual_months ?? '')}</td>
+                        <td class="px-6 py-0 text-sm font-medium text-slate-700 text-center whitespace-nowrap">${escapeHtml(r.asset_gl_code || '')}</td>
+                        <td class="px-6 py-0 text-sm font-medium text-slate-700 text-center whitespace-nowrap">${escapeHtml(r.expense_gl_code || '')}</td>
                         <td class="px-6 py-0 text-center text-sm">
                             <button data-id="${r.id}" class="edit-btn inline-flex items-center justify-center w-6 h-6 bg-white hover:bg-slate-50 text-slate-700 rounded-sm shadow-sm transition" title="Edit">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -128,6 +135,83 @@ document.addEventListener('DOMContentLoaded', function() {
 
         tbody.innerHTML = html;
     }
+
+    // Render the current page based on `currentFiltered` and `currentPage`
+    function renderPage() {
+        const total = currentFiltered.length;
+        if (total === 0) {
+            const tbody = document.getElementById('assetGroupsTbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-slate-500">No matching asset groups.</td></tr>';
+            renderPaginationControls();
+            return;
+        }
+
+        const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        if (currentPage > totalPages) currentPage = totalPages;
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const pageRows = currentFiltered.slice(start, start + PAGE_SIZE);
+        renderAssetGroups(pageRows);
+        renderPaginationControls(total, totalPages);
+    }
+
+    function renderPaginationControls(total = 0, totalPages = 0) {
+        const container = document.getElementById('assetGroupsPagination');
+        if (!container) return;
+        // Show range and prev/next with page numbers (compact)
+        if (total === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const start = (currentPage - 1) * PAGE_SIZE + 1;
+        const end = Math.min(total, currentPage * PAGE_SIZE);
+
+        // Build page number buttons (show up to 7 pages centered)
+        let pageButtons = '';
+        const maxButtons = 7;
+        let from = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+        let to = Math.min(totalPages, from + maxButtons - 1);
+        if (to - from < maxButtons - 1) {
+            from = Math.max(1, to - maxButtons + 1);
+        }
+
+        for (let p = from; p <= to; p++) {
+            pageButtons += `<button data-page="${p}" class="mx-0.5 px-3 py-1 rounded-md ${p===currentPage? 'bg-[#ce1126] text-white font-bold' : 'bg-white border border-slate-200 text-slate-700'}">${p}</button>`;
+        }
+
+        container.innerHTML = `
+            <div class="flex items-center gap-3">
+                <div class="text-slate-600">Showing <span class="font-medium">${start}</span>–<span class="font-medium">${end}</span> of <span class="font-medium">${total}</span></div>
+            </div>
+            <div class="flex items-center"> 
+                <button id="pg-prev" class="px-3 py-1 mr-2 bg-white border border-slate-200 rounded-md text-sm ${currentPage===1? 'opacity-50 cursor-not-allowed' : ''}">Prev</button>
+                <div id="pg-pages" class="flex items-center">${pageButtons}</div>
+                <button id="pg-next" class="px-3 py-1 ml-2 bg-white border border-slate-200 rounded-md text-sm ${currentPage===totalPages? 'opacity-50 cursor-not-allowed' : ''}">Next</button>
+            </div>
+        `;
+    }
+
+    // Pagination click handler (delegated)
+    document.addEventListener('click', function(e) {
+        const prev = e.target.closest && e.target.closest('#pg-prev');
+        if (prev) {
+            if (currentPage > 1) { currentPage -= 1; renderPage(); }
+            return;
+        }
+        const next = e.target.closest && e.target.closest('#pg-next');
+        if (next) {
+            const total = currentFiltered.length;
+            const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+            if (currentPage < totalPages) { currentPage += 1; renderPage(); }
+            return;
+        }
+        const pageBtn = e.target.closest && e.target.closest('#pg-pages button[data-page]');
+        if (pageBtn) {
+            const p = parseInt(pageBtn.getAttribute('data-page')) || 1;
+            currentPage = p; renderPage();
+            return;
+        }
+    });
 
     // Simple HTML escape for values inserted into templates
     function escapeHtml(str) {
@@ -234,13 +318,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return matchSearch && matchFilter;
         });
 
-        if (filtered.length === 0) {
-            const tbody = document.getElementById('assetGroupsTbody');
-            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-4 text-sm text-slate-500">No matching asset groups.</td></tr>';
-            return;
-        }
-
-        renderAssetGroups(filtered);
+        // Update current filtered set and render the first page
+        currentFiltered = filtered;
+        currentPage = 1;
+        renderPage();
     }
 
     function getRankedExpenseOptions(query) {
