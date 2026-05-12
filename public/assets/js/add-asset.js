@@ -105,44 +105,97 @@
     function formatCurrencyInput(el, blur){
         if(!el) return;
         let v = el.value || '';
-        // keep only digits and dot; allow a single dot for decimals
-        let cleaned = String(v).replace(/[^0-9.]/g, '');
-        const firstDotIndex = cleaned.indexOf('.');
-        if(firstDotIndex !== -1){
-            // allow only first dot and up to 2 decimals
-            const intPart = cleaned.slice(0, firstDotIndex);
-            let decPart = cleaned.slice(firstDotIndex + 1).replace(/\./g, '');
-            decPart = decPart.slice(0, 2);
-            // remove leading zeros from integer part but keep single zero
-            const int = intPart.replace(/^0+(?=\d)/, '') || (intPart === '' ? '' : '0');
-            if(blur){
-                // on blur: format with thousands separators and exactly 2 decimals
-                const num = Number((int === '' ? '0' : int) + '.' + (decPart || '0'));
-                if(!isNaN(num)){
-                    el.value = num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                } else {
-                    el.value = '';
-                }
-            } else {
-                // while typing: keep raw number with single dot and decimals (no commas)
-                const displayInt = (int === '' && intPart === '') ? '' : (int === '' ? '0' : int);
-                el.value = displayInt + '.' + decPart;
-            }
-        } else {
-            // no dot present: integer only
-            let int = cleaned.replace(/^0+(?=\d)/, '');
-            if(blur){
-                if(int === '') { el.value = ''; }
-                else {
-                    const num = Number(int);
-                    if(!isNaN(num)) el.value = num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                }
-            } else {
-                // while typing: show integer without commas
-                el.value = int;
-            }
+
+        // Intelligent live-formatting with caret preservation.
+        // Behavior:
+        // - While typing: automatically insert thousands separators (commas) in the integer part.
+        // - Allow a single decimal separator (dot or comma). Decimal digits limited to 2.
+        // - On blur: normalize and format using en-US with two decimals.
+
+        const raw = String(v);
+        const origPos = el.selectionStart || 0;
+
+        // Decide decimal separator: prefer last occurrence among '.' or ','
+        const lastDot = raw.lastIndexOf('.');
+        const lastComma = raw.lastIndexOf(',');
+        let decSep = null;
+        if (lastDot > lastComma) decSep = '.';
+        else if (lastComma > lastDot) decSep = ',';
+
+        // Remove all characters except digits and separators
+        let cleaned = raw.replace(/[^0-9.,]/g, '');
+
+        // If both separators exist, pick the last one as decimal separator and remove others
+        if (cleaned.indexOf('.') !== -1 && cleaned.indexOf(',') !== -1) {
+            const last = Math.max(cleaned.lastIndexOf('.'), cleaned.lastIndexOf(','));
+            decSep = cleaned[last] === '.' ? '.' : ',';
+            if (decSep === '.') cleaned = cleaned.replace(/,/g, '');
+            else cleaned = cleaned.replace(/\./g, '');
         }
-        try{ el.setSelectionRange(el.value.length, el.value.length); } catch(e){}
+
+        let intPart = cleaned;
+        let decPart = '';
+        if (decSep) {
+            const idx = cleaned.lastIndexOf(decSep);
+            intPart = cleaned.slice(0, idx);
+            decPart = cleaned.slice(idx + 1).replace(/[^0-9]/g, '').slice(0,2);
+        }
+
+        // Strip any non-digits from integer part and remove leading zeros (preserve single zero)
+        intPart = (intPart || '').replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '') || (intPart ? '0' : '');
+
+        // Format integer with commas
+        function addCommas(s){
+            if(!s) return '';
+            return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        const formattedInt = addCommas(intPart);
+
+        // Build the display value
+        let display;
+        if (decSep) {
+            // show decimal separator as dot while typing for consistency
+            display = (formattedInt === '' ? '0' : formattedInt) + (decPart ? '.' + decPart : '.');
+        } else {
+            display = formattedInt;
+        }
+
+        // If blur: show full formatted number with 2 decimals
+        if (blur) {
+            const num = parseFloat((intPart === '' ? '0' : intPart) + '.' + (decPart || '0'));
+            if (!isNaN(num)) {
+                el.value = num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            } else {
+                el.value = '';
+            }
+            try{ el.setSelectionRange(el.value.length, el.value.length); } catch(e){}
+            return;
+        }
+
+        // Preserve caret: compute number of digits left of origin caret in raw
+        const leftRaw = raw.slice(0, origPos);
+        const digitsLeft = (leftRaw.match(/\d/g) || []).length;
+
+        // Set display value
+        el.value = display;
+
+        // If the user just typed a separator ('.' or ','), place caret right after the dot
+        const lastTypedChar = leftRaw.slice(-1);
+        if (lastTypedChar === '.' || lastTypedChar === ',') {
+            const dotIndex = display.indexOf('.');
+            const newPos = dotIndex !== -1 ? dotIndex + 1 : display.length;
+            try{ el.setSelectionRange(newPos, newPos); } catch(e){}
+            return;
+        }
+
+        // Compute new caret position by finding position where digitsLeft digits have been passed
+        let seen = 0, newPos = display.length;
+        for (let i = 0; i < display.length; i++) {
+            if (/[0-9]/.test(display[i])) seen++;
+            if (seen >= digitsLeft) { newPos = i + 1; break; }
+        }
+        try{ el.setSelectionRange(newPos, newPos); } catch(e){}
     }
 
     ['#asset_acquisition_cost'].forEach(sel => {
