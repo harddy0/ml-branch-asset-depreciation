@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
 // Flash messages can go here if needed, matching your system
 ?>
 
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-0">
     <div>
         <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Expense Types (Policies)</h1>
     </div>
@@ -23,7 +23,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
     </div>
 </div>
 
-<div class="mb-4 mt-4">
+<div class="mb-4 -mt-2">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
         <div class="relative w-full">
             <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"

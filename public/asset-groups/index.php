@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../../src/includes/init.php';
 ?>
 
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-0">
     <div>
         <h1 class="text-1xl font-black text-slate-800 uppercase tracking-wide">Asset Group</h1>
     </div>
@@ -20,7 +20,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
     </div>
 </div>
 
-<div class="mb-4 mt-4"> 
+<div class="mb-4 -mt-2"> 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
        <div class="relative w-full">
             <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
@@ -53,23 +53,23 @@ require_once __DIR__ . '/../../src/includes/init.php';
 
 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
-        <table id="assetGroupsTable" class="w-full text-sm table-fixed">
+        <table id="assetGroupsTable" class="w-full text-sm table-fixed"> <!-- fixed table layout prevents stacking; horizontal scroll will appear if space is tight -->
             <colgroup>
-                <col class="w-[20%]">
-                <col class="w-[26%]">
-                <col class="w-[12%]">
-                <col class="w-[16%]">
-                <col class="w-[16%]">
-                <col class="w-[10%]">
+                <col class="w-[22%]"> <!-- group name -->
+                <col class="w-[30%]"> <!-- expense type expanded -->
+                <col class="w-[12%]">  <!-- actual months -->
+                <col class="w-[12%]"> <!-- asset GL code -->
+                <col class="w-[12%]"> <!-- expense GL code -->
+                <col class="w-[12%]"> <!-- actions -->
             </colgroup>
             <thead>
                 <tr class="bg-[#ce2216] border-b border-slate-200">
-                    <th class="text-left text-xs font-black text-white tracking-widest px-6 py-2">Group Name</th>
-                    <th class="text-left text-xs font-black text-white tracking-widest px-6 py-2">Expense Type</th>
+                    <th class="text-left text-xs font-black text-white tracking-widest px-6 py-2 whitespace-nowrap">Group Name</th>
+                    <th class="text-left text-xs font-black text-white tracking-widest px-6 py-2 whitespace-nowrap">Expense Type</th>
                     <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2 whitespace-nowrap">Actual Months</th>
-                    <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2">Asset GL Code</th>
-                    <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2">Expense GL Code</th>
-                    <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2">Actions</th>
+                    <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2 whitespace-nowrap">Asset GL Code</th>
+                    <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2 whitespace-nowrap">Expense GL Code</th>
+                    <th class="text-center text-xs font-black text-white tracking-widest px-6 py-2 whitespace-nowrap">Actions</th>
                 </tr>
             </thead>
             <tbody id="assetGroupsTbody" class="divide-y divide-slate-100">
@@ -85,5 +85,10 @@ require_once __DIR__ . '/../../src/includes/modals/asset-group-add.php';
 require_once __DIR__ . '/../../src/includes/modals/asset-group-edit.php';
 require_once __DIR__ . '/../../src/includes/modals/asset-group-delete.php';
 ?>
+
+    <!-- Pagination controls (populated via JS) -->
+    <div class="mt-3">
+        <div id="assetGroupsPagination" class="flex items-center justify-between text-sm"></div>
+    </div>
 
 <script src="../assets/js/asset-groups.js"></script>
