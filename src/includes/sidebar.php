@@ -10,6 +10,7 @@ $baseUrl = BASE_URL . '/public';
     elseif (str_contains($uri, '/category-mgt'))  $currentPage = 'category-mgt';
     elseif (str_contains($uri, '/gl-codes'))      $currentPage = 'gl-codes'; // Added GL Codes route
     elseif (str_contains($uri, '/user-mgt'))      $currentPage = 'user-mgt';
+    elseif (str_contains($uri, '/issuance-report')) $currentPage = 'issuance-report';
     else                                          $currentPage = '';
 }
 ?>
@@ -92,6 +93,20 @@ $baseUrl = BASE_URL . '/public';
                     </svg>
                     <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
                         Depreciation Report
+                    </span>
+                </a>
+            </li>
+
+            <li class="<?= $currentPage === 'issuance-report'
+                ? 'bg-black/25 border-l-4 border-white'
+                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
+                <a href="<?= $baseUrl ?>/issuance-report/"
+                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 6h10a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                    </svg>
+                    <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                        Issuance Report
                     </span>
                 </a>
             </li>
