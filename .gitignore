@@ -7,3 +7,4 @@ storage/uploads/*
 Thumbs.db
 .idea/
 .vscode/
+repomix-output.*
