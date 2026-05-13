@@ -34,10 +34,7 @@ $respondJson = static function (array $payload, int $statusCode = 200): void {
 // ══════════════════════════════════════════════════════════════════════
 if (isset($_POST['action']) && $_POST['action'] === 'preview') {
     if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
-        while (ob_get_level() > 0) ob_end_clean();
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['success' => false, 'error' => 'Please upload a valid Excel file.']);
-        exit;
+        $respondJson(['success' => false, 'error' => 'Please upload a valid Excel file.']);
     }
 
     $fileTmp  = $_FILES['import_file']['tmp_name'];
@@ -45,10 +42,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'preview') {
     $ext      = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
     if (!in_array($ext, ['xlsx', 'xls', 'csv'])) {
-        while (ob_get_level() > 0) ob_end_clean();
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['success' => false, 'error' => 'Invalid file type. Only .xlsx, .xls, and .csv are allowed.']);
-        exit;
+        $respondJson(['success' => false, 'error' => 'Invalid file type. Only .xlsx, .xls, and .csv are allowed.']);
     }
 
     $result = $importService->previewImport($fileTmp);
@@ -57,34 +51,21 @@ if (isset($_POST['action']) && $_POST['action'] === 'preview') {
         $_SESSION['pending_issuance_import_data'] = $result;
     }
 
-    while (ob_get_level() > 0) ob_end_clean();
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($result);
-    exit;
+    $respondJson($result);
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  PHASE 2 — COMMIT (regular POST)
+//  PHASE 2 — COMMIT
 // ══════════════════════════════════════════════════════════════════════
 if (isset($_POST['action']) && $_POST['action'] === 'commit') {
     $parsed = $_SESSION['pending_issuance_import_data'] ?? null;
 
     if (!$parsed) {
-        if ($isAjax) {
-            $respondJson(['success' => false, 'error' => 'Session expired or no import data found. Please upload the file again.'], 400);
-        }
-        $_SESSION['flash_error'] = 'Session expired or no import data found. Please upload the file again.';
-        header('Location: ' . BASE_URL . '/public/issuance-import/');
-        exit;
+        $respondJson(['success' => false, 'error' => 'Session expired or no import data found. Please upload the file again.'], 400);
     }
 
     if (!$parsed['success']) {
-        if ($isAjax) {
-            $respondJson(['success' => false, 'error' => (string)$parsed['error']], 400);
-        }
-        $_SESSION['flash_error'] = $parsed['error'];
-        header('Location: ' . BASE_URL . '/public/issuance-import/');
-        exit;
+        $respondJson(['success' => false, 'error' => (string)$parsed['error']], 400);
     }
 
     $selectedNums = [];
@@ -107,45 +88,29 @@ if (isset($_POST['action']) && $_POST['action'] === 'commit') {
     $result = $importService->prepareAndCommit($parsed['preview'], $selectedNums, $editedMap);
 
     if ($result['success']) {
-        $msg = "Successfully imported {$result['count']} issuance row(s).";
-        if (!empty($result['skipped']) && $result['skipped'] > 0) {
+        $msg = "Successfully imported {$result['count']} row(s).";
+        if ($result['skipped'] > 0) {
             $msg .= " {$result['skipped']} duplicate(s) were skipped.";
         }
+        if (!empty($result['errors'])) {
+            $msg .= " " . count($result['errors']) . " error(s) occurred.";
+        }
+        
         $_SESSION['flash_success'] = $msg;
 
-        if ($isAjax) {
-            unset($_SESSION['pending_issuance_import_data']);
-            $respondJson([
-                'success' => true,
-                'count'   => (int)($result['count'] ?? 0),
-                'skipped' => (int)($result['skipped'] ?? 0),
-                'errors'  => $result['errors'] ?? [],
-                'message' => $msg,
-            ]);
-        }
-
         unset($_SESSION['pending_issuance_import_data']);
+        
+        $respondJson([
+            'success' => true,
+            'count'   => (int)($result['count'] ?? 0),
+            'skipped' => (int)($result['skipped'] ?? 0),
+            'errors'  => $result['errors'] ?? [],
+            'message' => $msg,
+        ]);
     } else {
         $firstError = $result['errors'][0] ?? 'Import failed.';
-        $_SESSION['flash_error'] = $firstError;
-
-        if ($isAjax) {
-            $respondJson([
-                'success' => false,
-                'error'   => (string)$firstError,
-            ], 400);
-        }
+        $respondJson(['success' => false, 'error' => (string)$firstError], 400);
     }
-
-    header('Location: ' . BASE_URL . '/public/issuance-import/');
-    exit;
 }
 
-$_SESSION['flash_error'] = 'Invalid request.';
-
-if ($isAjax) {
-    $respondJson(['success' => false, 'error' => 'Invalid request.'], 400);
-}
-
-header('Location: ' . BASE_URL . '/public/issuance-import/');
-exit;
+$respondJson(['success' => false, 'error' => 'Invalid request.'], 400);
