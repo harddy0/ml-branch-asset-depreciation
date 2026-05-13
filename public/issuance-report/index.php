@@ -349,10 +349,6 @@ require_once __DIR__ . '/../../src/includes/init.php';
             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Summary</span>
             <div class="flex gap-6 text-sm font-black text-slate-800 flex-wrap">
                 <span class="flex items-center gap-2">
-                    <span class="text-xs text-slate-400 font-bold uppercase">Records</span>
-                    <span id="total-records" class="font-mono">0</span>
-                </span>
-                <span class="flex items-center gap-2">
                     <span class="text-xs text-slate-400 font-bold uppercase">Total Qty</span>
                     <span id="total-quantity" class="font-mono">0</span>
                 </span>
