@@ -92,6 +92,47 @@ $baseUrl = BASE_URL . '/public';
                 </ul>
             </li>
 
+            <li class="<?= ($currentPage === 'manage-assets' || $currentPage === 'issuance-report')
+                ? 'bg-black/25 border-l-4 border-white'
+                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors group">
+                <div id="report-parent" data-initial-active="<?= ($currentPage === 'manage-assets' || $currentPage === 'issuance-report') ? '1' : '0' ?>" class="flex items-center justify-between px-5 py-2 hover:bg-black/10 transition-all" role="button" tabindex="0" aria-expanded="<?= ($currentPage === 'manage-assets' || $currentPage === 'issuance-report') ? 'true' : 'false' ?>">
+                    <div class="flex items-center gap-4">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3h6l4 4v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1h3z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6M9 16h6" />
+                        </svg>
+                        <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                            Report
+                        </span>
+                    </div>
+                    <svg id="report-caret" class="w-4 h-4 text-white/80 transition-transform duration-150" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4l8 6-8 6" />
+                    </svg>
+                </div>
+                <ul id="report-sub" class="pl-6 <?= ($currentPage === 'manage-assets' || $currentPage === 'issuance-report') ? 'block' : 'hidden group-hover:block' ?>" style="max-height: <?= ($currentPage === 'manage-assets' || $currentPage === 'issuance-report') ? '1000px' : '0' ?>; overflow:hidden; transition: max-height 200ms ease-in-out;">
+                    <li class="<?= $currentPage === 'manage-assets'
+                        ? 'bg-black/25 border-l-4 border-white'
+                        : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
+                        <a href="<?= $baseUrl ?>/manage-assets/"
+                           class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                            <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                                Depreciation
+                            </span>
+                        </a>
+                    </li>
+                    <li class="<?= $currentPage === 'issuance-report'
+                        ? 'bg-black/25 border-l-4 border-white'
+                        : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
+                        <a href="<?= $baseUrl ?>/issuance-report/"
+                           class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                            <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                                Issuance
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
             <li class="<?= $currentPage === 'depreciation-list'
                 ? 'bg-black/25 border-l-4 border-white'
                 : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
@@ -105,35 +146,6 @@ $baseUrl = BASE_URL . '/public';
                     </svg>
                     <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
                         Assets
-                    </span>
-                </a>
-            </li>
-
-            <li class="<?= $currentPage === 'manage-assets'
-                ? 'bg-black/25 border-l-4 border-white'
-                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
-                <a href="<?= $baseUrl ?>/manage-assets/"
-                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
-                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
-                        Depreciation Report
-                    </span>
-                </a>
-            </li>
-
-            <li class="<?= $currentPage === 'issuance-report'
-                ? 'bg-black/25 border-l-4 border-white'
-                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
-                <a href="<?= $baseUrl ?>/issuance-report/"
-                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
-                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 6h10a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2V8a2 2 0 012-2z" />
-                    </svg>
-                    <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
-                        Issuance Report
                     </span>
                 </a>
             </li>
@@ -294,6 +306,66 @@ function toggleSidebarPin() {
             close();
         } else {
             // restore open state only if this page was active initially
+            if (parent.dataset.initialActive === '1') open();
+        }
+    }
+
+    if (typeof ResizeObserver !== 'undefined' && sidebar) {
+        try {
+            var ro = new ResizeObserver(function () { handleSidebarSize(); });
+            ro.observe(sidebar);
+        } catch (e) {
+            window.addEventListener('resize', handleSidebarSize);
+        }
+    } else {
+        window.addEventListener('resize', handleSidebarSize);
+    }
+})();
+</script>
+
+<script>
+// Report submenu toggle: clickable + keyboard accessible. Keeps submenu open when route is active.
+(function () {
+    var parent = document.getElementById('report-parent');
+    var sub = document.getElementById('report-sub');
+    var caret = document.getElementById('report-caret');
+    if (!parent || !sub || !caret) return;
+
+    var isActive = <?= ($currentPage === 'depreciation-list' || $currentPage === 'issuance-report') ? 'true' : 'false' ?>;
+    parent.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+
+    function open() {
+        sub.style.maxHeight = sub.scrollHeight + 'px';
+        caret.style.transform = 'rotate(90deg)';
+        parent.setAttribute('aria-expanded', 'true');
+    }
+
+    function close() {
+        sub.style.maxHeight = '0';
+        caret.style.transform = '';
+        parent.setAttribute('aria-expanded', 'false');
+    }
+
+    // initialize
+    if (isActive) open(); else close();
+
+    parent.addEventListener('click', function (e) {
+        var openState = parent.getAttribute('aria-expanded') === 'true';
+        if (openState) close(); else open();
+    });
+
+    parent.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); parent.click(); }
+    });
+
+    // Auto-close submenu when sidebar is collapsed (narrow). Restore if expanded and initially active.
+    var sidebar = document.getElementById('sidebar');
+    function handleSidebarSize() {
+        if (!sidebar) return;
+        var w = sidebar.clientWidth || sidebar.offsetWidth || 0;
+        if (w <= 80) {
+            close();
+        } else {
             if (parent.dataset.initialActive === '1') open();
         }
     }
