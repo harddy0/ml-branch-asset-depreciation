@@ -231,8 +231,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (tableBody) {
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="14" class="text-center py-8 text-slate-400">
-                                ${hasFilters ? 'No records found with current filters' : 'Apply filters to view data'}
+                            <td colspan="14" class="text-center py-20 text-slate-400">
+                                <div class="flex flex-col items-center justify-center">
+                                    <svg class="w-16 h-16 text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                                    </svg>
+                                    <p class="text-slate-500 font-bold text-base mb-1">No records found</p>
+                                    <p class="text-slate-400 text-sm">Try adjusting your filters</p>
+                                </div>
                             </td>
                         </tr>
                     `;
@@ -267,7 +273,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!tableBody) return;
     
     if (!data || data.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="14" class="text-center py-8 text-slate-400">No records found</td></tr>';
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="14" class="text-center py-20 text-slate-400">
+                    <div class="flex flex-col items-center justify-center">
+                        <svg class="w-16 h-16 text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                        </svg>
+                        <p class="text-slate-500 font-bold text-base mb-1">No records found</p>
+                        <p class="text-slate-400 text-sm">Try adjusting your filters</p>
+                    </div>
+                </td>
+            </tr>
+        `;
         return;
     }
     
