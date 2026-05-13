@@ -5,6 +5,7 @@ $baseUrl = BASE_URL . '/public';
     if     (str_contains($uri, '/dashboard'))     $currentPage = 'dashboard';
     elseif (str_contains($uri, '/manage-assets')) $currentPage = 'manage-assets';
     elseif (str_contains($uri, '/asset-import'))  $currentPage = 'asset-import';
+    elseif (str_contains($uri, '/issuance-import'))  $currentPage = 'issuance-import';
         elseif (str_contains($uri, '/asset-groups'))  $currentPage = 'asset-groups';
     elseif (str_contains($uri, '/depreciation-list')) $currentPage = 'depreciation-list';
     elseif (str_contains($uri, '/category-mgt'))  $currentPage = 'category-mgt';
@@ -50,19 +51,45 @@ $baseUrl = BASE_URL . '/public';
                 </a>
             </li>
 
-            <li class="<?= $currentPage === 'asset-import'
+            <li class="<?= ($currentPage === 'asset-import' || $currentPage === 'issuance-import')
                 ? 'bg-black/25 border-l-4 border-white'
-                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
-                <a href="<?= $baseUrl ?>/asset-import/"
-                   class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
-                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors group">
+                <div id="import-parent" data-initial-active="<?= ($currentPage === 'asset-import' || $currentPage === 'issuance-import') ? '1' : '0' ?>" class="flex items-center justify-between px-5 py-2 hover:bg-black/10 transition-all" role="button" tabindex="0" aria-expanded="<?= ($currentPage === 'asset-import' || $currentPage === 'issuance-import') ? 'true' : 'false' ?>">
+                    <div class="flex items-center gap-4">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                            Import
+                        </span>
+                    </div>
+                    <svg id="import-caret" class="w-4 h-4 text-white/80 transition-transform duration-150" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4l8 6-8 6" />
                     </svg>
-                    <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
-                        Import Asset
-                    </span>
-                </a>
+                </div>
+                <ul id="import-sub" class="pl-6 <?= ($currentPage === 'asset-import' || $currentPage === 'issuance-import') ? 'block' : 'hidden group-hover:block' ?>" style="max-height: <?= ($currentPage === 'asset-import' || $currentPage === 'issuance-import') ? '1000px' : '0' ?>; overflow:hidden; transition: max-height 200ms ease-in-out;">
+                    <li class="<?= $currentPage === 'asset-import'
+                        ? 'bg-black/25 border-l-4 border-white'
+                        : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
+                        <a href="<?= $baseUrl ?>/asset-import/"
+                           class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                            <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                                Asset
+                            </span>
+                        </a>
+                    </li>
+                    <li class="<?= $currentPage === 'issuance-import'
+                        ? 'bg-black/25 border-l-4 border-white'
+                        : 'border-l-4 border-transparent hover:border-white/30' ?> transition-colors">
+                        <a href="<?= $baseUrl ?>/issuance-import/"
+                           class="flex items-center gap-4 px-5 py-2 hover:bg-black/10 transition-all">
+                            <span class="sidebar-text text-[13px] font-bold tracking-wider uppercase whitespace-nowrap">
+                                Issuance
+                            </span>
+                        </a>
+                    </li>
+                </ul>
             </li>
 
             <li class="<?= $currentPage === 'depreciation-list'
@@ -220,4 +247,66 @@ function toggleSidebarPin() {
     sidebarPinned = !sidebarPinned;
     document.getElementById('sidebar').style.width = sidebarPinned ? '256px' : '64px';
 }
+</script>
+
+<script>
+// Import submenu toggle: clickable + keyboard accessible. Keeps submenu open when route is active.
+(function () {
+    var parent = document.getElementById('import-parent');
+    var sub = document.getElementById('import-sub');
+    var caret = document.getElementById('import-caret');
+    if (!parent || !sub || !caret) return;
+
+    var isActive = <?= ($currentPage === 'asset-import' || $currentPage === 'issuance-import') ? 'true' : 'false' ?>;
+    parent.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+
+    function open() {
+        sub.style.maxHeight = sub.scrollHeight + 'px';
+        caret.style.transform = 'rotate(90deg)';
+        parent.setAttribute('aria-expanded', 'true');
+    }
+
+    function close() {
+        sub.style.maxHeight = '0';
+        caret.style.transform = '';
+        parent.setAttribute('aria-expanded', 'false');
+    }
+
+    // initialize
+    if (isActive) open(); else close();
+
+    parent.addEventListener('click', function (e) {
+        var openState = parent.getAttribute('aria-expanded') === 'true';
+        if (openState) close(); else open();
+    });
+
+    parent.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); parent.click(); }
+    });
+
+    // Auto-close submenu when sidebar is collapsed (narrow). Restore if expanded and initially active.
+    var sidebar = document.getElementById('sidebar');
+    function handleSidebarSize() {
+        if (!sidebar) return;
+        var w = sidebar.clientWidth || sidebar.offsetWidth || 0;
+        // consider sidebar "closed" when width is <= 80px
+        if (w <= 80) {
+            close();
+        } else {
+            // restore open state only if this page was active initially
+            if (parent.dataset.initialActive === '1') open();
+        }
+    }
+
+    if (typeof ResizeObserver !== 'undefined' && sidebar) {
+        try {
+            var ro = new ResizeObserver(function () { handleSidebarSize(); });
+            ro.observe(sidebar);
+        } catch (e) {
+            window.addEventListener('resize', handleSidebarSize);
+        }
+    } else {
+        window.addEventListener('resize', handleSidebarSize);
+    }
+})();
 </script>
