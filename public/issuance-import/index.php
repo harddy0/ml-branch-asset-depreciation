@@ -77,7 +77,7 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['import_er
 </div>
 
 <?php require_once __DIR__ . '/../../src/includes/modals/import-file-display.php'; ?>
-<?php require_once __DIR__ . '/../../src/includes/modals/import-format-guide.php'; ?>
+<?php require_once __DIR__ . '/../../src/includes/modals/issuance-import-format-guide.php'; ?>
 
 <?php if (!empty($importErrors)): ?>
     <?php require_once __DIR__ . '/../../src/includes/modals/import-errors.php'; ?>
@@ -88,7 +88,8 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['import_er
     </script>
 <?php endif; ?>
 
-<?php require_once __DIR__ . '/../../src/includes/modals/import-review.php'; ?>
+<?php require_once __DIR__ . '/../../src/includes/modals/issuance-import-review.php'; ?>
+<?php require_once __DIR__ . '/../../src/includes/modals/issuance-details.php'; ?>
 
 <script src="<?= ASSET_URL ?>js/main.js"></script>
-<script src="<?= ASSET_URL ?>js/asset-import.js"></script>
+<script src="<?= ASSET_URL ?>js/issuance-import.js"></script>
