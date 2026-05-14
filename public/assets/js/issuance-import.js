@@ -175,8 +175,15 @@ function buildIssuanceReviewModal(data) {
             + '></td>';
 
         var badgeCell;
+        var titleAttr = '';
         if (row.is_duplicate) {
-            badgeCell = '<td class="px-3 py-1 whitespace-nowrap"><span class="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-[10px] font-black px-2 py-0.5 rounded-full">DUP</span></td>';
+            var dupReason = '';
+            if (row.errors && row.errors.length) {
+                dupReason = row.errors[0];
+            } else {
+                dupReason = 'Duplicate transaction detected';
+            }
+            badgeCell = '<td class="px-3 py-1 whitespace-nowrap"><span class="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-[10px] font-black px-2 py-0.5 rounded-full cursor-help" title="' + escHtml(dupReason) + '">DUP</span></td>';
         } else if (row.has_error) {
             badgeCell = '<td class="px-3 py-1 whitespace-nowrap"><span class="inline-flex items-center gap-1 bg-red-100 text-red-700 text-[10px] font-black px-2 py-0.5 rounded-full">ERR</span></td>';
         } else {
