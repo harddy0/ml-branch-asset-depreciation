@@ -548,7 +548,193 @@ function _refreshIssuanceRow(rowIndex, row) {
 }
 
 // =============================================================
-//  CONFIRM IMPORT (with spinner on Save button in review modal)
+//  CHUNKED IMPORT WITH PROGRESS TRACKING
+// =============================================================
+// ADDED: Configuration and progress state
+// CHANGED: Chunk size now 10% of total rows (min 5, max 100)
+var _importProgress = {
+    isRunning: false,
+    isCancelled: false,
+    totalRows: 0,
+    processedRows: 0,
+    succeededCount: 0,
+    failedCount: 0,
+    skippedCount: 0,
+    totalBatches: 0,
+    currentBatch: 0,
+    chunkSize: 5,  // Will be calculated based on totalRows
+    errors: []
+};
+
+// ADDED: Calculate chunk size as 10% of total rows (min 5, max 100)
+function calculateChunkSize(totalRows) {
+    var size = Math.floor(totalRows * 0.1);  // 10% of total
+    if (size < 5) size = 5;      // Minimum 5 rows
+    if (size > 100) size = 100;  // Maximum 100 rows
+    return size;
+}
+
+// ADDED: Update progress display with real server-reported counts
+function updateProgressDisplay() {
+    var percent = _importProgress.totalRows > 0 
+        ? Math.round((_importProgress.processedRows / _importProgress.totalRows) * 100)
+        : 0;
+    
+    var progressBar = document.getElementById('issuance-progress-bar');
+    var progressPercent = document.getElementById('issuance-progress-percent');
+    var progressDetails = document.getElementById('issuance-progress-details');
+    
+    if (progressBar) progressBar.style.width = percent + '%';
+    if (progressPercent) progressPercent.textContent = percent + '%';
+    
+    if (progressDetails) {
+        progressDetails.textContent = 'Row ' + _importProgress.processedRows + ' of ' + _importProgress.totalRows 
+            + ' | ✓ ' + _importProgress.succeededCount 
+            + ' | ⊘ ' + _importProgress.skippedCount 
+            + ' | ✗ ' + _importProgress.failedCount;
+    }
+}
+
+// ADDED: Show/hide progress container
+function showProgressContainer(show) {
+    var container = document.getElementById('issuance-import-progress');
+    if (!container) return;
+    
+    if (show) {
+        container.classList.remove('hidden');
+        container.classList.add('flex');
+    } else {
+        container.classList.add('hidden');
+        container.classList.remove('flex');
+    }
+}
+
+// ADDED: Process chunks sequentially with recursive call
+function processImportChunk(selectedNums, editedMap, chunkIndex) {
+    // Check if cancelled
+    if (_importProgress.isCancelled) {
+        finishImport(false, 'Import cancelled by user.');
+        return;
+    }
+    
+    // CHANGED: Use calculated chunk size from progress state
+    var startIdx = chunkIndex * _importProgress.chunkSize;
+    var endIdx = Math.min(startIdx + _importProgress.chunkSize, selectedNums.length);
+    var chunkNums = selectedNums.slice(startIdx, endIdx);
+    
+    // If we've processed all chunks, finish
+    if (chunkNums.length === 0) {
+        finishImport(true);
+        return;
+    }
+    
+    var formData = new FormData();
+    formData.append('action', 'commit');
+    formData.append('chunk_index', chunkIndex);
+    formData.append('chunk_size', _importProgress.chunkSize);
+    formData.append('total_rows', _importProgress.totalRows);
+    formData.append('selected_rows', JSON.stringify(chunkNums));
+    formData.append('edited_rows', JSON.stringify(editedMap));
+    
+    fetch(BASE_URL + '/public/actions/issuance_import_process.php', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+        .then(function (res) {
+            return res.text().then(function (text) { return { ok: res.ok, status: res.status, text: text }; });
+        })
+        .then(function (resp) {
+            var data;
+            try { data = _parseJsonSafe(resp.text); }
+            catch (e) {
+                if (!resp.ok) throw new Error('Server error ' + resp.status);
+                throw e;
+            }
+            if (!resp.ok) throw new Error((data && data.error) ? data.error : ('Server error ' + resp.status));
+            return data;
+        })
+        .then(function (data) {
+            // ADDED: Update progress with actual server counts
+            if (data.success) {
+                _importProgress.processedRows += (data.count || 0) + (data.skipped || 0);
+                _importProgress.succeededCount += (data.count || 0);
+                _importProgress.skippedCount += (data.skipped || 0);
+                
+                if (data.errors && data.errors.length) {
+                    _importProgress.failedCount += data.errors.length;
+                    _importProgress.errors = _importProgress.errors.concat(data.errors);
+                }
+                
+                updateProgressDisplay();
+                
+                // ADDED: Process next chunk recursively
+                _importProgress.currentBatch++;
+                setTimeout(function () {
+                    processImportChunk(selectedNums, editedMap, chunkIndex + 1);
+                }, 100);
+            } else {
+                finishImport(false, data.error || 'Chunk processing failed.');
+            }
+        })
+        .catch(function (err) {
+            finishImport(false, 'Request failed: ' + err.message);
+        });
+}
+
+// ADDED: Finish import and show results
+function finishImport(success, customMessage) {
+    _importProgress.isRunning = false;
+    
+    var progressContainer = document.getElementById('issuance-import-progress');
+    var progressDetails = document.getElementById('issuance-progress-details');
+    var cancelBtn = document.getElementById('cancel-import-btn');
+    
+    if (cancelBtn) cancelBtn.disabled = true;
+    
+    if (success) {
+        if (progressDetails) {
+            var summary = 'Import complete! ✓ ' + _importProgress.succeededCount 
+                + ' imported, ⊘ ' + _importProgress.skippedCount + ' skipped';
+            if (_importProgress.failedCount > 0) {
+                summary += ', ✗ ' + _importProgress.failedCount + ' errors';
+            }
+            progressDetails.textContent = summary;
+        }
+        
+        setTimeout(function () {
+            closeIssuanceImportReview();
+            window.location.reload();
+        }, 2000);
+    } else {
+        if (progressDetails) {
+            progressDetails.textContent = customMessage || 'Import failed.';
+            progressDetails.classList.add('text-red-600');
+        }
+        
+        if (_importProgress.errors.length > 0) {
+            var errorMsg = _importProgress.errors.slice(0, 3).join('\n');
+            if (_importProgress.errors.length > 3) {
+                errorMsg += '\n... and ' + (_importProgress.errors.length - 3) + ' more errors';
+            }
+            setTimeout(function () {
+                alert('Import completed with errors:\n\n' + errorMsg);
+            }, 500);
+        }
+    }
+}
+
+// ADDED: Cancel import handler
+function cancelImport() {
+    if (!_importProgress.isRunning) return;
+    
+    _importProgress.isCancelled = true;
+    var cancelBtn = document.getElementById('cancel-import-btn');
+    if (cancelBtn) cancelBtn.disabled = true;
+}
+
+// =============================================================
+//  CONFIRM IMPORT (Initiates chunked processing)
 // =============================================================
 function confirmIssuanceImport() {
     var btnConf = document.getElementById('btn-issuance-confirm-import');
@@ -573,48 +759,44 @@ function confirmIssuanceImport() {
         return;
     }
 
+    // ADDED: Build edited rows map
     var editedRows = issuancePreviewRows.filter(function (r) { return r._edited; });
+    var editedMap = {};
+    editedRows.forEach(function (row) {
+        editedMap[String(row.row_num)] = row;
+    });
 
-    var formData = new FormData();
-    formData.append('action',        'commit');
-    formData.append('selected_rows', JSON.stringify(selectedNums));
-    formData.append('edited_rows',   JSON.stringify(editedRows));
+    // ADDED: Calculate chunk size as 10% of total rows (min 5, max 100)
+    var chunkSize = calculateChunkSize(selectedNums.length);
 
-    fetch(BASE_URL + '/public/actions/issuance_import_process.php', {
-        method: 'POST',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        body: formData
-    })
-        .then(function (res) {
-            return res.text().then(function (text) { return { ok: res.ok, status: res.status, text: text }; });
-        })
-        .then(function (resp) {
-            var data;
-            try { data = _parseJsonSafe(resp.text); }
-            catch (e) {
-                if (!resp.ok) throw new Error('Server error ' + resp.status);
-                throw e;
-            }
-            if (!resp.ok) throw new Error((data && data.error) ? data.error : ('Server error ' + resp.status));
-            return data;
-        })
-        .then(function (data) {
-            if (data.success) {
-                closeIssuanceImportReview();
-                window.location.reload();
-            } else {
-                if (btnConf) { 
-                    setButtonLoading(btnConf, false);
-                }
-                alert('Import failed: ' + (data.error || 'Unknown error'));
-            }
-        })
-        .catch(function (err) {
-            if (btnConf) { 
-                setButtonLoading(btnConf, false);
-            }
-            alert('Request failed: ' + err.message);
-        });
+    // ADDED: Initialize progress state and show progress container
+    _importProgress = {
+        isRunning: true,
+        isCancelled: false,
+        totalRows: selectedNums.length,
+        processedRows: 0,
+        succeededCount: 0,
+        failedCount: 0,
+        skippedCount: 0,
+        totalBatches: Math.ceil(selectedNums.length / chunkSize),
+        currentBatch: 0,
+        chunkSize: chunkSize,
+        errors: []
+    };
+    
+    showProgressContainer(true);
+    updateProgressDisplay();
+    
+    if (btnConf) { 
+        setButtonLoading(btnConf, false);
+    }
+    
+    // ADDED: Close modal and start chunked processing
+    closeModal('modal-issuance-import-review');
+    
+    setTimeout(function () {
+        processImportChunk(selectedNums, editedMap, 0);
+    }, 300);
 }
 
 function closeIssuanceDetails() {
