@@ -462,6 +462,26 @@ class AssetService
         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         if (!$row) return null;
 
+        $computeStatus = function (?string $endDate, ?string $asOf, string $currentStatus): string {
+            $status = strtoupper(trim($currentStatus));
+            if (in_array($status, ['SOLD', 'DISPOSED', 'INACTIVE'], true)) {
+                return $status;
+            }
+
+            $compareDate = $asOf ?: date('Y-m-d');
+            try {
+                $end = $endDate ? new \DateTime($endDate) : null;
+                $asOfDt = $compareDate ? new \DateTime($compareDate) : null;
+                if ($end && $asOfDt && $asOfDt > $end) {
+                    return 'DEPRECIATED';
+                }
+            } catch (\Exception $e) {
+                // If parsing fails, fall back to raw status
+            }
+
+            return $status !== '' ? $status : 'ACTIVE';
+        };
+
         // Compute preview debit/credit based on GL normal balance types and monthly depreciation
         $monthly = isset($row['monthly_depreciation']) ? (float)$row['monthly_depreciation'] : 0.0;
         $assetType = strtoupper((string)($row['asset_gl_type'] ?? ''));
@@ -520,6 +540,8 @@ class AssetService
                 $row['gl_depr_monthly']  = isset($led['gl_b_amount']) ? abs((float)$led['gl_b_amount']) : 0.0;
             }
         }
+
+        $row['status'] = $computeStatus($row['depreciation_end_date'] ?? null, $asOfDate, (string)($row['status'] ?? 'ACTIVE'));
 
         return $row ?: null;
     }

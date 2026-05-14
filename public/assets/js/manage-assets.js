@@ -389,7 +389,7 @@ document.addEventListener("DOMContentLoaded", function() {
             })
             .then(res => {
                 if (!res.success || !res.data) throw new Error(res.error || 'Failed to fetch asset details');
-                populateViewModal(res.data);
+                populateViewModal(res.data, asOf);
             })
             .catch(err => {
                 console.error(err);
@@ -398,7 +398,7 @@ document.addEventListener("DOMContentLoaded", function() {
             });
     }
 
-    function populateViewModal(data) {
+    function populateViewModal(data, asOfDate) {
         const formatMoney = new Intl.NumberFormat('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
@@ -406,14 +406,19 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const parseAssetDate = (value) => {
             if (!value) return null;
-            let s = String(value).trim();
+            const raw = String(value).trim();
+            let s = raw;
             // If value is plain YYYY-MM-DD, append time to avoid timezone shifting
-            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-                s = s + 'T00:00:00';
-            } else {
-                s = s.replace(/\s+/g, 'T');
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+                s = raw + 'T00:00:00';
+            } else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(:\d{2})?$/.test(raw)) {
+                s = raw.replace(/\s+/, 'T');
             }
-            const date = new Date(s);
+
+            let date = new Date(s);
+            if (Number.isNaN(date.getTime()) && s !== raw) {
+                date = new Date(raw);
+            }
             return Number.isNaN(date.getTime()) ? null : date;
         };
 
@@ -440,6 +445,36 @@ document.addEventListener("DOMContentLoaded", function() {
             }).format(date);
         };
 
+        const getDateOnlyKey = (value) => {
+            if (!value) return null;
+            if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                return [value.getFullYear(), value.getMonth() + 1, value.getDate()];
+            }
+            const s = String(value).trim();
+            const ymd = s.match(/^\s*(\d{4})-(\d{2})-(\d{2})\s*$/);
+            if (ymd) return [Number(ymd[1]), Number(ymd[2]), Number(ymd[3])];
+            const parsed = parseAssetDate(s);
+            if (!parsed) return null;
+            return [parsed.getFullYear(), parsed.getMonth() + 1, parsed.getDate()];
+        };
+
+        const dateKeyToNumber = (key) => {
+            if (!key) return null;
+            return key[0] * 10000 + key[1] * 100 + key[2];
+        };
+
+        const computeDisplayStatus = () => {
+            const rawStatus = (data.status || 'ACTIVE').toString().toUpperCase();
+            const endKey = getDateOnlyKey(data.depreciation_end_date);
+            const asOfKey = getDateOnlyKey(asOfDate) || getDateOnlyKey(new Date());
+            const endNum = dateKeyToNumber(endKey);
+            const asOfNum = dateKeyToNumber(asOfKey);
+            if (endNum !== null && asOfNum !== null && asOfNum > endNum) {
+                return 'DEPRECIATED';
+            }
+            return rawStatus;
+        };
+
         // Helper to set text safely (avoids errors if an element is missing)
         function setText(id, value) {
             const el = document.getElementById(id);
@@ -457,6 +492,9 @@ document.addEventListener("DOMContentLoaded", function() {
         setText('view-item-code', data.item_code || 'N/A');
         setText('view-group', data.group_name || 'N/A');
         setText('view-property-type', data.property_type || 'PURCHASED');
+
+        const displayStatus = computeDisplayStatus();
+        setText('view-status', displayStatus);
 
         // Location Info
         setText('view-branch', data.branch_name || 'N/A');
@@ -486,11 +524,10 @@ document.addEventListener("DOMContentLoaded", function() {
         // Badge styling
         const badge = document.getElementById('view-status-badge');
         if (badge) {
-            const status = (data.status || 'ACTIVE').toUpperCase();
-            badge.textContent = status;
+            badge.textContent = displayStatus;
             badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider'; 
             
-            if (status === 'ACTIVE') {
+            if (displayStatus === 'ACTIVE') {
                 badge.classList.add('bg-red-50', 'text-red-700');
             } else {
                 badge.classList.add('bg-slate-100', 'text-slate-700');
@@ -516,6 +553,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (key && (/_date$/.test(key) || /^date_/.test(key) || key === 'period_date')) {
                     const v = data[key];
                     el.textContent = v ? formatFullDate(v) : '-';
+                    return;
+                }
+
+                if (key === 'status') {
+                    el.textContent = displayStatus;
                     return;
                 }
 
