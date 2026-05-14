@@ -55,7 +55,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'preview') {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//  PHASE 2 — COMMIT
+//  PHASE 2 — COMMIT (CHUNKED)
 // ══════════════════════════════════════════════════════════════════════
 if (isset($_POST['action']) && $_POST['action'] === 'commit') {
     $parsed = $_SESSION['pending_issuance_import_data'] ?? null;
@@ -85,32 +85,19 @@ if (isset($_POST['action']) && $_POST['action'] === 'commit') {
         }
     }
 
+    // ADDED: Process this chunk only (all rows in selected_rows for this request)
     $result = $importService->prepareAndCommit($parsed['preview'], $selectedNums, $editedMap);
 
-    if ($result['success']) {
-        $msg = "Successfully imported {$result['count']} row(s).";
-        if ($result['skipped'] > 0) {
-            $msg .= " {$result['skipped']} duplicate(s) were skipped.";
-        }
-        if (!empty($result['errors'])) {
-            $msg .= " " . count($result['errors']) . " error(s) occurred.";
-        }
-        
-        $_SESSION['flash_success'] = $msg;
-
-        unset($_SESSION['pending_issuance_import_data']);
-        
-        $respondJson([
-            'success' => true,
-            'count'   => (int)($result['count'] ?? 0),
-            'skipped' => (int)($result['skipped'] ?? 0),
-            'errors'  => $result['errors'] ?? [],
-            'message' => $msg,
-        ]);
-    } else {
-        $firstError = $result['errors'][0] ?? 'Import failed.';
-        $respondJson(['success' => false, 'error' => (string)$firstError], 400);
-    }
+    // ADDED: Return detailed chunk response with count, skipped, errors, success
+    $respondJson([
+        'success' => $result['success'],
+        'count'   => (int)($result['count'] ?? 0),
+        'skipped' => (int)($result['skipped'] ?? 0),
+        'errors'  => $result['errors'] ?? [],
+        'message' => $result['success'] 
+            ? "Processed {$result['count']} row(s). {$result['skipped']} duplicate(s) skipped."
+            : ($result['errors'][0] ?? 'Processing failed.')
+    ]);
 }
 
 $respondJson(['success' => false, 'error' => 'Invalid request.'], 400);
