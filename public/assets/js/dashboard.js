@@ -4,11 +4,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const apiUrl = container.getAttribute('data-api-url');
     const assetsApiUrl = apiUrl.replace('get_dashboard.php', 'get_assets.php');
+    const depreciationApiUrl = apiUrl.replace('get_dashboard.php', 'get_depreciation_list.php');
+    const issuanceApiUrl = apiUrl.replace('get_dashboard.php', 'get_issuance_report.php');
 
-    const fmt = (val) => new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(parseFloat(val) || 0);
+    const countFmt = new Intl.NumberFormat('en-US');
 
     const currencyFmt = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
     const themeColors = ['#dc2626', '#1e293b', '#ef4444', '#64748b', '#991b1b', '#94a3b8'];
@@ -17,38 +16,59 @@ document.addEventListener('DOMContentLoaded', function () {
     let chartCategory = null;
     let chartBranch   = null;
 
+    function fetchDepreciationList(params = {}) {
+        const query = new URLSearchParams({ per_page: 100, ...params }).toString();
+        return fetch(`${depreciationApiUrl}?${query}`).then(r => r.json());
+    }
+
+    function fetchIssuanceCount() {
+        const query = new URLSearchParams({ page: 1, per_page: 1 }).toString();
+        return fetch(`${issuanceApiUrl}?${query}`).then(r => r.json());
+    }
+
     function fetchDashboardData() {
-        fetch(assetsApiUrl)
-            .then(r => r.json())
-            .then(res => {
-                if (!res.success) return;
-                const t = res.totals || {};
-                const data = res.data || [];
+        Promise.all([
+            fetchDepreciationList(),
+            fetchDepreciationList({ status: 'ACTIVE' }),
+            fetchDepreciationList({ status: 'DEPRECIATED' }),
+            fetchDepreciationList({ status: 'SOLD' }),
+            fetchIssuanceCount()
+        ])
+            .then(([allRes, activeRes, depreciatedRes, soldRes, issuanceRes]) => {
+                if (!allRes.success) return;
 
-                // ── KPI Cards ──────────────────────────────────────────
-                document.getElementById('overviewTotalCost').textContent    = '₱' + fmt(t.cost);
-                document.getElementById('overviewDepreciation').textContent = '₱' + fmt(t.de);
-                document.getElementById('overviewAccumulated').textContent  = '₱' + fmt(t.ad);
-                document.getElementById('overviewBookValue').textContent    = '₱' + fmt(t.bv);
+                const allData = allRes.data || [];
+                const activeData = activeRes.success ? (activeRes.data || []) : [];
+                const depreciatedData = depreciatedRes.success ? (depreciatedRes.data || []) : [];
 
-                // ── Split ongoing vs closed by remaining_life ──────────
-                const ongoing = data.filter(r => parseFloat(r.remaining_life) > 0);
-                const closed  = data.filter(r => parseFloat(r.remaining_life) <= 0);
+                const totalAssets = allRes.pagination?.total ?? allData.length;
+                const activeAssets = activeRes.pagination?.total ?? activeData.length;
+                const depreciatedAssets = depreciatedRes.pagination?.total ?? depreciatedData.length;
+                const soldAssets = soldRes.success ? (soldRes.pagination?.total ?? (soldRes.data || []).length) : 0;
+                const issuanceTotal = issuanceRes && issuanceRes.success
+                    ? (issuanceRes.pagination?.total ?? 0)
+                    : 0;
 
-                // ── Ongoing ────────────────────────────────────────────
-                const ongoingTotal = ongoing.reduce((s, r) => s + parseFloat(r.acquisition_cost || 0), 0);
-                document.getElementById('ongoingCount').textContent = ongoing.length + ' assets';
-                document.getElementById('ongoingCost').textContent  = 'Total Cost: ₱' + fmt(ongoingTotal);
+                // ── KPI Cards (Counts) ────────────────────────────────
+                document.getElementById('overviewTotalCost').textContent    = countFmt.format(totalAssets);
+                document.getElementById('overviewDepreciation').textContent = countFmt.format(activeAssets);
+                document.getElementById('overviewAccumulated').textContent  = countFmt.format(depreciatedAssets);
+                document.getElementById('overviewBookValue').textContent    = countFmt.format(soldAssets);
+
+                // ── Active Assets ─────────────────────────────────────
+                document.getElementById('ongoingCount').textContent = countFmt.format(activeAssets);
+                document.getElementById('ongoingCost').textContent  = 'Total Count: ' + countFmt.format(activeAssets);
 
                 const ongoingList = document.getElementById('ongoingList');
-                if (ongoing.length === 0) {
-                    ongoingList.innerHTML = '<div class="text-xs text-slate-400 italic">No ongoing assets</div>';
+                if (activeData.length === 0) {
+                    ongoingList.innerHTML = '<div class="text-xs text-slate-400 italic">No active assets</div>';
                 } else {
                     const byBranch = {};
-                    ongoing.forEach(r => {
-                        byBranch[r.branch_name] = (byBranch[r.branch_name] || 0) + 1;
+                    activeData.forEach(r => {
+                        const branch = r.branch_name || 'Unknown';
+                        byBranch[branch] = (byBranch[branch] || 0) + 1;
                     });
-                    const sorted = Object.entries(byBranch).sort((a, b) => b[1] - a[1]); // removed .slice(0, 6)
+                    const sorted = Object.entries(byBranch).sort((a, b) => b[1] - a[1]);
                     ongoingList.innerHTML = sorted.map(([branch, count]) => `
                         <div class="flex justify-between items-center text-xs py-1 border-b border-slate-100">
                             <span class="text-slate-600 truncate max-w-[70%]">${branch}</span>
@@ -56,20 +76,20 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>`).join('');
                 }
 
-                // ── Closed ─────────────────────────────────────────────
-                const closedTotal = closed.reduce((s, r) => s + parseFloat(r.acquisition_cost || 0), 0);
-                document.getElementById('closedCount').textContent = closed.length + ' assets';
-                document.getElementById('closedCost').textContent  = 'Total Cost: ₱' + fmt(closedTotal);
+                // ── Depreciated Assets ────────────────────────────────
+                document.getElementById('closedCount').textContent = countFmt.format(depreciatedAssets);
+                document.getElementById('closedCost').textContent  = 'Total Count: ' + countFmt.format(depreciatedAssets);
 
                 const closedList = document.getElementById('closedList');
-                if (closed.length === 0) {
-                    closedList.innerHTML = '<div class="text-xs text-slate-400 italic">No closed assets</div>';
+                if (depreciatedData.length === 0) {
+                    closedList.innerHTML = '<div class="text-xs text-slate-400 italic">No depreciated assets</div>';
                 } else {
                     const byBranch = {};
-                    closed.forEach(r => {
-                        byBranch[r.branch_name] = (byBranch[r.branch_name] || 0) + 1;
+                    depreciatedData.forEach(r => {
+                        const branch = r.branch_name || 'Unknown';
+                        byBranch[branch] = (byBranch[branch] || 0) + 1;
                     });
-                    const sorted = Object.entries(byBranch).sort((a, b) => b[1] - a[1]); // removed .slice(0, 6)
+                    const sorted = Object.entries(byBranch).sort((a, b) => b[1] - a[1]);
                     closedList.innerHTML = sorted.map(([branch, count]) => `
                         <div class="flex justify-between items-center text-xs py-1 border-b border-slate-100">
                             <span class="text-slate-600 truncate max-w-[70%]">${branch}</span>
@@ -77,39 +97,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>`).join('');
                 }
 
-                // ── Category Breakdown ─────────────────────────────────
-                const allCategories = res.all_categories || [];
-
-                const byCat = {};
-                // Pre-populate ALL categories from DB with zero
-                allCategories.forEach(cat => {
-                    byCat[cat] = { count: 0, cost: 0 };
-                });
-
-                // Fill in actual data
-                data.forEach(r => {
-                    if (!byCat[r.category_name]) byCat[r.category_name] = { count: 0, cost: 0 };
-                    byCat[r.category_name].count++;
-                    byCat[r.category_name].cost += parseFloat(r.acquisition_cost || 0);
-                });
-
-                const cats = Object.entries(byCat).sort((a, b) => b[1].cost - a[1].cost);
-                const totalCost = cats.reduce((s, [, v]) => s + v.cost, 0);
-
-                document.getElementById('categoryCount').textContent = cats.length + ' categories';
-                document.getElementById('categoryList').innerHTML = cats.map(([cat, v]) => {
-                    const pct = totalCost > 0 ? ((v.cost / totalCost) * 100).toFixed(1) : 0;
-                    return `
-                        <div class="mb-2">
-                            <div class="flex justify-between text-xs mb-1">
-                                <span class="text-slate-600 font-medium truncate max-w-[60%]">${cat}</span>
-                                <span class="text-slate-400 font-mono">${v.count} · ${pct}%</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-1.5">
-                                <div class="bg-red-600 h-1.5 rounded-full" style="width: ${pct}%"></div>
-                            </div>
-                        </div>`;
-                }).join('');
+                // ── Category Breakdown (Counts) ───────────────────────
+                document.getElementById('categoryCount').textContent = countFmt.format(issuanceTotal);
             })
             .catch(err => console.error('Dashboard fetch error:', err));
     }
