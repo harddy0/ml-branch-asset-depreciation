@@ -11,6 +11,39 @@ var _issuanceCurrentRowIndex = -1;
 var _issuanceIsEditMode = false;
 var _issuanceSnapshot = null;
 
+// Helper to get spinner SVG HTML
+function getSpinnerHtml(sizeClass = 'h-4 w-4') {
+    return '<svg class="animate-spin ' + sizeClass + ' text-white shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">' +
+        '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
+        '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>' +
+        '</svg>';
+}
+
+// Helper to set button loading state
+function setButtonLoading(button, isLoading, originalContent = null) {
+    if (!button) return;
+    
+    if (isLoading) {
+        // Store original content if not already stored
+        if (!button.getAttribute('data-original-content')) {
+            button.setAttribute('data-original-content', button.innerHTML);
+        }
+        button.disabled = true;
+        button.innerHTML = getSpinnerHtml() + '<span> ' + (button.getAttribute('data-loading-text') || 'Loading...') + '</span>';
+        button.classList.add('inline-flex', 'items-center', 'gap-2');
+        button.style.minWidth = button.offsetWidth + 'px';
+    } else {
+        button.disabled = false;
+        var original = button.getAttribute('data-original-content');
+        if (original) {
+            button.innerHTML = original;
+            button.removeAttribute('data-original-content');
+        }
+        button.style.minWidth = '';
+        button.classList.remove('inline-flex', 'items-center', 'gap-2');
+    }
+}
+
 // =============================================================
 //  UPLOAD & PREVIEW (Phase 1)
 // =============================================================
@@ -23,6 +56,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var btnProcess  = document.getElementById('btn-process');
 
     if (!dropZone || !fileInput || !fileDisplay || !fileNameTxt || !btnCancel || !btnProcess) return;
+
+    // Set loading text attribute for the upload button
+    btnProcess.setAttribute('data-loading-text', 'Uploading...');
 
     dropZone.addEventListener('click', function (e) {
         if (e.target.closest('#btn-process') || e.target.closest('#btn-cancel')) return;
@@ -77,8 +113,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!fileInput.files.length) { alert('Please select a file first.'); return; }
 
-        btnProcess.disabled    = true;
-        btnProcess.textContent = 'Uploading...';
+        // Show spinner on upload button
+        setButtonLoading(btnProcess, true);
 
         var formData = new FormData();
         formData.append('action',      'preview');
@@ -93,8 +129,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 return _parseJsonSafe(text);
             })
             .then(function (data) {
-                btnProcess.disabled    = false;
-                btnProcess.textContent = 'Upload';
+                // Restore button
+                setButtonLoading(btnProcess, false);
 
                 if (!data.success) { alert('Error: ' + data.error); return; }
 
@@ -104,8 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 openModal('modal-issuance-import-review');
             })
             .catch(function (err) {
-                btnProcess.disabled    = false;
-                btnProcess.textContent = 'Upload';
+                setButtonLoading(btnProcess, false);
                 alert('Failed to parse file: ' + err.message);
             });
     });
@@ -152,6 +187,9 @@ function buildIssuanceReviewModal(data) {
     }
 
     btnConf.disabled = true;
+    // Set loading text for save button
+    btnConf.setAttribute('data-loading-text', 'Importing...');
+    
     if (selectAll) selectAll.checked = false;
 
     preview.forEach(function (row, rowIndex) {
@@ -394,7 +432,7 @@ function _populateIssuanceEditForm(row) {
 }
 
 // =============================================================
-//  SAVE / COMMIT
+//  SAVE / COMMIT (with spinner on Save button)
 // =============================================================
 function saveIssuanceEdit() {
     _clearIssuanceModalErrors();
@@ -509,9 +547,16 @@ function _refreshIssuanceRow(rowIndex, row) {
     if (btnConf) btnConf.disabled = issuanceSelectedRowNums.size === 0;
 }
 
+// =============================================================
+//  CONFIRM IMPORT (with spinner on Save button in review modal)
+// =============================================================
 function confirmIssuanceImport() {
     var btnConf = document.getElementById('btn-issuance-confirm-import');
-    if (btnConf) { btnConf.disabled = true; btnConf.textContent = 'Importing...'; }
+    
+    // Show spinner on save button
+    if (btnConf) { 
+        setButtonLoading(btnConf, true);
+    }
 
     var selectedNums  = Array.from(issuanceSelectedRowNums);
     if (selectedNums.length === 0) {
@@ -521,7 +566,9 @@ function confirmIssuanceImport() {
     }
 
     if (selectedNums.length === 0) {
-        if (btnConf) { btnConf.disabled = false; btnConf.textContent = 'Save'; }
+        if (btnConf) { 
+            setButtonLoading(btnConf, false);
+        }
         alert('No valid rows are available for import. Please fix row errors first.');
         return;
     }
@@ -556,12 +603,16 @@ function confirmIssuanceImport() {
                 closeIssuanceImportReview();
                 window.location.reload();
             } else {
-                if (btnConf) { btnConf.disabled = false; btnConf.textContent = 'Save'; }
+                if (btnConf) { 
+                    setButtonLoading(btnConf, false);
+                }
                 alert('Import failed: ' + (data.error || 'Unknown error'));
             }
         })
         .catch(function (err) {
-            if (btnConf) { btnConf.disabled = false; btnConf.textContent = 'Save'; }
+            if (btnConf) { 
+                setButtonLoading(btnConf, false);
+            }
             alert('Request failed: ' + err.message);
         });
 }
@@ -594,7 +645,10 @@ function closeIssuanceImportReview() {
     if (errTxt) errTxt.textContent = '';
     if (errNote) errNote.classList.add('hidden');
     if (selectAll) selectAll.checked = false;
-    if (btnConf) { btnConf.disabled = true; btnConf.textContent = 'Save'; }
+    if (btnConf) { 
+        setButtonLoading(btnConf, false);
+        btnConf.disabled = true;
+    }
 
     var fileInput = document.getElementById('file-upload');
     var fileDisplay = document.getElementById('file-display');
@@ -604,7 +658,9 @@ function closeIssuanceImportReview() {
     if (fileInput) fileInput.value = '';
     if (fileNameTxt) fileNameTxt.textContent = '';
     if (fileDisplay) { fileDisplay.classList.add('hidden'); fileDisplay.classList.remove('flex'); }
-    if (btnProcess) { btnProcess.disabled = false; btnProcess.textContent = 'Upload'; }
+    if (btnProcess) { 
+        setButtonLoading(btnProcess, false);
+    }
 
     closeModal('modal-issuance-details');
     closeModal('modal-issuance-import-review');
