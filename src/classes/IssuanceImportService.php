@@ -58,6 +58,35 @@ class IssuanceImportService
         return md5(implode('|', $parts));
     }
 
+    /**
+     * ADDED: Generate duplicate key from multiple columns (md5 hash of unique columns)
+     */
+    public function getDuplicateKeyForRow(array $row): string
+    {
+        return $this->getDuplicateKey($row);
+    }
+
+    /**
+     * ADDED: Get all existing duplicate keys from database (loads once per session)
+     */
+    public function getAllExistingDuplicateKeys(): array
+    {
+        $existingKeys = [];
+        try {
+            $stmt = $this->db->query('
+                SELECT issuance_number, item_description, total_amount, cost_center_raw, product_category, quantity
+                FROM issuance_staging
+            ');
+            while ($r = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+                $key = $this->getDuplicateKey($r);
+                $existingKeys[$key] = true;
+            }
+        } catch (\Throwable $e) {
+            $existingKeys = [];
+        }
+        return $existingKeys;
+    }
+
     // ============================================================
     //  PHASE 1: PREVIEW
     // ============================================================
@@ -261,10 +290,13 @@ class IssuanceImportService
     }
 
     // ============================================================
-    //  PHASE 2: COMMIT
+    //  PHASE 2: COMMIT (CHUNKED)
     // ============================================================
     public function prepareAndCommit(array $previewRows, array $selectedNums, array $editedMap = []): array
     {
+        // ADDED: Static variable persists existingKeys across chunk calls in same session
+        static $existingKeys = null;
+        
         $inserted = 0;
         $duplicatesSkipped = 0;
         $errors = [];
@@ -272,20 +304,13 @@ class IssuanceImportService
         $batchSize = 1000;
         $batch = [];
         
-        // Preload existing keys from database
-        $existingKeys = [];
-        try {
-            $stmt = $this->db->query('
-                SELECT issuance_number, item_description, total_amount, cost_center_raw, product_category, quantity
-                FROM issuance_staging
-            ');
-            while ($r = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-                $key = $this->getDuplicateKey($r);
-                $existingKeys[$key] = true;
-            }
-        } catch (\Throwable $e) {
-            $existingKeys = [];
+        // ADDED: Load existing keys once per session (first chunk call)
+        if ($existingKeys === null) {
+            $existingKeys = $this->getAllExistingDuplicateKeys();
         }
+        
+        // ADDED: Track keys seen in this batch to prevent same-chunk duplicates
+        $seenKeysInBatch = [];
 
         $this->db->beginTransaction();
         
@@ -310,13 +335,20 @@ class IssuanceImportService
 
             $insertStmt = $this->db->prepare($insertSql);
 
-            $processBatch = function(array &$batch) use (&$inserted, &$duplicatesSkipped, &$errors, $insertStmt, &$existingKeys) {
+            $processBatch = function(array &$batch) use (&$inserted, &$duplicatesSkipped, &$errors, $insertStmt, &$existingKeys, &$seenKeysInBatch) {
                 if (empty($batch)) return;
                 
                 foreach ($batch as $data) {
                     $duplicateKey = $this->getDuplicateKey($data);
                     
+                    // ADDED: Check against database keys
                     if (isset($existingKeys[$duplicateKey])) {
+                        $duplicatesSkipped++;
+                        continue;
+                    }
+                    
+                    // ADDED: Check against keys seen in this batch
+                    if (isset($seenKeysInBatch[$duplicateKey])) {
                         $duplicatesSkipped++;
                         continue;
                     }
@@ -340,6 +372,8 @@ class IssuanceImportService
                     ]);
                     
                     $inserted++;
+                    // ADDED: Track this key both in batch and globally
+                    $seenKeysInBatch[$duplicateKey] = true;
                     $existingKeys[$duplicateKey] = true;
                 }
                 
@@ -421,6 +455,7 @@ class IssuanceImportService
             ];
         }
 
+        // ADDED: Return array with exact required fields
         return [
             'success' => true,
             'count'   => $inserted,

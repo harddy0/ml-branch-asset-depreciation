@@ -35,6 +35,42 @@ unset($_SESSION['flash_success'], $_SESSION['flash_error'], $_SESSION['import_er
     </div>
 </div>
 
+<!-- ADDED: Progress Container (hidden by default) -->
+<div id="issuance-import-progress"
+     class="hidden mb-8 flex-col items-start justify-center gap-3 bg-white border border-slate-200 rounded-xl px-6 py-4 shadow-sm">
+    
+    <!-- Spinner and Status -->
+    <div class="flex items-center gap-3 w-full">
+        <svg class="animate-spin h-5 w-5 text-slate-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <div class="flex-1">
+            <p class="text-sm font-bold text-slate-700">Processing import...</p>
+            <p id="issuance-progress-details" class="text-xs text-slate-500 mt-1">Row 0 of 0 | ✓ 0 | ⊘ 0 | ✗ 0</p>
+        </div>
+        <!-- ADDED: Cancel button -->
+        <button id="cancel-import-btn"
+                onclick="cancelImport()"
+                class="shrink-0 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-lg transition-colors">
+            Cancel
+        </button>
+    </div>
+    
+    <!-- Progress Bar Container -->
+    <div class="w-full">
+        <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-slate-600">Progress</span>
+            <span id="issuance-progress-percent" class="text-xs font-bold text-slate-600">0%</span>
+        </div>
+        <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+            <div id="issuance-progress-bar"
+                 class="bg-red-500 h-full transition-all duration-300"
+                 style="width: 0%"></div>
+        </div>
+    </div>
+</div>
+
 <!-- Upload -->
 <div class="p-1">
     <form id="import-form"
