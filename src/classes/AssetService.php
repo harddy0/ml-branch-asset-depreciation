@@ -593,6 +593,12 @@ class AssetService
         $sortBy     = (string)($options['sort_by'] ?? 'created_at');
         $sortDir    = strtoupper((string)($options['sort_dir'] ?? 'DESC'));
 
+        $computedStatusSql = "CASE
+            WHEN a.status IN ('SOLD', 'DISPOSED', 'INACTIVE') THEN a.status
+            WHEN a.depreciation_end_date IS NOT NULL AND DATE(a.depreciation_end_date) <= CURRENT_DATE THEN 'DEPRECIATED'
+            ELSE 'ACTIVE'
+        END";
+
         $sortMap = [
             'serial_number'        => 'a.serial_number',
             'description'          => 'a.description',
@@ -601,7 +607,7 @@ class AssetService
             'branch_name'          => 'a.branch_name',
             'acquisition_cost'     => 'a.acquisition_cost',
             'monthly_depreciation' => 'a.monthly_depreciation',
-            'status'               => 'a.status',
+            'status'               => $computedStatusSql,
             'depreciation_end_date'=> 'a.depreciation_end_date',
             'created_at'           => 'a.created_at',
             'uploaded_by'          => 'u.username',
@@ -615,7 +621,7 @@ class AssetService
 
         // Status filter
         if ($status !== '') {
-            $where[]           = 'a.status = :status';
+            $where[]           = $computedStatusSql . ' = :status';
             $params[':status'] = $status;
         }
 
@@ -682,7 +688,7 @@ class AssetService
                 a.corporate_name,
                 a.acquisition_cost,
                 a.monthly_depreciation,
-                a.status,
+                {$computedStatusSql} AS status,
                 a.depreciation_end_date,
                 a.created_at,
                 u.username AS uploaded_by

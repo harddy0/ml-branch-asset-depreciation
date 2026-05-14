@@ -115,28 +115,24 @@
         const raw = String(v);
         const origPos = el.selectionStart || 0;
 
-        // Decide decimal separator: prefer last occurrence among '.' or ','
-        const lastDot = raw.lastIndexOf('.');
-        const lastComma = raw.lastIndexOf(',');
-        let decSep = null;
-        if (lastDot > lastComma) decSep = '.';
-        else if (lastComma > lastDot) decSep = ',';
+        // Use dot as the only decimal separator. Commas are always thousands separators.
+        const decSep = raw.includes('.') ? '.' : null;
 
-        // Remove all characters except digits and separators
-        let cleaned = raw.replace(/[^0-9.,]/g, '');
+        // Remove all characters except digits and dot
+        let cleaned = raw.replace(/[^0-9.]/g, '');
 
-        // If both separators exist, pick the last one as decimal separator and remove others
-        if (cleaned.indexOf('.') !== -1 && cleaned.indexOf(',') !== -1) {
-            const last = Math.max(cleaned.lastIndexOf('.'), cleaned.lastIndexOf(','));
-            decSep = cleaned[last] === '.' ? '.' : ',';
-            if (decSep === '.') cleaned = cleaned.replace(/,/g, '');
-            else cleaned = cleaned.replace(/\./g, '');
+        // If multiple dots exist, keep the first as decimal separator and remove the rest
+        const firstDot = cleaned.indexOf('.');
+        if (firstDot !== -1) {
+            const before = cleaned.slice(0, firstDot + 1);
+            const after = cleaned.slice(firstDot + 1).replace(/\./g, '');
+            cleaned = before + after;
         }
 
         let intPart = cleaned;
         let decPart = '';
         if (decSep) {
-            const idx = cleaned.lastIndexOf(decSep);
+            const idx = cleaned.indexOf(decSep);
             intPart = cleaned.slice(0, idx);
             decPart = cleaned.slice(idx + 1).replace(/[^0-9]/g, '').slice(0,2);
         }
@@ -182,7 +178,7 @@
 
         // If the user just typed a separator ('.' or ','), place caret right after the dot
         const lastTypedChar = leftRaw.slice(-1);
-        if (lastTypedChar === '.' || lastTypedChar === ',') {
+        if (lastTypedChar === '.') {
             const dotIndex = display.indexOf('.');
             const newPos = dotIndex !== -1 ? dotIndex + 1 : display.length;
             try{ el.setSelectionRange(newPos, newPos); } catch(e){}

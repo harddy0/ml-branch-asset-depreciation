@@ -619,6 +619,43 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        function parseDate(value) {
+            if (!value) return null;
+            const s = String(value).trim();
+            if (!s) return null;
+            const plain = s.split(' ')[0].split('T')[0];
+            const dt = new Date(plain + 'T00:00:00');
+            return Number.isNaN(dt.getTime()) ? null : dt;
+        }
+
+        function computeStatus(row) {
+            const rawStatus = String(row.status || 'ACTIVE').toUpperCase();
+            if (rawStatus === 'SOLD' || rawStatus === 'DISPOSED' || rawStatus === 'INACTIVE') {
+                return rawStatus;
+            }
+            const endDate = parseDate(row.depreciation_end_date);
+            if (endDate && endDate <= today) {
+                return 'DEPRECIATED';
+            }
+            return rawStatus;
+        }
+
+        function statusBadgeClass(status) {
+            switch (status) {
+                case 'DEPRECIATED':
+                    return 'bg-amber-100 text-amber-700';
+                case 'SOLD':
+                    return 'bg-slate-100 text-slate-700';
+                case 'DISPOSED':
+                    return 'bg-rose-100 text-rose-700';
+                default:
+                    return 'bg-emerald-100 text-emerald-700';
+            }
+        }
+
         const html = rows.map(function (row, idx) {
             const rowBg = (idx % 2 === 0) ? 'bg-white' : 'bg-slate-200';
             const payload = encodeURIComponent(JSON.stringify({
@@ -640,7 +677,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const uploadedBy = row.uploaded_by || 'Unknown';
             const acquisitionCost = currency.format(parseFloat(row.acquisition_cost || 0));
             const monthlyDep = currency.format(parseFloat(row.monthly_depreciation || 0));
-            const status = row.status || 'ACTIVE';
+            const status = computeStatus(row);
             const endDate = formatDateDisplay(row.depreciation_end_date);
             const dateAdded = formatDateDisplay(row.created_at);
 
@@ -660,7 +697,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="font-semibold currency-cell"><span class="currency-symbol">₱</span><span class="amount">${monthlyDep}</span></div>
                     </td>
                     <td class="px-6 py-1 text-center text-xs whitespace-nowrap">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase ${statusBadgeClass(status)}">
                             ${escapeHtml(status)}
                         </span>
                     </td>
