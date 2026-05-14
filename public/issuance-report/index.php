@@ -11,9 +11,13 @@ require_once __DIR__ . '/../../src/includes/init.php';
         overflow-x: auto;
         overflow-y: auto;
         width: 100%;
-        max-height: 56vh;
+        height: 56vh;
         position: relative;
         -webkit-overflow-scrolling: touch;
+    }
+
+    #tableWrapper {
+        min-height: 56vh;
     }
     
     .issuance-table {
@@ -165,6 +169,94 @@ require_once __DIR__ . '/../../src/includes/init.php';
         flex: 1 1 0;
         min-width: 110px;
     }
+
+    .filter-search {
+        position: relative;
+        flex: 1 1 0;
+        min-width: 110px;
+    }
+
+    .filter-search.has-clear .filter-input {
+        padding-right: 28px;
+    }
+
+    .filter-clear-btn {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 18px;
+        height: 18px;
+        border-radius: 9999px;
+        border: 0;
+        background: #e2e8f0;
+        color: #475569;
+        font-size: 12px;
+        line-height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 2;
+        opacity: 0.6;
+        pointer-events: auto;
+        transition: opacity 0.15s ease;
+    }
+
+    .filter-search.has-value .filter-clear-btn {
+        opacity: 1;
+    }
+
+    .filter-search .filter-input {
+        width: 100%;
+    }
+
+    .filter-suggestions {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+        max-height: 220px;
+        overflow-y: auto;
+        z-index: 50;
+        padding: 6px 0;
+        display: none;
+    }
+
+    .filter-suggestions--wide {
+        right: auto;
+        min-width: 100%;
+        width: max-content;
+        max-width: 420px;
+    }
+
+    .filter-suggestions.is-open {
+        display: block;
+    }
+
+    .filter-suggestion {
+        padding: 8px 12px;
+        font-size: 0.75rem;
+        color: #0f172a;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .filter-suggestion:hover,
+    .filter-suggestion.is-active {
+        background: #f1f5f9;
+    }
+
+    .filter-suggestion.is-empty {
+        color: #94a3b8;
+        cursor: default;
+    }
     
     .filter-date {
         flex: 0 1 105px;
@@ -243,21 +335,33 @@ require_once __DIR__ . '/../../src/includes/init.php';
             <input type="text" id="search-input" placeholder="Search issuance # or description..."
                 class="filter-input border border-slate-300 rounded-md px-3 py-1.5 text-sm font-mono text-slate-700 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
             
-            <select id="zoneSelect" class="filter-input border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
-                <option value="">All Zones</option>
-            </select>
+            <div class="filter-search has-clear">
+                <input type="text" id="zoneSelect" placeholder="All Zones"
+                    class="filter-input border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500" autocomplete="off">
+                <button type="button" class="filter-clear-btn" data-clear-target="zoneSelect" aria-label="Clear zone">×</button>
+                <div id="zoneSuggestions" class="filter-suggestions"></div>
+            </div>
             
-            <select id="regionSelect" class="filter-input border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
-                <option value="">All Regions</option>
-            </select>
+            <div class="filter-search has-clear">
+                <input type="text" id="regionSelect" placeholder="All Regions"
+                    class="filter-input border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500" autocomplete="off">
+                <button type="button" class="filter-clear-btn" data-clear-target="regionSelect" aria-label="Clear region">×</button>
+                <div id="regionSuggestions" class="filter-suggestions filter-suggestions--wide"></div>
+            </div>
             
-            <select id="branchSelect" class="filter-input border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
-                <option value="">All Branches</option>
-            </select>
+            <div class="filter-search has-clear">
+                <input type="text" id="branchSelect" placeholder="All Branches"
+                    class="filter-input border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500" autocomplete="off">
+                <button type="button" class="filter-clear-btn" data-clear-target="branchSelect" aria-label="Clear branch">×</button>
+                <div id="branchSuggestions" class="filter-suggestions filter-suggestions--wide"></div>
+            </div>
             
-            <select id="categorySelect" class="filter-input border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500">
-                <option value="">All Categories</option>
-            </select>
+            <div class="filter-search has-clear">
+                <input type="text" id="categorySelect" placeholder="All Categories"
+                    class="filter-input border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500" autocomplete="off">
+                <button type="button" class="filter-clear-btn" data-clear-target="categorySelect" aria-label="Clear category">×</button>
+                <div id="categorySuggestions" class="filter-suggestions filter-suggestions--wide"></div>
+            </div>
             
             <input type="date" id="issuance-date-from" class="filter-date border border-slate-300 rounded-md px-2 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500" placeholder="From">
             
