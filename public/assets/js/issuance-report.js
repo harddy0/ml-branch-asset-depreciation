@@ -41,6 +41,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const regionSelect = document.getElementById('regionSelect');
     const branchSelect = document.getElementById('branchSelect');
     const categorySelect = document.getElementById('categorySelect');
+    const zoneSuggestions = document.getElementById('zoneSuggestions');
+    const regionSuggestions = document.getElementById('regionSuggestions');
+    const branchSuggestions = document.getElementById('branchSuggestions');
+    const categorySuggestions = document.getElementById('categorySuggestions');
     const dateFromInput = document.getElementById('issuance-date-from');
     const dateToInput = document.getElementById('issuance-date-to');
     const clearBtn = document.getElementById('clearFiltersBtn');
@@ -148,49 +152,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             if (data.success && data.options) {
-                // Populate zone select
-                if (zoneSelect && data.options.zones) {
-                    zoneSelect.innerHTML = '<option value="">All Zones</option>';
-                    data.options.zones.forEach(zone => {
-                        const option = document.createElement('option');
-                        option.value = zone;
-                        option.textContent = zone;
-                        zoneSelect.appendChild(option);
-                    });
-                }
-                
-                // Populate region select
-                if (regionSelect && data.options.regions) {
-                    regionSelect.innerHTML = '<option value="">All Regions</option>';
-                    data.options.regions.forEach(region => {
-                        const option = document.createElement('option');
-                        option.value = region;
-                        option.textContent = region;
-                        regionSelect.appendChild(option);
-                    });
-                }
-                
-                // Populate branch select
-                if (branchSelect && data.options.branches) {
-                    branchSelect.innerHTML = '<option value="">All Branches</option>';
-                    data.options.branches.forEach(branch => {
-                        const option = document.createElement('option');
-                        option.value = branch;
-                        option.textContent = branch;
-                        branchSelect.appendChild(option);
-                    });
-                }
-                
-                // Populate category select
-                if (categorySelect && data.options.categories) {
-                    categorySelect.innerHTML = '<option value="">All Categories</option>';
-                    data.options.categories.forEach(category => {
-                        const option = document.createElement('option');
-                        option.value = category;
-                        option.textContent = category;
-                        categorySelect.appendChild(option);
-                    });
-                }
+                const buildOptions = (items, allLabel) => {
+                    const list = Array.isArray(items) ? [...items] : [];
+                    if (allLabel && !list.some((opt) => String(opt).toLowerCase() === allLabel.toLowerCase())) {
+                        list.unshift(allLabel);
+                    }
+                    return list;
+                };
+
+                const setSuggestions = (target, items, allLabel) => {
+                    if (!target) return;
+                    target.dataset.options = JSON.stringify(buildOptions(items, allLabel));
+                };
+
+                setSuggestions(zoneSuggestions, data.options.zones, 'All Zones');
+                setSuggestions(regionSuggestions, data.options.regions, 'All Regions');
+                setSuggestions(branchSuggestions, data.options.branches, null);
+                setSuggestions(categorySuggestions, data.options.categories, 'All Categories');
                 
                 filterOptionsLoaded = true;
             }
@@ -550,19 +528,171 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==========================================
     // FILTERS
     // ==========================================
-    
+
+    function normalizeFilterValue(value) {
+        const trimmed = (value || '').trim();
+        if (!trimmed) return '';
+        if (trimmed.toLowerCase().startsWith('all')) return '';
+        return trimmed;
+    }
+
+    function getRawFilterValue(inputEl) {
+        return inputEl ? inputEl.value.trim() : '';
+    }
+
     function collectFilters() {
         currentFilters = {
             search: searchInput ? searchInput.value.trim() : '',
-            zone: zoneSelect ? zoneSelect.value : '',
-            region: regionSelect ? regionSelect.value : '',
-            branch_name: branchSelect ? branchSelect.value : '',
-            product_category: categorySelect ? categorySelect.value : '',
+            zone: normalizeFilterValue(getRawFilterValue(zoneSelect)),
+            region: normalizeFilterValue(getRawFilterValue(regionSelect)),
+            branch_name: normalizeFilterValue(getRawFilterValue(branchSelect)),
+            product_category: normalizeFilterValue(getRawFilterValue(categorySelect)),
             date_from: dateFromInput ? dateFromInput.value : '',
             date_to: dateToInput ? dateToInput.value : ''
         };
         currentPage = 1;
-        fetchData();
+        if (shouldFetchData()) {
+            fetchData();
+        } else {
+            renderEmptyState();
+        }
+    }
+
+    function shouldFetchData() {
+        const zoneValue = getRawFilterValue(zoneSelect);
+        const regionValue = getRawFilterValue(regionSelect);
+        const branchValue = getRawFilterValue(branchSelect);
+        const categoryValue = getRawFilterValue(categorySelect);
+        return !!(
+            zoneValue &&
+            regionValue &&
+            branchValue &&
+            categoryValue &&
+            currentFilters.date_from &&
+            currentFilters.date_to
+        );
+    }
+
+    function renderEmptyState() {
+        if (initialStateWrapper) initialStateWrapper.classList.remove('hidden');
+        if (tableWrapper) tableWrapper.classList.add('hidden');
+        if (noDataWrapper) noDataWrapper.classList.add('hidden');
+        if (tableBody) tableBody.innerHTML = '';
+        if (paginationContainer) paginationContainer.innerHTML = '';
+        resetTotals();
+    }
+
+    function setupFilterSuggestions(inputEl, listEl) {
+        if (!inputEl || !listEl) return;
+
+        const getOptions = () => {
+            try {
+                return JSON.parse(listEl.dataset.options || '[]');
+            } catch (err) {
+                return [];
+            }
+        };
+
+        const renderSuggestions = (matches) => {
+            listEl.innerHTML = '';
+            if (!matches.length) {
+                const emptyEl = document.createElement('div');
+                emptyEl.className = 'filter-suggestion is-empty';
+                emptyEl.textContent = 'No matches';
+                listEl.appendChild(emptyEl);
+                listEl.classList.add('is-open');
+                return;
+            }
+
+            matches.slice(0, 20).forEach((item) => {
+                const optionEl = document.createElement('div');
+                optionEl.className = 'filter-suggestion';
+                optionEl.textContent = item;
+                optionEl.dataset.value = item;
+                listEl.appendChild(optionEl);
+            });
+
+            listEl.classList.add('is-open');
+        };
+
+        const closeSuggestions = () => {
+            listEl.classList.remove('is-open');
+        };
+
+        const filterSuggestions = () => {
+            const value = inputEl.value.trim().toLowerCase();
+            const options = getOptions();
+            if (!value) {
+                renderSuggestions(options);
+                return;
+            }
+
+            const matches = options.filter((opt) => opt.toLowerCase().startsWith(value));
+            renderSuggestions(matches);
+        };
+
+        inputEl.addEventListener('focus', filterSuggestions);
+        inputEl.addEventListener('input', () => {
+            filterSuggestions();
+            collectFilters();
+        });
+
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeSuggestions();
+            }
+        });
+
+        listEl.addEventListener('mousedown', (e) => {
+            const target = e.target.closest('.filter-suggestion');
+            if (!target || target.classList.contains('is-empty')) return;
+            e.preventDefault();
+            inputEl.value = target.dataset.value || target.textContent || '';
+            closeSuggestions();
+            collectFilters();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!listEl.contains(e.target) && e.target !== inputEl) {
+                closeSuggestions();
+            }
+        });
+    }
+
+    function syncClearButtonState(inputEl) {
+        if (!inputEl) return;
+        const wrapper = inputEl.closest('.filter-search');
+        if (!wrapper) return;
+        wrapper.classList.add('has-clear');
+        if (inputEl.value.trim()) {
+            wrapper.classList.add('has-value');
+        } else {
+            wrapper.classList.remove('has-value');
+        }
+    }
+
+    function setupClearButtons() {
+        document.querySelectorAll('.filter-clear-btn').forEach((btn) => {
+            const targetId = btn.getAttribute('data-clear-target');
+            const inputEl = targetId ? document.getElementById(targetId) : null;
+            if (!inputEl) return;
+
+            syncClearButtonState(inputEl);
+
+            btn.addEventListener('click', () => {
+                inputEl.value = '';
+                syncClearButtonState(inputEl);
+                collectFilters();
+            });
+
+            inputEl.addEventListener('input', () => {
+                syncClearButtonState(inputEl);
+            });
+
+            inputEl.addEventListener('focus', () => {
+                syncClearButtonState(inputEl);
+            });
+        });
     }
     
     // Debounced search
@@ -577,10 +707,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Filter change handlers
-    if (zoneSelect) zoneSelect.addEventListener('change', collectFilters);
-    if (regionSelect) regionSelect.addEventListener('change', collectFilters);
-    if (branchSelect) branchSelect.addEventListener('change', collectFilters);
-    if (categorySelect) categorySelect.addEventListener('change', collectFilters);
+    if (zoneSelect) zoneSelect.addEventListener('input', collectFilters);
+    if (regionSelect) regionSelect.addEventListener('input', collectFilters);
+    if (branchSelect) branchSelect.addEventListener('input', collectFilters);
+    if (categorySelect) categorySelect.addEventListener('input', collectFilters);
     
     // Date range
     if (dateFromInput) dateFromInput.addEventListener('change', collectFilters);
@@ -604,7 +734,7 @@ document.addEventListener('DOMContentLoaded', function() {
             product_category: '', date_from: '', date_to: ''
         };
         currentPage = 1;
-        fetchData();
+        renderEmptyState();
     }
     
     if (clearBtn) {
@@ -717,6 +847,27 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Load filter options in background
         await loadFilterOptions();
+
+        setupFilterSuggestions(zoneSelect, zoneSuggestions);
+        setupFilterSuggestions(regionSelect, regionSuggestions);
+        setupFilterSuggestions(branchSelect, branchSuggestions);
+        setupFilterSuggestions(categorySelect, categorySuggestions);
+
+        setupClearButtons();
+
+        if (zoneSelect) syncClearButtonState(zoneSelect);
+        if (regionSelect) syncClearButtonState(regionSelect);
+        if (branchSelect) syncClearButtonState(branchSelect);
+        if (categorySelect) syncClearButtonState(categorySelect);
+
+        if (zoneSelect) zoneSelect.value = '';
+        if (regionSelect) regionSelect.value = '';
+        if (branchSelect) branchSelect.value = '';
+        if (categorySelect) categorySelect.value = '';
+        if (zoneSelect) syncClearButtonState(zoneSelect);
+        if (regionSelect) syncClearButtonState(regionSelect);
+        if (branchSelect) syncClearButtonState(branchSelect);
+        if (categorySelect) syncClearButtonState(categorySelect);
         
         // Don't fetch data automatically - wait for user to apply filters
         console.log('Issuance Report ready - apply filters to load data');
