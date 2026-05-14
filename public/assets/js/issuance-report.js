@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     let currentSort = { by: 'date_issued', dir: 'DESC' };
     let filterOptionsLoaded = false;
+    let currentRows = [];
     
     // API URL
     const apiUrl = '/ml-branch-asset-depreciation/public/api/get_issuance_report.php';
@@ -46,6 +47,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Sort buttons
     const sortButtons = document.querySelectorAll('.issuance-sort');
+
+    if (tableBody) {
+        tableBody.addEventListener('click', function (e) {
+            const rowEl = e.target && e.target.closest ? e.target.closest('tr.issuance-row') : null;
+            if (!rowEl) return;
+            const idx = parseInt(rowEl.dataset.index || '', 10);
+            if (Number.isNaN(idx) || !currentRows[idx]) return;
+            openIssuanceReportDetails(currentRows[idx]);
+        });
+    }
     
     // ==========================================
     // UTILITY FUNCTIONS
@@ -273,6 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!tableBody) return;
     
     if (!data || data.length === 0) {
+        currentRows = [];
         tableBody.innerHTML = `
             <tr>
                 <td colspan="14" class="text-center py-20 text-slate-400">
@@ -289,7 +301,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    const html = data.map((row) => {
+    currentRows = Array.isArray(data) ? data : [];
+
+    const html = currentRows.map((row, index) => {
         // Format date safely
         let formattedDate = '-';
         if (row.date_issued) {
@@ -317,17 +331,17 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         return `
-            <tr class="hover:bg-slate-50 transition-colors">
+            <tr class="issuance-row hover:bg-slate-50 transition-colors cursor-pointer" data-index="${index}">
                 <td class="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">${escapeHtml(formattedDate)}</td>
                 <td class="px-3 py-2 text-xs font-mono font-semibold text-slate-800 whitespace-nowrap">${escapeHtml(row.issuance_number || '-')}</td>
                 <td class="px-3 py-2 text-xs font-mono uppercase text-slate-600 whitespace-nowrap">${escapeHtml(row.item_code || '-')}</td>
-                <td class="px-3 py-2 text-xs text-slate-700" style="word-break: break-word; white-space: normal;">${escapeHtml(row.item_description || '-')}</td>
+                <td class="px-3 py-2 text-xs text-slate-700 truncate-cell">${escapeHtml(row.item_description || '-')}</td>
                 <td class="px-3 py-2 text-xs font-mono text-right text-slate-700 whitespace-nowrap">${parseInt(row.quantity || 0).toLocaleString()}</td>
                 <td class="px-3 py-2 text-xs font-mono text-slate-600 whitespace-nowrap">${escapeHtml(row.uom || '-')}</td>
                 <td class="px-3 py-2 text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(row.cost_center_raw || '-')}</td>
                 <td class="px-3 py-2 text-xs font-mono text-right text-slate-700 whitespace-nowrap">₱ ${formatMoney(row.unit_cost)}</td>
                 <td class="px-3 py-2 text-xs font-mono text-right font-semibold text-slate-800 whitespace-nowrap">₱ ${formatMoney(row.total_amount)}</td>
-                <td class="px-3 py-2 text-xs text-slate-600" style="word-break: break-word; white-space: normal; max-width: 200px;">${escapeHtml(row.description_remarks || '-')}</td>
+                <td class="px-3 py-2 text-xs text-slate-600 truncate-cell">${escapeHtml(row.description_remarks || '-')}</td>
                 <td class="px-3 py-2 text-xs font-mono text-slate-700 whitespace-nowrap">${escapeHtml(row.product_category || '-')}</td>
                 <td class="px-3 py-2 text-xs font-mono text-slate-600 whitespace-nowrap">${escapeHtml(row.zone || '-')}</td>
                 <td class="px-3 py-2 text-xs font-mono text-slate-600 whitespace-nowrap">${escapeHtml(row.region || '-')}</td>
@@ -338,6 +352,70 @@ document.addEventListener('DOMContentLoaded', function() {
     
     tableBody.innerHTML = html;
 }
+
+    function openIssuanceReportDetails(row) {
+        const container = document.getElementById('issuance-report-view-content');
+        if (!container) return;
+
+        const val = (v) => escapeHtml(String(v === null || v === undefined || v === '' ? '-' : v));
+        const money = (v) => `₱ ${formatCurrency(v)}`;
+
+        const titleCls = 'finish-title text-left text-[0.78rem] font-black uppercase tracking-[0.08em] text-red-700 bg-slate-50 border border-slate-200 px-2.5 py-1';
+        const labelCls = 'finish-label text-slate-700 text-[0.8rem] font-bold font-mono bg-slate-50 border border-slate-300 px-2.5 py-1 whitespace-nowrap';
+        const valueCls = 'finish-value text-slate-900 text-[0.84rem] font-bold font-mono bg-white border border-slate-200 px-2.5 py-1';
+        const gapCls   = 'finish-value bg-white border border-slate-200 px-2.5 py-1';
+
+        container.innerHTML =
+            '<div class="finish-card finish-card--table finish-card--single rounded-xl border border-slate-200 overflow-hidden">'
+            + '<table class="finish-table finish-table--single w-full">'
+            + '<colgroup>'
+            + '<col class="finish-col-label-sm"><col class="finish-col-value-lg">'
+            + '<col class="finish-col-label-sm"><col class="finish-col-value-lg">'
+            + '</colgroup>'
+            + '<tbody>'
+
+            + '<tr><th colspan="4" class="' + titleCls + '">Issuance</th></tr>'
+            + '<tr>'
+            + '<td class="' + labelCls + '">Date Issued</td><td class="' + valueCls + '">' + val(formatDate(row.date_issued)) + '</td>'
+            + '<td class="' + labelCls + '">Issuance Number</td><td class="' + valueCls + '">' + val(row.issuance_number) + '</td>'
+            + '</tr>'
+            + '<tr><td class="' + labelCls + '">Status</td><td class="' + valueCls + '" colspan="3">' + val(row.status || row.source_status || '-') + '</td></tr>'
+            + '<tr><td class="' + gapCls + '" colspan="4">&nbsp;</td></tr>'
+
+            + '<tr><th colspan="4" class="' + titleCls + '">Item</th></tr>'
+            + '<tr>'
+            + '<td class="' + labelCls + '">Item Code</td><td class="' + valueCls + '">' + val(row.item_code) + '</td>'
+            + '<td class="' + labelCls + '">Quantity</td><td class="' + valueCls + '">' + val(row.quantity) + '</td>'
+            + '</tr>'
+            + '<tr>'
+            + '<td class="' + labelCls + '">UoM</td><td class="' + valueCls + '">' + val(row.uom) + '</td>'
+            + '<td class="' + labelCls + '">Description</td><td class="' + valueCls + '">' + val(row.item_description) + '</td>'
+            + '</tr>'
+            + '<tr><td class="' + labelCls + '">Remarks</td><td class="' + valueCls + '" colspan="3">' + val(row.description_remarks) + '</td></tr>'
+            + '<tr><td class="' + gapCls + '" colspan="4">&nbsp;</td></tr>'
+
+            + '<tr><th colspan="4" class="' + titleCls + '">Cost</th></tr>'
+            + '<tr>'
+            + '<td class="' + labelCls + '">Unit Cost</td><td class="' + valueCls + '">' + money(row.unit_cost) + '</td>'
+            + '<td class="' + labelCls + '">Total Amount</td><td class="' + valueCls + '">' + money(row.total_amount) + '</td>'
+            + '</tr>'
+            + '<tr><td class="' + labelCls + '">Cost Center</td><td class="' + valueCls + '" colspan="3">' + val(row.cost_center_raw) + '</td></tr>'
+            + '<tr><td class="' + gapCls + '" colspan="4">&nbsp;</td></tr>'
+
+            + '<tr><th colspan="4" class="' + titleCls + '">Location</th></tr>'
+            + '<tr>'
+            + '<td class="' + labelCls + '">Product Category</td><td class="' + valueCls + '">' + val(row.product_category) + '</td>'
+            + '<td class="' + labelCls + '">Zone</td><td class="' + valueCls + '">' + val(row.zone) + '</td>'
+            + '</tr>'
+            + '<tr>'
+            + '<td class="' + labelCls + '">Region</td><td class="' + valueCls + '">' + val(row.region) + '</td>'
+            + '<td class="' + labelCls + '">Branch Name</td><td class="' + valueCls + '">' + val(row.branch_name) + '</td>'
+            + '</tr>'
+
+            + '</tbody></table></div>';
+
+        openModal('modal-issuance-report-details');
+    }
     
     // ==========================================
     // PAGINATION

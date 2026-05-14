@@ -6,57 +6,14 @@ require_once __DIR__ . '/../../src/includes/init.php';
 
 <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
 <style>
-    /* Ensure proper table scrolling */
-.table-container {
-    overflow-x: auto;
-    overflow-y: visible;
-    width: 100%;
-    -webkit-overflow-scrolling: touch;
-}
-
-.issuance-table {
-    min-width: 1300px;
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.issuance-table th,
-.issuance-table td {
-    padding: 8px 12px;
-    vertical-align: middle;
-}
-
-/* Allow description and remarks to wrap */
-.issuance-table td:nth-child(4),
-.issuance-table td:nth-child(10) {
-    white-space: normal;
-    word-break: break-word;
-    max-width: 250px;
-}
-
-/* Keep other columns from wrapping */
-.issuance-table td:not(:nth-child(4)):not(:nth-child(10)) {
-    white-space: nowrap;
-}
-
-/* Hover effect */
-.issuance-table tbody tr:hover {
-    background-color: #f8fafc;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .issuance-table td:nth-child(4),
-    .issuance-table td:nth-child(10) {
-        max-width: 150px;
-    }
-}
     /* Table container with horizontal scroll */
     .table-container {
         overflow-x: auto;
-        overflow-y: visible;
+        overflow-y: auto;
         width: 100%;
+        max-height: 56vh;
         position: relative;
+        -webkit-overflow-scrolling: touch;
     }
     
     .issuance-table {
@@ -71,8 +28,14 @@ require_once __DIR__ . '/../../src/includes/init.php';
     .issuance-table td {
         padding: 8px 12px;
         vertical-align: middle;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    }
+
+    .issuance-table th {
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background-color: #ce2216;
     }
     
     /* Individual column widths */
@@ -95,7 +58,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
     .issuance-table td:nth-child(6) { width: 60px; } /* UoM */
     
     .issuance-table th:nth-child(7),
-    .issuance-table td:nth-child(7) { width: 100px; } /* Cost Center */
+    .issuance-table td:nth-child(7) { width: 180px; } /* Cost Center */
     
     .issuance-table th:nth-child(8),
     .issuance-table td:nth-child(8) { width: 100px; text-align: right; } /* Unit Cost */
@@ -107,36 +70,27 @@ require_once __DIR__ . '/../../src/includes/init.php';
     .issuance-table td:nth-child(10) { width: 150px; } /* Remarks */
     
     .issuance-table th:nth-child(11),
-    .issuance-table td:nth-child(11) { width: 110px; } /* Category */
+    .issuance-table td:nth-child(11) { width: 140px; } /* Category */
     
     .issuance-table th:nth-child(12),
     .issuance-table td:nth-child(12) { width: 80px; } /* Zone */
     
     .issuance-table th:nth-child(13),
-    .issuance-table td:nth-child(13) { width: 80px; } /* Region */
+    .issuance-table td:nth-child(13) { width: 110px; } /* Region */
     
     .issuance-table th:nth-child(14),
     .issuance-table td:nth-child(14) { width: 140px; } /* Branch */
     
     /* Text truncation for long content */
-    .issuance-table .truncate-cell {
+    .issuance-table td:nth-child(4),
+    .issuance-table td:nth-child(7),
+    .issuance-table td:nth-child(10),
+    .issuance-table td:nth-child(11),
+    .issuance-table td:nth-child(13),
+    .issuance-table td:nth-child(14) {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 0;
-    }
-    
-    .issuance-table td.truncate-cell {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    
-    /* Allow description cell to wrap if needed */
-    .issuance-table td.description-cell {
-        white-space: normal;
-        word-break: break-word;
-        line-height: 1.4;
     }
     
     /* Right align numeric cells */
@@ -201,28 +155,38 @@ require_once __DIR__ . '/../../src/includes/init.php';
     /* Filter row styling */
     .filter-row {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         width: 100%;
     }
     
     .filter-input {
-        flex: 1;
-        min-width: 140px;
+        flex: 1 1 0;
+        min-width: 110px;
     }
     
     .filter-date {
-        width: 130px;
+        flex: 0 1 105px;
+        width: 105px;
+    }
+
+    /* Wider filters when the sidebar is collapsed */
+    #sidebar[style*="width: 64px"] ~ main .filter-input {
+        min-width: 140px;
+    }
+
+    #sidebar[style*="width: 64px"] ~ main .filter-date {
+        width: 120px;
     }
     
     /* Responsive adjustments */
-    @media (max-width: 1024px) {
+    @media (max-width: 1200px) {
         .filter-input {
-            min-width: 120px;
+            min-width: 105px;
         }
         .filter-date {
-            width: 110px;
+            width: 100px;
         }
     }
     
@@ -230,6 +194,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
         .filter-row {
             flex-direction: column;
             align-items: stretch;
+            overflow-x: visible;
         }
         .filter-input,
         .filter-date {
@@ -323,7 +288,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
                 <thead>
                     <tr class="bg-[#ce2216]">
                         <th class="text-left text-white text-xs font-black uppercase tracking-wider">Date Issued</th>
-                        <th class="text-left text-white text-xs font-black uppercase tracking-wider">Issuance #</th>
+                        <th class="text-left text-white text-xs font-black uppercase tracking-wider">Issuance No.</th>
                         <th class="text-left text-white text-xs font-black uppercase tracking-wider">Item Code</th>
                         <th class="text-left text-white text-xs font-black uppercase tracking-wider">Item Description</th>
                         <th class="text-right text-white text-xs font-black uppercase tracking-wider">Qty</th>
@@ -345,16 +310,16 @@ require_once __DIR__ . '/../../src/includes/init.php';
         </div>
         
         <!-- Totals Row -->
-        <div class="border-t border-slate-200 bg-slate-50 px-5 py-3 flex items-center justify-between flex-wrap gap-3">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Summary</span>
+        <div class="border-t border-slate-200 bg-slate-50 px-5 py-1.5 flex items-center justify-between flex-wrap gap-3">
+            <span class="text-xs font-mono text-slate-500 tracking-wider">Summary</span>
             <div class="flex gap-6 text-sm font-black text-slate-800 flex-wrap">
                 <span class="flex items-center gap-2">
                     <span class="text-xs text-slate-400 font-bold uppercase">Total Qty</span>
                     <span id="total-quantity" class="font-mono">0</span>
                 </span>
                 <span class="flex items-center gap-2">
-                    <span class="text-xs text-slate-400 font-bold uppercase">Total Amount</span>
-                    <span id="total-amount" class="font-mono">₱ 0.00</span>
+                    <span class="text-xs text-slate-400 font-mono">Total Amount</span>
+                    <span id="total-amount" class="text-xs font-mono">₱ 0.00</span>
                 </span>
             </div>
         </div>
@@ -362,7 +327,7 @@ require_once __DIR__ . '/../../src/includes/init.php';
 </div>
 
 <!-- Pagination -->
-<div id="pagination-container" class="mt-4"></div>
+<div id="pagination-container" class="mt-0"></div>
 
 <!-- Hidden Header Template for Print -->
 <div id="exportHeaderTemplate" class="hidden">
@@ -374,6 +339,8 @@ require_once __DIR__ . '/../../src/includes/init.php';
         <span class="font-mono tracking-wide text-sm text-slate-400">Issuance Report</span>
     </div>
 </div>
+
+<?php include __DIR__ . '/../../src/includes/modals/issuance-report-details.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="<?= ASSET_URL ?>js/main.js"></script>
